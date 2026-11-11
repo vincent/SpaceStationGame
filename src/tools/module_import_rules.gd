@@ -85,8 +85,12 @@ static func _replace(old: Node, replacement: Node3D) -> void:
 
 static func _make_part(node: Node3D, parts_root: Node, root: Node) -> void:
 	if node.get_parent() != parts_root:
-		node.reparent(parts_root)
+		# Keep the local transform: the scene isn't in a tree during import (no
+		# global transforms) and Parts sits at the root's origin.
+		node.reparent(parts_root, false)
 		node.owner = root
+		for child in node.find_children("*", "", true, false):
+			child.owner = root
 	var extras: Variant = node.get_meta(&"extras", {})
 	node.set_script(load("res://src/station/module_part.gd"))
 	node.set(&"kind", ModulePart.Kind.CUSTOM)

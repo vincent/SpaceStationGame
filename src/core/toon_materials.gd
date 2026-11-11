@@ -50,6 +50,28 @@ static func get_cut_material(
 	return mat
 
 
+## Material for imported Blender art (docs/ART_PIPELINE.md): colours come from
+## the palette texture (each face's UV points at a swatch), wear / glow / trim
+## from the vertex colour masks. `cut` = station structure (hull, greebles,
+## parts); otherwise interior props (never cut).
+static func get_art_material(palette: Texture2D, cut: bool) -> ShaderMaterial:
+	var key := "art|%s|%s" % [palette.resource_path, cut]
+	if _cache.has(key):
+		return _cache[key]
+	var mat := ShaderMaterial.new()
+	mat.shader = TOON_CUT_SHADER if cut else TOON_SHADER
+	mat.set_shader_parameter("albedo", Color.WHITE)
+	mat.set_shader_parameter("albedo_texture", palette)
+	if cut:
+		mat.set_shader_parameter("trim_color", Color.WHITE)  # the palette already holds trim colours
+		mat.set_shader_parameter("emission_from_texture", true)
+	else:
+		mat.set_shader_parameter("mask_emission", true)
+	mat.next_pass = _outline(cut)
+	_cache[key] = mat
+	return mat
+
+
 static func _outline(clip: bool) -> ShaderMaterial:
 	var key := "outline|%s" % clip
 	if not _cache.has(key):

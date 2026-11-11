@@ -1,41 +1,33 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://src/station/module.gd" id="1_module"]
-[ext_resource type="Script" path="res://src/station/module_part.gd" id="2_part"]
+[ext_resource type="PackedScene" path="res://assets/models/station_early/wreck_core.glb" id="1_art"]
+[ext_resource type="Script" path="res://src/station/module.gd" id="2_module"]
+[ext_resource type="Script" path="res://src/station/module_part.gd" id="3_part"]
+[ext_resource type="Texture2D" path="res://assets/models/station_early/station_palette.png" id="4_palette"]
 
-[node name="WreckCore" type="Node3D"]
-script = ExtResource("1_module")
+[node name="WreckCore" instance=ExtResource("1_art")]
+script = ExtResource("2_module")
 module_id = &"wreck_core"
-interior_ascii = "######c#####v####
-#S...#.....#....#
-a..L.D..L..D..L.b
-#..C.#..S..#.C..#
-#######W#########"
-hull_color = Color(0.435, 0.463, 0.565, 1)
-trim_color = Color(0.180, 0.192, 0.251, 1)
-cap_tint = Color(0.910, 0.788, 0.659, 1)
-light_color = Color(0.722, 0.957, 1.000, 1)
-greeble_seed = 23
-
-[node name="Parts" type="Node3D" parent="."]
+interior_ascii = "######
+vC..S#
+b....a
+##W#c#"
+hull_color = Color(0.33, 0.34, 0.4, 1)
+trim_color = Color(0.294, 0.247, 0.561, 1)
+cap_tint = Color(0.91, 0.875, 0.784, 1)
+light_color = Color(1, 0.71, 0.278, 1)
+art_palette = ExtResource("4_palette")
 
 [node name="part_reactor" type="Node3D" parent="Parts"]
-transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -9, 3.0, -1.5)
-script = ExtResource("2_part")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.2, 6.7, -8.1)
+script = ExtResource("3_part")
 kind = 4
 length = 2.4
 explode_dir = Vector3(0, 1, 0)
 
 [node name="part_radiator" type="Node3D" parent="Parts"]
-transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -6.5, 3.0, -1.5)
-script = ExtResource("2_part")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.4, 6.7, -4.5)
+script = ExtResource("3_part")
 kind = 5
 length = 1.8
 explode_dir = Vector3(0.3, 1, 0)
-
-[node name="part_dish" type="Node3D" parent="Parts"]
-transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 11, 3.0, -2)
-script = ExtResource("2_part")
-kind = 6
-length = 2.6
-explode_dir = Vector3(0.3, 1, -0.4)

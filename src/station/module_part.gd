@@ -29,8 +29,8 @@ var mesh_instance: MeshInstance3D
 ## (Re)builds the placeholder mesh with the module's material.
 func build(material: Material) -> void:
 	if kind == Kind.CUSTOM:
-		for mesh: MeshInstance3D in find_children("*", "MeshInstance3D", true, false):
-			mesh.material_override = material
+		for geo in geometries():
+			geo.material_override = material
 		return
 	if mesh_instance == null:
 		mesh_instance = MeshInstance3D.new()
@@ -45,9 +45,13 @@ func build(material: Material) -> void:
 	mesh_instance.material_override = material
 
 
-## Every GeometryInstance3D of the part (for instance uniforms).
+## Every GeometryInstance3D of the part (for instance uniforms), including
+## the part node itself when the import script put the script on a mesh.
 func geometries() -> Array[GeometryInstance3D]:
 	var out: Array[GeometryInstance3D] = []
+	var self_node: Node = self
+	if self_node is GeometryInstance3D:
+		out.append(self_node as GeometryInstance3D)
 	for node in find_children("*", "GeometryInstance3D", true, false):
 		out.append(node as GeometryInstance3D)
 	return out

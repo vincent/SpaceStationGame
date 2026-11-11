@@ -18,6 +18,9 @@ uniform vec4 strip_color : source_color = vec4(0.18, 0.89, 0.9, 1.0);
 uniform float strip_energy : hint_range(0.0, 8.0) = 3.0;
 uniform vec4 rust_color : source_color = vec4(0.55, 0.25, 0.12, 1.0);
 uniform vec4 sweep_color : source_color = vec4(1.0, 0.83, 0.1, 1.0);
+// Imported art: the G-mask glow takes its colour from albedo_texture (the palette
+// swatch) instead of strip_color, so a lamp glows amber and a screen cyan.
+uniform bool emission_from_texture = false;
 
 // Per module (GeometryInstance3D.set_instance_shader_parameter).
 instance uniform vec4 cap_tint : source_color = vec4(1.0, 1.0, 1.0, 1.0);
@@ -75,7 +78,8 @@ void fragment() {
 		// Emissive strips light up along X as power_level goes 0 -> 1.
 		float front = mix(sweep_range.x - 1.0, sweep_range.y + 1.0, power_level);
 		float powered = clamp((front - v_world_pos.x) * 2.0, 0.0, 1.0) * step(0.001, power_level);
-		EMISSION = strip_color.rgb * strip_energy * COLOR.g * powered * (1.0 + 0.5 * interior_warmth);
+		vec3 strip = emission_from_texture ? texture(albedo_texture, UV).rgb : strip_color.rgb;
+		EMISSION = strip * strip_energy * COLOR.g * powered * (1.0 + 0.5 * interior_warmth);
 		EMISSION += emission_color.rgb * emission_energy * power_level;
 
 		if (repair_flash > 0.0) {

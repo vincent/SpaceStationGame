@@ -1,0 +1,88 @@
+{
+ "capsule": {
+  "triangles": 4126,
+  "materials": [
+   "M_emissive",
+   "M_hull",
+   "M_interior"
+  ],
+  "objects": 17,
+  "heaviest": [
+   [
+    "hull@capsule",
+    1958
+   ],
+   [
+    "part_nose_collar",
+    576
+   ],
+   [
+    "part_rcs_ring",
+    464
+   ],
+   [
+    "part_canopy",
+    368
+   ],
+   [
+    "gb_stencil_SR7_01",
+    212
+   ],
+   [
+    "prop_capsule_cabin",
+    156
+   ],
+   [
+    "gb_hazard_07",
+    120
+   ],
+   [
+    "part_thruster",
+    96
+   ]
+  ]
+ },
+ "wreck_core": {
+  "triangles": 12672,
+  "materials": [
+   "M_emissive",
+   "M_hull",
+   "M_interior"
+  ],
+  "objects": 139,
+  "heaviest": [
+   [
+    "hull@wreck_core",
+    2628
+   ],
+   [
+    "prop_cables",
+    1280
+   ],
+   [
+    "gb_tank_01",
+    448
+   ],
+   [
+    "gb_tank_02",
+    448
+   ],
+   [
+    "gb_tank_03",
+    448
+   ],
+   [
+    "gb_stencil_DOCK_01",
+    228
+   ],
+   [
+    "prop_roomA_fittings",
+    196
+   ],
+   [
+    "gb_stencil_B2_01",
+    192
+   ]
+  ]
+ }
+}

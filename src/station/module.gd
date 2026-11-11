@@ -15,8 +15,11 @@ extends Node3D
 ##   Built/Pick                 Area3D used to tap the module in station view
 ## Authored children: Parts/part_* (ModulePart). Imported art may also
 ## provide `hull` (replaces the procedural hull), `slot_*` markers (replace
-## the ASCII slot letters) and `light_*` anchors (extra lights); see
-## docs/ART_PIPELINE.md.
+## the ASCII slot letters), `light_*` anchors (extra lights), `cut_box` (the
+## region the cutaway opens, instead of the whole module), `greebles*` groups
+## (hidden in station view) and `prop_*` interior meshes; see
+## docs/ART_PIPELINE.md. With `art_palette` set, all of it is drawn with
+## palette materials (ToonMaterials.get_art_material()).
 
 const CELL := StationBuilder.CELL
 const WALL_HEIGHT := StationBuilder.WALL_HEIGHT
@@ -26,6 +29,8 @@ const LIGHT_ENERGY := 1.6
 const NIGHT_LIGHT := Color(1.0, 0.62, 0.35)
 const POWER_ON_SECONDS := 2.0
 const REPAIR_SECONDS := 1.5
+## Wall thickness of imported art: wall furniture (bay windows) sits inside it.
+const ART_WALL := 0.3
 
 @export var module_id: StringName
 @export_multiline var interior_ascii: String = "":
@@ -39,6 +44,9 @@ const REPAIR_SECONDS := 1.5
 @export var cap_tint: Color = Color.WHITE
 @export var light_color: Color = Color("b8f4ff")
 @export var greeble_seed: int = 1
+## Palette texture of imported art (its UVs point at swatches). Unset for
+## procedural modules.
+@export var art_palette: Texture2D
 @export_tool_button("Rebuild", "Reload") var rebuild_action: Callable = build
 
 var uid := 0
@@ -70,6 +78,8 @@ var _strip_level := 1.0
 var _fx_level := 1.0
 var _hatches: Dictionary[StringName, Node3D] = {}
 var _cut_geometry: Array[GeometryInstance3D] = []
+var _art_greebles: Array[Node3D] = []
+var _cut_box: MeshInstance3D
 var _sequence: Tween
 var _wear_tween: Tween
 
@@ -100,6 +110,9 @@ func build() -> void:
 	interior = StationBuilder.new()
 	interior.name = "Interior"
 	interior.layout = interior_ascii
+	if has_art():
+		interior.hide_slot_floor = true
+		interior.wall_furniture_inset = CELL * 0.5 - ART_WALL * 0.5
 	nav_region.add_child(interior)
 	interior.build()
 
@@ -111,6 +124,7 @@ func build() -> void:
 	_build_lights()
 	_build_slots()
 	_build_parts()
+	_style_art()
 	_build_pick_area()
 	_ambient = Node3D.new()
 	_ambient.name = "Ambient"
@@ -153,8 +167,16 @@ func get_rest_aabb() -> AABB:
 	return rest_transform * hull_aabb
 
 
-## World bounds of everything the cutaway must slice: hull + visible parts.
+## True when the module uses imported art (an authored `hull`).
+func has_art() -> bool:
+	return get_node_or_null(^"hull") is MeshInstance3D
+
+
+## World bounds of everything the cutaway must slice: the art's `cut_box` if
+## it has one, else hull + visible parts.
 func get_cut_aabb() -> AABB:
+	if _cut_box != null:
+		return global_transform * (_cut_box.transform * _cut_box.get_aabb())
 	var box := get_world_aabb()
 	for part in get_parts():
 		if part.visible and part.is_inside_tree():
@@ -240,6 +262,8 @@ func set_interior_visible(on: bool) -> void:
 func set_detail_visible(on: bool) -> void:
 	if detail:
 		detail.visible = on
+	for group in _art_greebles:
+		group.visible = on
 
 
 func set_wear(value: float) -> void:
@@ -417,7 +441,7 @@ func _build_hull() -> void:
 	var authored := get_node_or_null(^"hull") as MeshInstance3D
 	if authored:
 		hull = authored
-		hull.material_override = mat
+		hull.material_override = ToonMaterials.get_art_material(art_palette, true) if art_palette else mat
 		hull_aabb = hull.transform * hull.get_aabb()
 		_cut_geometry.append(hull)
 		return
@@ -533,9 +557,44 @@ func _make_hatch(slot_name: StringName, door: Vector3, out3: Vector3, mat: Mater
 
 func _build_parts() -> void:
 	var mat := ToonMaterials.get_cut_material(hull_color.lerp(Color.WHITE, 0.15), 0.0, true, trim_color)
+	var art_mat: Material = ToonMaterials.get_art_material(art_palette, true) if art_palette else mat
 	for part in get_parts():
-		part.build(mat)
+		# Imported parts (CUSTOM) use the palette; procedural placeholders keep the module colours.
+		part.build(art_mat if part.kind == ModulePart.Kind.CUSTOM else mat)
 		_cut_geometry.append_array(part.geometries())
+
+
+## Imported art besides hull and parts: greebles (structure, cut by the
+## cutaway, hidden in station view) and prop_* (interior: never cut, hidden
+## while the hull is closed). `cut_box` only defines the cut region.
+func _style_art() -> void:
+	_art_greebles.clear()
+	_cut_box = get_node_or_null(^"cut_box") as MeshInstance3D
+	if _cut_box:
+		_cut_box.visible = false
+	if not has_art():
+		return
+	var cut_mat: Material = ToonMaterials.get_art_material(art_palette, true) if art_palette else hull.material_override
+	var prop_mat: Material = ToonMaterials.get_art_material(art_palette, false) if art_palette else cut_mat
+	for child in get_children():
+		if child == _built or child == hull or child == _cut_box or child.name == &"Parts":
+			continue
+		var child_name := String(child.name)
+		var is_prop := child_name.begins_with("prop_")
+		if is_prop:
+			child.add_to_group(&"interior_prop")
+		elif child_name.begins_with("greebles"):
+			_art_greebles.append(child as Node3D)
+		var meshes: Array[Node] = child.find_children("*", "MeshInstance3D", true, false)
+		if child is MeshInstance3D:
+			meshes.append(child)
+		for node in meshes:
+			var mesh := node as MeshInstance3D
+			if not mesh.visible:  # "-nav" sources are hidden by the import script
+				continue
+			mesh.material_override = prop_mat if is_prop else cut_mat
+			if not is_prop:
+				_cut_geometry.append(mesh)
 
 
 func _build_pick_area() -> void:

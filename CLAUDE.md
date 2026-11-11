@@ -90,6 +90,10 @@ the glowing accent color); map a layout character to it in
 = ModulePart), add `data/modules/<id>.tres` (scene path, costs, power, `slots` = slot
 letter → accepted ids/kinds). `test_module_data.gd` checks scene and data agree.
 
+**New / updated module art (Blender):** follow the checklist and troubleshooting table in
+`docs/ART_PIPELINE.md` (layout fit → export → import script → inherited scene → tests,
+screenshots, `/update-goldens`). Example set: `art/station_early/` (`notes.md`).
+
 **New upgrade:** add `data/upgrades/<id>.tres` (`module_id`, `part_node` = a `part_*` node
 of that module, cost, requires, effects: power_output, power_draw, food/energy/morale_decay).
 

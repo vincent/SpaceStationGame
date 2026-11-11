@@ -48,6 +48,11 @@ const DEFAULT_LAYOUT := """##W########
 		if Engine.is_editor_hint() and is_inside_tree():
 			build()
 @export_tool_button("Rebuild", "Reload") var rebuild_action: Callable = build
+## Imported art has thin walls (0.3 m) instead of whole wall cells: doorway
+## (slot) cells keep their floor collision but draw no tile (it would stick out
+## of the hull), and wall furniture moves this far towards the room.
+var hide_slot_floor := false
+var wall_furniture_inset := 0.0
 
 ## Local position of the "P" cell, valid after build() (Vector3.INF if none).
 var spawn_position := Vector3.INF
@@ -95,6 +100,7 @@ func build() -> void:
 	_offset = -Vector3((size.x - 1) * CELL * 0.5, 0.0, (size.y - 1) * CELL * 0.5)
 
 	var floor_cells: Array[Vector3] = []
+	var hidden_floor: Array[Vector3] = []
 	var wall_cells: Array[Vector3] = []
 	for z in size.y:
 		for x in _grid[z].length():
@@ -106,7 +112,10 @@ func build() -> void:
 			elif c == WALL_FURNITURE:
 				_add_furniture(c, pos, cell)
 			elif is_walkable(c):
-				floor_cells.append(pos)
+				if hide_slot_floor and SLOT_LETTERS.contains(c):
+					hidden_floor.append(pos)
+				else:
+					floor_cells.append(pos)
 				if c == "P":
 					spawn_position = pos
 				elif c == "L":
@@ -115,7 +124,7 @@ func build() -> void:
 					_add_furniture(c, pos, cell)
 				elif SLOT_LETTERS.contains(c):
 					slot_cells[StringName(c.to_upper())] = {"cell": cell, "outward": _outward(cell)}
-	_add_floor(floor_cells)
+	_add_floor(floor_cells, hidden_floor)
 	_add_wall_collisions(wall_cells)
 
 
@@ -151,8 +160,9 @@ func _outward(cell: Vector2i) -> Vector2i:
 
 # --- Geometry ----------------------------------------------------------------
 
-func _add_floor(cells: Array[Vector3]) -> void:
-	if cells.is_empty():
+## `collision_only` cells get a floor collider but no visible tile.
+func _add_floor(cells: Array[Vector3], collision_only: Array[Vector3] = []) -> void:
+	if cells.is_empty() and collision_only.is_empty():
 		return
 	var tile := BoxMesh.new()
 	tile.size = Vector3(CELL - 0.06, FLOOR_THICKNESS, CELL - 0.06)
@@ -175,7 +185,7 @@ func _add_floor(cells: Array[Vector3]) -> void:
 	_generated.add_child(body)
 	var shape := BoxShape3D.new()
 	shape.size = Vector3(CELL, FLOOR_THICKNESS, CELL)
-	for pos in cells:
+	for pos in cells + collision_only:
 		var col := CollisionShape3D.new()
 		col.shape = shape
 		col.position = pos + Vector3(0, -FLOOR_THICKNESS * 0.5, 0)
@@ -205,6 +215,8 @@ func _add_furniture(c: String, pos: Vector3, cell: Vector2i) -> void:
 	var facing := _find_free_neighbor(cell)
 	if facing != Vector2i.ZERO:
 		node.rotation.y = atan2(facing.x, facing.y)
+		if c == WALL_FURNITURE:
+			node.position += Vector3(facing.x, 0.0, facing.y) * wall_furniture_inset
 	_generated.add_child(node)
 	furniture_nodes.append(node)
 	if node is Interactable and facing != Vector2i.ZERO:

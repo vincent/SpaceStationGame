@@ -11,7 +11,7 @@ Status markers: `[x]` done · `[~]` in progress / partial · `[ ]` todo
 - [x] Fixed oblique ortho camera, station/room zoom tiers, pan clamp (CP1)
 - [x] Cutaway shader: clip box, back-face section fill, ink edge (CP2)
 - [x] Modules on slots, per-module navigation + links, save v2 (CP3)
-- [~] Art pipeline: conventions + import script done; real Blender art not started (CP4)
+- [~] Art pipeline: conventions + import script done; first real art imported (capsule + wreck core, `art/station_early/`), other modules still procedural (CP4)
 - [x] Power & wear as progression: power-on sequence, power budget, rust (CP5)
 - [x] Zoom opens the cut, tap-to-focus, touch mapping (CP6)
 - [x] Ambient life, character routines, clock lighting, placeholder audio (CP7)
@@ -55,7 +55,7 @@ Status markers: `[x]` done · `[~]` in progress / partial · `[ ]` todo
 
 ## Tech debt / performance
 - [x] Batch walls (one merged hull mesh per module; closed interiors hidden; ~150 draw calls in station view on desktop)
-- [~] Real art pipeline: Blender → glTF (Git LFS) using the toon shader (conventions + import script; no art yet)
+- [~] Real art pipeline: Blender → glTF (Git LFS) using the toon shader (capsule + wreck core imported with a palette texture; hab pod, solar array, trader still procedural)
 - [ ] Item icons instead of color swatches
 - [ ] iOS export preset (needs a Mac + Apple developer account)
 - [ ] Localisation (tr() keys) before text grows

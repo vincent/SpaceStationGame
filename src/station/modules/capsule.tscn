@@ -1,41 +1,27 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://src/station/module.gd" id="1_module"]
-[ext_resource type="Script" path="res://src/station/module_part.gd" id="2_part"]
+[ext_resource type="PackedScene" path="res://assets/models/station_early/capsule.glb" id="1_art"]
+[ext_resource type="Script" path="res://src/station/module.gd" id="2_module"]
+[ext_resource type="Script" path="res://src/station/module_part.gd" id="3_part"]
+[ext_resource type="Texture2D" path="res://assets/models/station_early/station_palette.png" id="4_palette"]
 
-[node name="Capsule" type="Node3D"]
-script = ExtResource("1_module")
+[node name="Capsule" instance=ExtResource("1_art")]
+script = ExtResource("2_module")
 module_id = &"capsule"
-interior_ascii = "#######
-#B..LK#
-#P....a
-###W###"
-hull_color = Color(0.878, 0.675, 0.282, 1)
-trim_color = Color(0.227, 0.200, 0.251, 1)
-cap_tint = Color(1.000, 0.945, 0.839, 1)
-light_color = Color(1.000, 0.851, 0.627, 1)
-greeble_seed = 11
-
-[node name="Parts" type="Node3D" parent="."]
+interior_ascii = "#####
+aP.B#
+#..K#
+#####"
+hull_color = Color(0.847, 0.251, 0.18, 1)
+trim_color = Color(0.91, 0.894, 0.855, 1)
+cap_tint = Color(1, 0.945, 0.839, 1)
+light_color = Color(1, 0.851, 0.627, 1)
+art_palette = ExtResource("4_palette")
 
 [node name="part_solar_wings" type="Node3D" parent="Parts"]
-transform = Transform3D(0.0, 0, -1.0, 0, 1, 0, 1.0, 0, 0.0, 1.5, 3.45, 0)
-script = ExtResource("2_part")
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0.6, 3.5, 0)
+script = ExtResource("3_part")
 kind = 1
 length = 7.0
 mirror = true
 explode_dir = Vector3(0, 1, 0)
-
-[node name="part_antenna" type="Node3D" parent="Parts"]
-transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -4, 3.0, -2)
-script = ExtResource("2_part")
-kind = 2
-length = 3.0
-explode_dir = Vector3(-0.4, 1, -0.5)
-
-[node name="part_thruster" type="Node3D" parent="Parts"]
-transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -7.05, 1.2, 0)
-script = ExtResource("2_part")
-kind = 3
-length = 2.2
-explode_dir = Vector3(-1, 0.2, 0)

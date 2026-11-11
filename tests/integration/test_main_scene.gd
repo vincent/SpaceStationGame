@@ -67,7 +67,8 @@ func test_station_has_furniture() -> void:
 
 func test_path_from_capsule_to_every_wreck_room() -> void:
 	var wreck := station.find_module(&"wreck_core")
-	for cell: Vector2i in [Vector2i(2, 2), Vector2i(8, 2), Vector2i(14, 2)]:
+	# Room A is the wreck's only walkable room (rooms B and C are closed art).
+	for cell: Vector2i in [Vector2i(2, 1), Vector2i(1, 2), Vector2i(4, 2)]:
 		var target := wreck.interior.to_global(wreck.interior.cell_to_world(cell))
 		assert_true(_has_path(player.global_position, target), "path to wreck room at %s" % cell)
 
@@ -87,7 +88,7 @@ func test_tap_on_floor_moves_player_in_room_view() -> void:
 	await wait_until(func() -> bool: return camera.t > 0.99, 2.0)
 	var capsule := station.find_module(&"capsule")
 	var start := player.global_position
-	var target := capsule.interior.to_global(capsule.interior.cell_to_world(Vector2i(4, 2)))
+	var target := capsule.interior.to_global(capsule.interior.cell_to_world(Vector2i(2, 2)))
 	main.handle_tap(camera.camera.unproject_position(target))
 	await wait_until(func() -> bool: return not player.is_moving(), 10.0)
 	assert_gt(player.global_position.distance_to(start), 1.0, "player moved")
