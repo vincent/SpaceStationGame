@@ -53,6 +53,14 @@ Status markers: `[x]` done · `[~]` in progress / partial · `[ ]` todo
 - [~] Traders: buy/sell/exchange goods & services (fixed item swaps)
 - [ ] Station development axes: culture, economy, religion
 
+## Content pipeline (docs/CONTENT_PIPELINE.md)
+- [x] Upgrade parts on art mounts (`mount_*` + `UpgradeDef.mount`), validation tests, `--upgrade=all`
+- [x] Encounters / story beats as data: triggers, conditions, outcomes, choices, schedules, saved story state
+- [x] Encounter panel (dialog / radio), debug Story row, `--encounter=<id>`, `--story=off`
+- [ ] Part art kit (`part_scene` glTFs) and the capsule wings on a mount
+- [ ] Headless story simulation bot; encounters that spawn models
+- [ ] Write the real story arc (chapters gated by milestones)
+
 ## Tech debt / performance
 - [x] Batch walls (one merged hull mesh per module; closed interiors hidden; ~150 draw calls in station view on desktop)
 - [~] Real art pipeline: Blender → glTF (Git LFS) using the toon shader (capsule + wreck core imported with a palette texture; hab pod, solar array, trader still procedural)

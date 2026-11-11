@@ -13,7 +13,8 @@ extends Node3D
 ##   Built/Ambient              props from AmbientKit (state dependent)
 ##   Built/Slot_X, Built/Hatch_X  slots and the hatches sealing free ones
 ##   Built/Pick                 Area3D used to tap the module in station view
-## Authored children: Parts/part_* (ModulePart). Imported art may also
+## Authored children: Parts/part_* (ModulePart) and mount_* markers, where
+## upgrades with a `mount` get their part spawned (see UpgradeDef). Imported art may also
 ## provide `hull` (replaces the procedural hull), `slot_*` markers (replace
 ## the ASCII slot letters), `light_*` anchors (extra lights), `cut_box` (the
 ## region the cutaway opens, instead of the whole module), `greebles*` groups
@@ -123,6 +124,7 @@ func build() -> void:
 				_cut_geometry.append(geo as GeometryInstance3D)
 	_build_lights()
 	_build_slots()
+	_spawn_mounted_parts()
 	_build_parts()
 	_style_art()
 	_build_pick_area()
@@ -203,6 +205,14 @@ func get_parts() -> Array[ModulePart]:
 			if child is ModulePart:
 				out.append(child)
 	return out
+
+
+## The `mount_<mount_id>` marker, or null.
+func get_mount(mount_id: StringName) -> Node3D:
+	for node in find_children("mount_*", "Node3D", true, false):
+		if ModuleImportRules.mount_name(node.name) == mount_id and (_built == null or not _built.is_ancestor_of(node)):
+			return node as Node3D
+	return null
 
 
 func display_name() -> String:
@@ -553,6 +563,48 @@ func _make_hatch(slot_name: StringName, door: Vector3, out3: Vector3, mat: Mater
 	body.add_child(col)
 	hatch.add_child(body)
 	return hatch
+
+
+## Upgrades with a `mount` and no authored part get a ModulePart spawned on
+## their marker: the art scene if any, else the procedural placeholder.
+func _spawn_mounted_parts() -> void:
+	if Engine.is_editor_hint():
+		return
+	var parts_root := get_node_or_null(^"Parts") as Node3D
+	for up in GameState.module_db.upgrades_for(def.id if def else module_id):
+		if up.mount == &"" or (parts_root and parts_root.has_node(NodePath(String(up.part_node)))):
+			continue
+		var marker := get_mount(up.mount)
+		if marker == null:
+			push_error("%s: upgrade %s wants mount_%s, which the scene lacks" % [name, up.id, up.mount])
+			continue
+		if parts_root == null:
+			parts_root = Node3D.new()
+			parts_root.name = "Parts"
+			add_child(parts_root)
+		var part := ModulePart.new()
+		part.name = String(up.part_node)
+		part.transform = _local_transform(parts_root).affine_inverse() * _local_transform(marker)
+		var up_axis := _local_transform(marker).basis.y.normalized()
+		part.explode_dir = up.explode_dir if up.explode_dir != Vector3.ZERO else up_axis
+		if up.part_scene:
+			part.kind = ModulePart.Kind.CUSTOM
+			part.add_child(up.part_scene.instantiate())
+		else:
+			part.kind = up.part_kind
+			part.length = up.part_length
+			part.mirror = up.part_mirror
+		parts_root.add_child(part)
+
+
+## Transform of a descendant relative to this module.
+func _local_transform(node: Node3D) -> Transform3D:
+	var t := node.transform
+	var parent := node.get_parent()
+	while parent != self and parent is Node3D:
+		t = (parent as Node3D).transform * t
+		parent = parent.get_parent()
+	return t
 
 
 func _build_parts() -> void:

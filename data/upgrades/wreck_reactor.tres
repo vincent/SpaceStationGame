@@ -12,3 +12,6 @@ part_node = &"part_reactor"
 cost = Dictionary[StringName, int]({&"scrap_metal": 10, &"power_cell": 1})
 requires = []
 effects = Dictionary[StringName, float]({&"power_output": 4.0})
+mount = &"roof_a"
+part_kind = 4
+part_length = 2.4

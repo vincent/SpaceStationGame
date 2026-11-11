@@ -25,6 +25,9 @@ func _ready() -> void:
 	GameClock.time_advanced.connect(_on_time_advanced)
 	EventBus.trade_completed.connect(func() -> void: stay_left = minf(stay_left, LEAVE_AFTER_TRADE_MINUTES))
 	EventBus.game_reset.connect(func() -> void: visitor_uid = 0)
+	EventBus.visitor_requested.connect(func() -> void:
+		if visitor_uid == 0 and not arrive():
+			EventBus.toast.emit("No powered docking port: the ship can't dock."))
 	station.module_attached.connect(_on_module_attached)
 
 
@@ -54,6 +57,7 @@ func arrive() -> bool:
 		return false
 	stay_left = STAY_MINUTES
 	EventBus.toast.emit("A trader ship is docking.")
+	GameState.story_event(&"visitor", &"trader_ship")
 	return true
 
 

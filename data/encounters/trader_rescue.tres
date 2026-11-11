@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="EncounterDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/encounter_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"trader_rescue"
+trigger = &"scheduled"
+channel = &"radio"
+title = "Kestrel"
+lines = PackedStringArray("Kestrel here. We're swinging by your wreck.", "Keep a docking port powered and we'll trade what we can.")
+outcomes = PackedStringArray("visitor", "count contacts 1")

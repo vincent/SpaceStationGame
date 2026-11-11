@@ -1,6 +1,7 @@
 class_name HUD
 extends CanvasLayer
-## In-game overlay: clock, needs bars, inventory button, object menus, toasts.
+## In-game overlay: clock, needs bars, inventory button, object menus,
+## encounters, toasts.
 ## Built in code so layout changes stay reviewable in diffs.
 
 const NEED_COLORS: Dictionary[StringName, Color] = {
@@ -18,6 +19,7 @@ var interaction_menu: InteractionMenu
 var inventory_panel: InventoryPanel
 var module_panel: ModulePanel
 var build_menu: BuildMenu
+var encounter_panel: EncounterPanel
 var _clock_label: Label
 var _power_label: Label
 var _bars: Dictionary[StringName, ProgressBar] = {}
@@ -110,6 +112,13 @@ func _ready() -> void:
 	build_menu.grow_vertical = Control.GROW_DIRECTION_BOTH
 	layer_root.add_child(build_menu)
 	layer_root.add_child(inventory_panel)
+
+	# Encounter (story beat) panel, centre-top
+	encounter_panel = EncounterPanel.new()
+	encounter_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	encounter_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	encounter_panel.position.y = 120
+	layer_root.add_child(encounter_panel)
 
 	# Toast (top-center)
 	_toast = UITheme.label("", false, Palette.TEXT)

@@ -934,6 +934,13 @@ def build_wreck(cols, mats):
     ]
     for s in slots:
         s["note"] = "local -Y (Blender) = +Z (Godot) points out of the module"
+    # upgrade mounts (UpgradeDef.mount): local +Z (Blender) = +Y (Godot) = surface normal
+    mounts = [
+        empty("mount_roof_a", (10.4, 4.4, 7.0), co, "SINGLE_ARROW", 0.8),   # wreck_reactor
+        empty("mount_roof_b", (9.6, 0.8, 7.0), co, "SINGLE_ARROW", 0.8),    # wreck_radiator
+    ]
+    for m in mounts:
+        own(m)
     light = empty("light_worklamp", (lx, ly + 0.4, FLOOR_Z + 2.1), co, "SPHERE", 0.2)
     mb = MB()
     mb.box((3.2, -5.7, FLOOR_Z - 0.04), (11.2, -1.7, FLOOR_Z - 0.02), C["cream"])

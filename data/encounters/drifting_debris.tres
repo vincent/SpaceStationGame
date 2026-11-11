@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="EncounterDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/encounter_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"drifting_debris"
+trigger = &"hour"
+condition = "repaired(\"wreck_core\")"
+chance = 0.08
+once = false
+cooldown_hours = 12.0
+channel = &"toast"
+lines = PackedStringArray("Debris drifts past the hull. You snag 2 scrap metal.")
+outcomes = PackedStringArray("give scrap_metal 2", "count debris_caught 1")

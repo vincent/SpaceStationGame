@@ -33,3 +33,8 @@ signal part_snapped(module: Module, part: StringName)
 signal trade_completed
 ## One-shot sound request (see AudioDirector.SOUNDS).
 signal sfx(sound: StringName)
+## An encounter needs the screen (dialog / radio channel) / was answered or closed.
+signal encounter_started(encounter: EncounterDef)
+signal encounter_finished(encounter: EncounterDef)
+## An encounter outcome asks for a trader ship (VisitorDirector answers).
+signal visitor_requested

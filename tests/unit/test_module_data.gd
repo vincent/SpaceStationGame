@@ -32,16 +32,62 @@ func test_every_module_scene_matches_its_definition() -> void:
 		assert_true(module.slots.has(def.attach_slot), "%s attach slot exists" % id)
 
 
-func test_upgrades_point_at_existing_parts() -> void:
+func test_upgrades_resolve_to_parts() -> void:
 	for id in db.upgrade_ids():
 		var up := db.get_upgrade(id)
 		var def := db.get_module(up.module_id)
 		assert_not_null(def, "%s: module %s exists" % [id, up.module_id])
+		if def == null:
+			continue
 		var module := (load(def.scene_path) as PackedScene).instantiate() as Module
-		assert_not_null(module.get_node_or_null(NodePath("Parts/%s" % up.part_node)), "%s: part %s" % [id, up.part_node])
-		module.free()
+		module.def = def
+		add_child_autofree(module)
+		var authored := module.has_node(NodePath("Parts/%s" % up.part_node))
+		if up.mount != &"":
+			assert_false(authored, "%s: mounted part %s must not also be authored" % [id, up.part_node])
+			assert_not_null(module.get_mount(up.mount), "%s: scene has mount_%s" % [id, up.mount])
+		module.build()
+		var part := module.get_node_or_null(NodePath("Parts/%s" % up.part_node)) as ModulePart
+		assert_not_null(part, "%s: part %s" % [id, up.part_node])
+		if part and up.mount != &"":
+			var mount := module.get_mount(up.mount)
+			assert_almost_eq(part.global_position, mount.global_position, Vector3.ONE * 0.001,
+				"%s: part sits on its mount" % id)
+
+
+func test_upgrade_definitions_are_valid() -> void:
+	var items := ItemDB.new()
+	items.load_dir()
+	for id in db.upgrade_ids():
+		var up := db.get_upgrade(id)
+		var errors := up.validate(items)
+		assert_eq(errors.size(), 0, "\n".join(errors))
 		for req in up.requires:
-			assert_not_null(db.get_upgrade(req), "%s requires unknown %s" % [id, req])
+			var req_def := db.get_upgrade(req)
+			assert_not_null(req_def, "%s requires unknown %s" % [id, req])
+			if req_def:
+				assert_eq(req_def.module_id, up.module_id, "%s requires an upgrade of another module" % id)
+		assert_false(_requires_cycle(id, []), "%s: requires cycle" % id)
+
+
+func test_part_nodes_are_unique_per_module() -> void:
+	for module_id in db.module_ids():
+		var seen := {}
+		for up in db.upgrades_for(module_id):
+			assert_false(seen.has(up.part_node), "%s: two upgrades reveal %s" % [module_id, up.part_node])
+			seen[up.part_node] = true
+
+
+func _requires_cycle(id: StringName, path: Array) -> bool:
+	if path.has(id):
+		return true
+	var up := db.get_upgrade(id)
+	if up == null:
+		return false
+	for req in up.requires:
+		if _requires_cycle(req, path + [id]):
+			return true
+	return false
 
 
 func test_fits() -> void:

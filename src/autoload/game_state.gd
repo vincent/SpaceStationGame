@@ -1,12 +1,13 @@
 extends Node
-## Owns the simulation state (needs, inventory, station) and the actions that
-## change it (sleep, cook, use item, build, repair, power, upgrade...). Scenes
-## and UI call these methods instead of poking at Needs/Inventory/StationState
-## directly, so rules live in one place.
+## Owns the simulation state (needs, inventory, station, story) and the
+## actions that change it (sleep, cook, use item, build, repair, power,
+## upgrade, encounter outcomes...). Scenes and UI call these methods instead
+## of poking at Needs/Inventory/StationState directly, so rules live in one
+## place. Encounters: docs/CONTENT_PIPELINE.md.
 
 const SAVE_PATH := "user://savegame.json"
-## 2: station modules (StationState) added.
-const SAVE_VERSION := 2
+## 2: station modules (StationState) added. 3: story (flags, encounters).
+const SAVE_VERSION := 3
 const INVENTORY_SLOTS := 20
 
 const STARTING_ITEMS: Dictionary[StringName, int] = {
@@ -34,6 +35,18 @@ var needs := Needs.new()
 var inventory: Inventory
 var station: StationState
 var activity: StringName = &"idle"
+var encounter_db := EncounterDB.new()
+var story := StoryState.new()
+var story_context: StoryContext
+var storyteller: Storyteller
+## The encounter on screen (waiting for a choice), or null.
+var current_encounter: EncounterDef
+## Off: no encounter fires (goldens, tests that want a quiet game).
+var story_enabled := true
+
+var _encounter_queue: Array[StringName] = []
+## True while a new game / save is being set up: no story events.
+var _quiet := false
 
 
 func _init() -> void:
@@ -43,22 +56,35 @@ func _init() -> void:
 	station = StationState.new(module_db)
 	station.module_changed.connect(func(_uid: int, _reason: StringName) -> void: _apply_upgrade_effects())
 	station.reset.connect(_apply_upgrade_effects)
+	encounter_db.load_dir()
+	story_context = StoryContext.new(story, inventory, station, needs)
+	storyteller = Storyteller.new(encounter_db, story, story_context)
 
 
 func _ready() -> void:
 	GameClock.time_advanced.connect(_on_time_advanced)
+	GameClock.hour_passed.connect(func(_h: int) -> void: story_event(&"hour"))
+	GameClock.day_passed.connect(func(_d: int) -> void: story_event(&"day"))
+	station.module_changed.connect(_on_module_changed_story)
+	EventBus.trade_completed.connect(func() -> void: story_event(&"traded"))
+	EventBus.interaction_requested.connect(func(target: Interactable) -> void:
+		story_event(&"interacted", StringName(target.scene_file_path.get_file().get_basename())))
 	new_game()
 
 
 func new_game() -> void:
+	_quiet = true
 	GameClock.reset()
 	needs.reset()
 	inventory.clear()
 	for id: StringName in STARTING_ITEMS:
 		inventory.add(id, STARTING_ITEMS[id])
 	activity = &"idle"
+	_reset_story()
 	_new_station()
+	_quiet = false
 	EventBus.game_reset.emit()
+	story_event(&"start")
 
 
 ## Story start: the rescue capsule docked to a dark, derelict wreck.
@@ -138,6 +164,9 @@ func use_item(slot_index: int) -> bool:
 
 func _on_time_advanced(minutes: float) -> void:
 	needs.tick(minutes / GameClock.MINUTES_PER_HOUR, ACTIVITY_RATES.get(activity, {}))
+	if not _quiet:
+		for id in story.pop_due(GameClock.total_minutes):
+			fire_encounter(id)
 
 
 # --- Station actions ---------------------------------------------------------
@@ -163,6 +192,7 @@ func build_module(module_id: StringName, parent_uid: int, slot: StringName) -> i
 	spend_time(def.build_minutes, &"working")
 	var uid := station.add_module(module_id, parent_uid, slot, StationState.State.REPAIRED, 0.3, false)
 	EventBus.toast.emit("%s attached." % def.display_name)
+	story_event(&"built", module_id)
 	return uid
 
 
@@ -248,6 +278,140 @@ func _apply_upgrade_effects() -> void:
 		needs.decay_per_hour[need] = maxf(MIN_DECAY, Needs.DEFAULT_DECAY[need] + bonus)
 
 
+# --- Story / encounters ------------------------------------------------------
+
+## A game event that may start an encounter (see EncounterDef.TRIGGERS).
+## Returns the encounter that started, or null.
+func story_event(trigger: StringName, subject: StringName = &"") -> EncounterDef:
+	if not story_enabled or _quiet:
+		return null
+	var enc := storyteller.pick(trigger, subject, GameClock.total_minutes)
+	if enc:
+		_start_encounter(enc)
+	return enc
+
+
+## Starts one encounter now if it's available (condition, once, cooldown);
+## `force` skips those checks (debug). Scheduled beats come through here.
+func fire_encounter(id: StringName, force: bool = false) -> bool:
+	var enc := encounter_db.get_encounter(id)
+	if enc == null or not story_enabled:
+		return false
+	if not force and not storyteller.is_available(enc, &"", GameClock.total_minutes):
+		return false
+	_start_encounter(enc)
+	return true
+
+
+## Picks a choice of the encounter on screen (-1 / ignored when it has none).
+func resolve_encounter(choice: int = -1) -> bool:
+	var enc := current_encounter
+	if enc == null:
+		return false
+	if not enc.choices.is_empty():
+		if choice < 0 or choice >= enc.choices.size() or not is_choice_enabled(enc, choice):
+			return false
+		for line: String in enc.choices[choice].get("outcomes", []):
+			apply_outcome(line)
+	current_encounter = null
+	EventBus.encounter_finished.emit(enc)
+	_show_next_encounter()
+	return true
+
+
+func is_choice_enabled(enc: EncounterDef, choice: int) -> bool:
+	return story_context.evaluate(String(enc.choices[choice].get("condition", "")))
+
+
+## Applies one outcome line (see StoryOutcome for the verbs).
+func apply_outcome(line: String) -> void:
+	var o := StoryOutcome.parse(line)
+	if o.is_empty():
+		push_error("Bad encounter outcome: '%s'" % line)
+		return
+	var a: PackedStringArray = o.args
+	match o.verb:
+		&"give":
+			gain({StringName(a[0]): int(a[1])})
+		&"take":
+			var id := StringName(a[0])
+			inventory.remove(id, mini(int(a[1]), inventory.count_of(id)))
+		&"need":
+			needs.change(StringName(a[0]), float(a[1]))
+		&"flag":
+			story.set_flag(StringName(a[0]))
+		&"unflag":
+			story.set_flag(StringName(a[0]), false)
+		&"count":
+			story.add(StringName(a[0]), int(a[1]))
+		&"schedule":
+			story.schedule(StringName(a[0]), GameClock.total_minutes + float(a[1]) * GameClock.MINUTES_PER_HOUR)
+		&"toast":
+			EventBus.toast.emit(a[0])
+		&"visitor":
+			EventBus.visitor_requested.emit()
+		&"wear":
+			var uid := station.find_module(StringName(a[0]))
+			if uid != 0:
+				station.set_wear(uid, float(station.get_record(uid).wear) + float(a[1]))
+
+
+## Turns encounters off (and closes the one on screen) or back on.
+func set_story_enabled(on: bool) -> void:
+	story_enabled = on
+	if not on:
+		_encounter_queue.clear()
+		if current_encounter:
+			var enc := current_encounter
+			current_encounter = null
+			EventBus.encounter_finished.emit(enc)
+
+
+func _start_encounter(enc: EncounterDef) -> void:
+	story.mark_seen(enc.id, GameClock.total_minutes)
+	for line in enc.outcomes:
+		apply_outcome(line)
+	if enc.channel == &"toast":
+		EventBus.toast.emit(" ".join(enc.lines))
+		return
+	if current_encounter != null:
+		_encounter_queue.append(enc.id)
+		return
+	current_encounter = enc
+	EventBus.encounter_started.emit(enc)
+
+
+func _show_next_encounter() -> void:
+	if current_encounter != null or _encounter_queue.is_empty():
+		return
+	var enc := encounter_db.get_encounter(_encounter_queue.pop_front())
+	if enc:
+		current_encounter = enc
+		EventBus.encounter_started.emit(enc)
+
+
+func _reset_story() -> void:
+	story.clear()
+	_encounter_queue.clear()
+	current_encounter = null
+
+
+func _on_module_changed_story(uid: int, reason: StringName) -> void:
+	var rec := station.get_record(uid)
+	if rec.is_empty():
+		return
+	match reason:
+		&"repaired", &"powered":
+			story_event(reason, rec.module_id)
+		&"upgraded":
+			var upgrade_id: StringName = rec.parts.back()
+			var up := module_db.get_upgrade(upgrade_id)
+			if up and not _quiet:
+				for f in up.sets_flags:
+					story.set_flag(f)
+			story_event(&"upgraded", upgrade_id)
+
+
 # --- Save / load -------------------------------------------------------------
 
 func to_dict() -> Dictionary:
@@ -257,10 +421,14 @@ func to_dict() -> Dictionary:
 		"needs": needs.to_dict(),
 		"inventory": inventory.to_dict(),
 		"station": station.to_dict(),
+		"story": story.to_dict(),
+		"encounter": String(current_encounter.id) if current_encounter else "",
+		"encounter_queue": Array(_encounter_queue).map(func(id: StringName) -> String: return String(id)),
 	}
 
 
 func from_dict(data: Dictionary) -> void:
+	_quiet = true
 	GameClock.from_dict(data.get("clock", {}))
 	needs.from_dict(data.get("needs", {}))
 	inventory.from_dict(data.get("inventory", {}))
@@ -268,7 +436,15 @@ func from_dict(data: Dictionary) -> void:
 		station.from_dict(data.station)
 	else:
 		_new_station()  # version 1 saves had no station
+	_reset_story()
+	story.from_dict(data.get("story", {}))  # versions 1-2: no story yet
+	current_encounter = encounter_db.get_encounter(StringName(data.get("encounter", "")))
+	for id: String in data.get("encounter_queue", []):
+		_encounter_queue.append(StringName(id))
+	_quiet = false
 	EventBus.game_reset.emit()
+	if current_encounter:
+		EventBus.encounter_started.emit(current_encounter)
 
 
 func save_game(path: String = SAVE_PATH) -> bool:

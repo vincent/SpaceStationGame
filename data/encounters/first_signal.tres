@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EncounterDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/encounter_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"first_signal"
+trigger = &"upgraded"
+condition = "subject == \"wreck_dish\""
+priority = 5
+channel = &"radio"
+title = "A voice"
+lines = PackedStringArray("...static... any vessel... SR-7, do you copy?", "...freighter Kestrel... picking up your dish...")
+choices = Array[Dictionary]([{"text": "Answer the call", "outcomes": PackedStringArray("flag met_signal", "schedule trader_rescue 6", "need morale 15")}, {"text": "Stay silent", "outcomes": PackedStringArray("flag ignored_signal", "need morale -5")}])

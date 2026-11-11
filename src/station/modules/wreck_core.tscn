@@ -2,7 +2,6 @@
 
 [ext_resource type="PackedScene" path="res://assets/models/station_early/wreck_core.glb" id="1_art"]
 [ext_resource type="Script" path="res://src/station/module.gd" id="2_module"]
-[ext_resource type="Script" path="res://src/station/module_part.gd" id="3_part"]
 [ext_resource type="Texture2D" path="res://assets/models/station_early/station_palette.png" id="4_palette"]
 
 [node name="WreckCore" instance=ExtResource("1_art")]
@@ -18,16 +17,3 @@ cap_tint = Color(0.91, 0.875, 0.784, 1)
 light_color = Color(1, 0.71, 0.278, 1)
 art_palette = ExtResource("4_palette")
 
-[node name="part_reactor" type="Node3D" parent="Parts"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.2, 6.7, -8.1)
-script = ExtResource("3_part")
-kind = 4
-length = 2.4
-explode_dir = Vector3(0, 1, 0)
-
-[node name="part_radiator" type="Node3D" parent="Parts"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.4, 6.7, -4.5)
-script = ExtResource("3_part")
-kind = 5
-length = 1.8
-explode_dir = Vector3(0.3, 1, 0)

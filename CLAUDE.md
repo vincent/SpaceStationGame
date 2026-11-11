@@ -5,7 +5,8 @@ space station. Godot **4.7.2** (pinned in `.godot-version`), **GDScript**, 3D
 with cel shading. The station is a **diorama**: one object seen from a fixed
 oblique orthographic camera, its hull cut open to reveal the rooms
 (`docs/PLAN_DIORAMA_CUTAWAY.md`). Design doc lives in the claude.ai project
-("SpaceStationTycoon.md"); `docs/ROADMAP.md` tracks progress.
+("SpaceStationTycoon.md"); `docs/ROADMAP.md` tracks progress. Upgrades and
+story encounters are data-driven: `docs/CONTENT_PIPELINE.md`.
 
 ## Commands (run from repo root)
 
@@ -15,7 +16,7 @@ oblique orthographic camera, its hull cut open to reveal the rooms
 | One test file / tests by name | `tools/test.sh -gselect=test_inventory` · `tools/test.sh -gunit_test_name=merge` |
 | Lint | `tools/lint.sh` (needs `pip install "gdtoolkit==4.*"`) |
 | Parse/import check only | `tools/import.sh` |
-| Screenshot (works headless via xvfb) | `tools/screenshot.sh build/shot.png [--view=station\|room] [--focus=wreck_core] [--power=all] [--explode] [--time=22] [--debug-panel] [--delay=5]` (all hooks: `DebugOverlay._run_cli_commands()`) |
+| Screenshot (works headless via xvfb) | `tools/screenshot.sh build/shot.png [--view=station\|room] [--focus=wreck_core] [--power=all] [--upgrade=all] [--encounter=intro] [--story=off] [--explode] [--time=22] [--debug-panel] [--delay=5]` (all hooks: `DebugOverlay._run_cli_commands()`) |
 | Golden images (compare / re-record) | `tools/golden.sh` · `tools/golden.sh --update [scene]` (or `/update-goldens`) |
 | Run game / open editor | `tools/run.sh` · `tools/editor.sh` |
 | Android debug APK | `tools/export_android.sh` (needs ANDROID_HOME + JDK 17) → `tools/install_android.sh` |
@@ -29,8 +30,9 @@ changes also take a screenshot, look at it, and run `tools/golden.sh`.
 ## Architecture
 
 ```
-src/autoload/   EventBus (signals only), GameClock (time), GameState (needs, inventory, station, actions, save/load)
+src/autoload/   EventBus (signals only), GameClock (time), GameState (needs, inventory, station, story, actions, save/load)
 src/core/       Pure logic & helpers: Needs, Inventory, ItemDB/ItemData, StationState, ModuleDB/ModuleDef/UpgradeDef,
+                EncounterDef/EncounterDB, StoryState, StoryContext, StoryOutcome, Storyteller,
                 DayCycle, Palette, Layers, ToonMaterials
 src/world/      main.tscn/main.gd (taps → focus/build/walk/interact), StationBuilder (module interior from ASCII)
 src/station/    Station (scene mirror of StationState), Module (hull+interior+lights+parts+slots), Slot, ModulePart,
@@ -41,9 +43,10 @@ src/player/     Player (CharacterBody3D + NavigationAgent3D), PlayerRoutine (idl
 src/interactables/  Interactable base + Bed, Kitchen, BayWindow, SalvagePile, Console, Trader (+ .tscn each)
 src/ambient/    AmbientKit (state-driven props), ExteriorLife (traffic, debris)
 src/audio/      SfxSynth (placeholder sounds), AudioDirector
-src/ui/         HUD, ModulePanel, BuildMenu, UpgradeOverlay, InteractionMenu, InventoryPanel/Slot, DebugOverlay, UITheme
+src/ui/         HUD, ModulePanel, BuildMenu, UpgradeOverlay, InteractionMenu, EncounterPanel, InventoryPanel/Slot,
+                DebugOverlay, UITheme
 src/tools/      Blender import post-processing (module_import.gd + ModuleImportRules)
-data/items/, data/modules/, data/upgrades/   One .tres per item / module type / upgrade
+data/items/, data/modules/, data/upgrades/, data/encounters/   One .tres per item / module type / upgrade / story beat
 assets/shaders/ toon (furniture/characters), toon_cut + cutaway.gdshaderinc (structure), outline, ghost, light_card,
                 ambient_fx, starfield
 tests/unit, tests/integration, tests/goldens   GUT tests (integration boots main.tscn) + golden images
@@ -65,7 +68,8 @@ Rules of thumb:
   `GameState.build_module / repair_module / toggle_power / buy_upgrade`.
 - Pure logic classes (`extends RefCounted`) get unit tests; scene behaviour gets an
   integration test in `tests/integration/`.
-- Saves are JSON (`user://savegame.json`) via each system's `to_dict()/from_dict()`.
+- Saves are JSON (`user://savegame.json`) via each system's `to_dict()/from_dict()`
+  (story too: `StoryState`).
   Bump `GameState.SAVE_VERSION` when the format changes.
 
 ## How-tos
@@ -94,8 +98,15 @@ letter → accepted ids/kinds). `test_module_data.gd` checks scene and data agre
 `docs/ART_PIPELINE.md` (layout fit → export → import script → inherited scene → tests,
 screenshots, `/update-goldens`). Example set: `art/station_early/` (`notes.md`).
 
-**New upgrade:** add `data/upgrades/<id>.tres` (`module_id`, `part_node` = a `part_*` node
-of that module, cost, requires, effects: power_output, power_draw, food/energy/morale_decay).
+**New upgrade:** add `data/upgrades/<id>.tres` (`module_id`, `part_node`, cost, requires,
+effects from `UpgradeDef.EFFECTS`). The part is either authored (`Parts/<part_node>` in the
+scene) or, preferred, spawned on a `mount_<name>` marker of the art (`mount`, `part_kind`
+placeholder or `part_scene`). Checklist: `docs/CONTENT_PIPELINE.md`; `test_module_data.gd` validates it.
+
+**New encounter (story beat):** add `data/encounters/<id>.tres` (`trigger`, `condition` = Godot
+expression over `StoryContext`, `lines`, `outcomes`/`choices` = `StoryOutcome` verbs).
+Reference + checklist: `docs/CONTENT_PIPELINE.md`; `test_encounter_data.gd` validates it.
+Rules stay in `GameState` (`story_event`, `apply_outcome`); new trigger = `GameState.story_event(&"x", subject)`.
 
 **Debug tools:** in debug builds press F3 or tap "DBG" (time speed/skip, needs,
 give items, cutaway on/off, magenta back faces, repair/power/wear of the focused module,
@@ -122,6 +133,8 @@ summon a visitor, camera pitch/yaw/size sliders, save/load). New cheats: `_add_r
 - Screenshots use the Compatibility renderer (no GPU in CI/containers); the game
   itself uses the Mobile renderer, so lighting can differ slightly.
 - `build/` has a `.gdignore`; never put game assets there.
+- A new game opens the intro encounter; `--freeze` (goldens) and `--story=off` turn
+  encounters off. Tests that need a quiet game call `GameState.set_story_enabled(false)`.
 - Typed-dictionary `.tres` syntax: `Dictionary[StringName, float]({&"food": 15.0})`.
 - Input: mouse events are emulated from touch. Station view: tap module = focus, tap ghost
   slot = build menu, drag = pan. Room view: tap floor = walk, tap object = actions, tap

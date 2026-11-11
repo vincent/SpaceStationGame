@@ -16,7 +16,9 @@ by script in `art/station_early/` (see its `notes.md`).
 3. The module scene (`src/station/modules/<id>.tscn`) is an **inherited scene
    of the `.glb`**: root script `module.gd`, `module_id`, `interior_ascii`,
    colours and **`art_palette`** set on the root. Upgrade parts the art doesn't
-   model are added as procedural `ModulePart`s under the imported `Parts`.
+   model hang on `mount_*` empties exported with the art: the upgrade's
+   `.tres` names the mount and a placeholder kind (or a part scene), so the
+   module scene needs no hand-placed parts (docs/CONTENT_PIPELINE.md).
 4. `tools/test.sh` (`test_module_data` checks slots and upgrade parts), a
    screenshot, then `/update-goldens` on purpose.
 
@@ -89,6 +91,7 @@ Set `res://src/tools/module_import.gd` as the glTF's **Import Script**
 | `hull` | the module hull | Must be **watertight** with **real thickness** (0.2–0.4 m): an outer and an inner shell. Gets the cut material. |
 | `slot_A`, `slot_B`… | attachment slot "A", "B"… | An empty. Place it just outside the doorway, **+Z pointing out** of the module. Overrides the ASCII slot letter. |
 | `part_<name>` | `ModulePart` (kind CUSTOM) | Moved under `Parts/`. Custom property `explode_dir` = `[x, y, z]` sets the exploded-view direction (default: away from the module centre). The name must match `UpgradeDef.part_node`. |
+| `mount_<name>` | upgrade mount (Marker3D) | An empty on the hull surface, **+Z (Blender) = up = surface normal**. Upgrades with `mount = <name>` get their part spawned there (`part_scene` art or a placeholder). Prefer mounts over `part_*` for anything that's an upgrade: no scene edits, parts reusable across modules. See docs/CONTENT_PIPELINE.md. |
 | `light_<name>` | light anchor | An empty at ceiling height; the module adds an OmniLight + floor light card there, driven by power. |
 | `<name>-col` | collision | Godot's built-in import hint. Walls on layer 4 ("walls"). Usually not needed: the ASCII wall cells already collide, and a `-col` wall would block doorways. |
 | `<name>-nav` | navigation source | Hidden; becomes a static collider on layer 1 ("world") so the runtime navmesh bake walks on it. |

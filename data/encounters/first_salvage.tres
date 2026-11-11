@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="EncounterDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/encounter_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"first_salvage"
+trigger = &"interacted"
+condition = "subject == \"salvage_pile\""
+channel = &"toast"
+lines = PackedStringArray("Every bolt counts. Salvage turns into repairs.")

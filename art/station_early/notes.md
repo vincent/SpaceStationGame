@@ -40,7 +40,8 @@ so the Blender materials only matter for the preview renders.
   bands (`rounded_band`), the torn-open window and the portholes. Room A has doorway
   holes for slots A, B, C and V. Parts: truss, solar panel and a broken panel, two
   antennas, `part_dish` (the `wreck_dish` upgrade), torn plate, two decorative dock
-  rings, work lamp. In game the derelict wreck (wear 100 %) is mostly rust from the
+  rings, work lamp. Mounts: `mount_roof_a` / `mount_roof_b` on the top deck, where the
+  `wreck_reactor` / `wreck_radiator` upgrades spawn their parts. In game the derelict wreck (wear 100 %) is mostly rust from the
   shader's wear; repairing it reveals the livery.
 - **Room A**: props hug the walls: crate table, crates, toolbox, debris, pipes and a
   cable tray, hanging cables, notes, a vent with a rust streak, floor plates, and the

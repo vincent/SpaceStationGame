@@ -9,13 +9,15 @@ func test_classify() -> void:
 	assert_eq(ModuleImportRules.classify("floor-col"), ModuleImportRules.Kind.COLLISION)
 	assert_eq(ModuleImportRules.classify("deck-nav"), ModuleImportRules.Kind.NAV)
 	assert_eq(ModuleImportRules.classify("pipe_01"), ModuleImportRules.Kind.NONE)
+	assert_eq(ModuleImportRules.classify("mount_roof_a"), ModuleImportRules.Kind.MOUNT)
 	assert_eq(ModuleImportRules.slot_name("slot_b"), &"B")
+	assert_eq(ModuleImportRules.mount_name("mount_Roof_A"), &"roof_a")
 
 
 func test_apply_converts_nodes() -> void:
 	var root := Node3D.new()
 	add_child_autofree(root)
-	for n: String in ["slot_a", "light_main", "part_dish"]:
+	for n: String in ["slot_a", "light_main", "part_dish", "mount_roof"]:
 		var node := Node3D.new()
 		node.name = n
 		root.add_child(node)
@@ -29,7 +31,8 @@ func test_apply_converts_nodes() -> void:
 	deck.mesh = plane
 	root.add_child(deck)
 	deck.owner = root
-	assert_eq(ModuleImportRules.apply(root), 4)
+	assert_eq(ModuleImportRules.apply(root), 5)
+	assert_true(root.get_node("mount_roof") is Marker3D)
 	assert_true(root.get_node("slot_a") is Marker3D)
 	assert_true(root.get_node("light_main").is_in_group(&"light_anchor"))
 	var converted := root.get_node("Parts/part_dish")

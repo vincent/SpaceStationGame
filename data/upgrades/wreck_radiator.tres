@@ -12,3 +12,7 @@ part_node = &"part_radiator"
 cost = Dictionary[StringName, int]({&"scrap_metal": 6})
 requires = Array[StringName]([&"wreck_reactor"])
 effects = Dictionary[StringName, float]({&"power_output": 1.0})
+mount = &"roof_b"
+part_kind = 5
+part_length = 1.8
+explode_dir = Vector3(0.3, 1, 0)

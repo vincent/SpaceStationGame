@@ -7,6 +7,7 @@ var _panel: PanelContainer
 var _content: VBoxContainer
 var _stats: Label
 var _item_picker: OptionButton
+var _encounter_picker: OptionButton
 
 
 func _ready() -> void:
@@ -68,6 +69,19 @@ func _ready() -> void:
 	item_row.add_child(_item_picker)
 	item_row.add_child(UITheme.button("Give 5", _give_selected))
 	_content.add_child(item_row)
+
+	_encounter_picker = OptionButton.new()
+	_encounter_picker.custom_minimum_size.y = UITheme.TOUCH_SIZE
+	for id in GameState.encounter_db.ids():
+		_encounter_picker.add_item(String(id))
+	_content.add_child(UITheme.label("Story", true, Palette.TEXT_DIM))
+	var story_row := HBoxContainer.new()
+	story_row.add_child(_encounter_picker)
+	story_row.add_child(UITheme.button("Fire", _fire_selected_encounter))
+	story_row.add_child(UITheme.button("On/off", func() -> void:
+		GameState.set_story_enabled(not GameState.story_enabled)
+		EventBus.toast.emit("Story %s" % ("on" if GameState.story_enabled else "off"))))
+	_content.add_child(story_row)
 
 	_add_row("World", [
 		["Cut on/off", _toggle_cut],
@@ -149,7 +163,9 @@ func _give_selected() -> void:
 ##   --freeze               pause the clock and character routines (goldens)
 ##   --repair=<module_id>   repair a module instantly (also: all)
 ##   --power=<module_id>    repair + power a module instantly (also: all)
-##   --upgrade=<upgrade_id> install an upgrade instantly
+##   --upgrade=<upgrade_id> install an upgrade instantly (also: all)
+##   --encounter=<id>       start an encounter now (ignores its condition)
+##   --story=off            no encounters (also implied by --freeze)
 ##   --visitor              dock a trader ship now (needs a powered dock)
 ##   --focus=<module_id>    focus a module; --view=station|room picks the zoom
 ##   --cut=off              disable the cutaway; --backfaces paints holes magenta
@@ -168,6 +184,8 @@ func _run_cli_commands() -> void:
 	if args.has("inventory") and hud:
 		hud.inventory_panel.toggle()
 	var main := get_tree().current_scene
+	if args.has("freeze") or args.get("story", "") == "off":
+		GameState.set_story_enabled(false)
 	if args.has("freeze"):
 		GameClock.paused = true
 		for r: Node in main.find_children("*", "PlayerRoutine", true, false):
@@ -178,11 +196,15 @@ func _run_cli_commands() -> void:
 		if args.has(key):
 			_cheat_state(String(args[key]), key == "power")
 	if args.has("upgrade"):
-		var up := GameState.module_db.get_upgrade(StringName(args.upgrade))
-		if up:
-			var uid := GameState.station.find_module(up.module_id)
-			GameState.station.repair(uid)
-			GameState.station.install(uid, up.id)
+		var ids: Array[StringName] = GameState.module_db.upgrade_ids() if args.upgrade == "all" \
+			else [StringName(args.upgrade)] as Array[StringName]
+		for _pass in 3:  # "all": later passes install upgrades whose requirements came first
+			for id in ids:
+				_cheat_upgrade(id)
+	if args.has("encounter"):
+		GameState.set_story_enabled(true)
+		if not GameState.fire_encounter(StringName(args.encounter), true):
+			push_warning("--encounter: no encounter '%s'" % args.encounter)
 	if args.has("visitor"):
 		_summon_visitor()
 	if args.has("cut") and args.cut == "off":
@@ -269,6 +291,25 @@ func _toggle_backfaces() -> void:
 	var on := not bool(RenderingServer.global_shader_parameter_get(&"debug_backfaces"))
 	RenderingServer.global_shader_parameter_set(&"debug_backfaces", on)
 	EventBus.toast.emit("Back faces %s" % ("magenta" if on else "normal"))
+
+
+## Installs an upgrade for free (repairs its module first).
+func _cheat_upgrade(upgrade_id: StringName) -> void:
+	var up := GameState.module_db.get_upgrade(upgrade_id)
+	if up == null:
+		push_warning("--upgrade: no upgrade '%s'" % upgrade_id)
+		return
+	var uid := GameState.station.find_module(up.module_id)
+	if uid != 0:
+		GameState.station.repair(uid)
+		GameState.station.install(uid, up.id)
+
+
+func _fire_selected_encounter() -> void:
+	var id := StringName(_encounter_picker.get_item_text(_encounter_picker.selected))
+	GameState.set_story_enabled(true)
+	if not GameState.fire_encounter(id, true):
+		EventBus.toast.emit("No encounter %s" % id)
 
 
 func _summon_visitor() -> void:

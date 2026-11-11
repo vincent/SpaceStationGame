@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="EncounterDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/encounter_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"lonely_night"
+trigger = &"hour"
+condition = "hour() == 23 and need(\"morale\") < 40"
+once = false
+cooldown_hours = 48.0
+channel = &"dialog"
+title = "Long night"
+lines = PackedStringArray("The station creaks. The stars don't care that you're here.")
+choices = Array[Dictionary]([{"text": "Watch the stars a while", "outcomes": PackedStringArray("need morale 8", "need energy -5")}, {"text": "Talk to the Kestrel", "outcomes": PackedStringArray("need morale 15"), "condition": "flag(\"met_signal\")"}, {"text": "Go to sleep", "outcomes": PackedStringArray()}])

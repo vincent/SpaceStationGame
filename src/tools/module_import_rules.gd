@@ -8,11 +8,13 @@ class_name ModuleImportRules
 ##   part_<name>     explodable / upgradable part (ModulePart, kind CUSTOM);
 ##                   glTF extras "explode_dir": [x, y, z] sets its direction
 ##   light_<name>    interior light anchor (Module adds an OmniLight there)
+##   mount_<name>    where an upgrade part is spawned (UpgradeDef.mount);
+##                   +Y is the surface normal, the part grows along it
 ##   <name>-col      collision (Godot's own import hint, kept as is)
 ##   <name>-nav      navigation source: becomes a hidden floor collider on
 ##                   the "world" layer so the runtime navmesh bake sees it
 
-enum Kind { NONE, HULL, SLOT, PART, LIGHT, COLLISION, NAV }
+enum Kind { NONE, HULL, SLOT, PART, LIGHT, MOUNT, COLLISION, NAV }
 
 
 static func classify(node_name: String) -> Kind:
@@ -25,6 +27,8 @@ static func classify(node_name: String) -> Kind:
 		return Kind.PART
 	if n.begins_with("light_"):
 		return Kind.LIGHT
+	if n.begins_with("mount_"):
+		return Kind.MOUNT
 	if n.ends_with("-col") or n.ends_with("_col"):
 		return Kind.COLLISION
 	if n.ends_with("-nav") or n.ends_with("_nav"):
@@ -37,13 +41,18 @@ static func slot_name(node_name: String) -> StringName:
 	return StringName(node_name.substr(5).to_upper())
 
 
+## Mount name from a node name: "mount_roof_a" -> &"roof_a".
+static func mount_name(node_name: String) -> StringName:
+	return StringName(node_name.substr(6).to_lower())
+
+
 ## Rewrites an imported scene in place. Returns the number of nodes converted.
 static func apply(root: Node) -> int:
 	var converted := 0
 	var parts_root := root.get_node_or_null(^"Parts")
 	for node in root.find_children("*", "", true, false):
 		match classify(node.name):
-			Kind.SLOT:
+			Kind.SLOT, Kind.MOUNT:
 				_replace(node, Marker3D.new())
 				converted += 1
 			Kind.LIGHT:
