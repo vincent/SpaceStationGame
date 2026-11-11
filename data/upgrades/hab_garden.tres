@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UpgradeDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/upgrade_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"hab_garden"
+module_id = &"hab_pod"
+display_name = "Hydroponic rack"
+description = "Fresh greens. You get hungry slower."
+part_node = &"part_garden"
+cost = Dictionary[StringName, int]({&"scrap_metal": 4, &"water": 2})
+requires = []
+effects = Dictionary[StringName, float]({&"food_decay": -0.8, &"power_draw": 0.5})

@@ -12,3 +12,7 @@ func get_actions() -> Array[InteractionAction]:
 func _stargaze(minutes: float) -> void:
 	GameState.spend_time(minutes, &"stargazing")
 	EventBus.toast.emit("The void is quiet tonight.")
+
+
+func perform_routine() -> StringName:
+	return &"stargazing"

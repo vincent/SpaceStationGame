@@ -19,6 +19,8 @@ size = Vector3(0.35, 0.12, 0.7)
 
 [node name="Bed" type="Area3D"]
 script = ExtResource("1_script")
+routine_tag = &"sleep"
+routine_minutes = 120.0
 display_name = "Improvised bed"
 base_color = Color(0.29, 0.3, 0.35, 1)
 accent_color = Color(0.42, 0.18, 0.75, 1)

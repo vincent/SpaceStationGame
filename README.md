@@ -32,9 +32,13 @@ and press the Android button in the top-right.
 
 | Action | Touch | Desktop |
 |---|---|---|
-| Walk | tap the floor | left click |
+| Zoom between station view and room view | pinch | mouse wheel |
+| Focus a module (zooms in, cuts it open) | tap it | click |
+| Build on a free slot (dashed outline) | tap it in station view | click |
+| Pan | drag | drag |
+| Walk | tap the floor (room view) | left click |
 | Use an object | tap it, then pick an action | click |
-| Zoom | pinch | mouse wheel |
+| Repair / power / upgrade a module | panel bottom-left (room view) | click |
 | Inventory: move / use | drag / double-tap | drag / double-click or right-click |
 | Debug panel (debug builds) | "DBG" button | F3 |
 

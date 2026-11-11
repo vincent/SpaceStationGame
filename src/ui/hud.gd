@@ -16,7 +16,10 @@ const CRITICAL_MESSAGES: Dictionary[StringName, String] = {
 
 var interaction_menu: InteractionMenu
 var inventory_panel: InventoryPanel
+var module_panel: ModulePanel
+var build_menu: BuildMenu
 var _clock_label: Label
+var _power_label: Label
 var _bars: Dictionary[StringName, ProgressBar] = {}
 var _toast: Label
 var _toast_tween: Tween
@@ -43,10 +46,14 @@ func _ready() -> void:
 	layer_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(layer_root)
 
-	# Clock (top-left)
+	# Clock + power budget (top-left)
 	var clock_panel := PanelContainer.new()
+	var clock_box := VBoxContainer.new()
+	clock_panel.add_child(clock_box)
 	_clock_label = UITheme.label("", false, Palette.YELLOW)
-	clock_panel.add_child(_clock_label)
+	clock_box.add_child(_clock_label)
+	_power_label = UITheme.label("", true, Palette.NEON_CYAN)
+	clock_box.add_child(_power_label)
 	layer_root.add_child(clock_panel)
 
 	# Needs (top-right)
@@ -91,6 +98,17 @@ func _ready() -> void:
 	interaction_menu.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	interaction_menu.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	layer_root.add_child(interaction_menu)
+
+	# Focused module (bottom-left) and the build menu (centre)
+	module_panel = ModulePanel.new()
+	module_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	module_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	layer_root.add_child(module_panel)
+	build_menu = BuildMenu.new()
+	build_menu.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	build_menu.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	build_menu.grow_vertical = Control.GROW_DIRECTION_BOTH
+	layer_root.add_child(build_menu)
 	layer_root.add_child(inventory_panel)
 
 	# Toast (top-center)
@@ -109,6 +127,11 @@ func _ready() -> void:
 	GameClock.minute_changed.connect(func(_m: int) -> void: _refresh_clock())
 	EventBus.toast.connect(show_toast)
 	EventBus.game_reset.connect(_refresh_all)
+	GameState.station.module_changed.connect(func(_uid: int, _r: StringName) -> void: _refresh_power())
+	GameState.station.module_added.connect(func(_uid: int) -> void: _refresh_power())
+	GameState.station.module_removed.connect(func(_uid: int) -> void: _refresh_power())
+	GameState.station.reset.connect(_refresh_power)
+	EventBus.upgrade_view_requested.connect(func(_m: Module) -> void: close_menus())
 	_refresh_all()
 
 
@@ -116,6 +139,11 @@ func _ready() -> void:
 func close_menus() -> void:
 	interaction_menu.close()
 	inventory_panel.hide()
+	build_menu.hide()
+
+
+func is_menu_open() -> bool:
+	return interaction_menu.visible or inventory_panel.visible or build_menu.visible
 
 
 func show_toast(message: String) -> void:
@@ -130,12 +158,18 @@ func show_toast(message: String) -> void:
 
 func _refresh_all() -> void:
 	_refresh_clock()
+	_refresh_power()
 	for need in _bars:
 		_bars[need].value = GameState.needs.get_value(need)
 
 
 func _refresh_clock() -> void:
 	_clock_label.text = GameClock.format_time()
+
+
+func _refresh_power() -> void:
+	var st := GameState.station
+	_power_label.text = "Power %s / %s" % [snappedf(st.power_draw(), 0.1), snappedf(st.power_output(), 0.1)]
 
 
 func _on_need_changed(need: StringName, value: float) -> void:

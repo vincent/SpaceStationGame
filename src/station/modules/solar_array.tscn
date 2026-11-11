@@ -1,0 +1,35 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/station/module.gd" id="1_module"]
+[ext_resource type="Script" path="res://src/station/module_part.gd" id="2_part"]
+
+[node name="SolarArray" type="Node3D"]
+script = ExtResource("1_module")
+module_id = &"solar_array"
+interior_ascii = "#####
+#.C.#
+#.L.#
+##a##"
+hull_color = Color(0.788, 0.800, 0.839, 1)
+trim_color = Color(0.227, 0.239, 0.290, 1)
+cap_tint = Color(0.902, 0.914, 0.941, 1)
+light_color = Color(0.722, 0.957, 1.000, 1)
+greeble_seed = 41
+
+[node name="Parts" type="Node3D" parent="."]
+
+[node name="part_array" type="Node3D" parent="Parts"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 3.0, 0)
+script = ExtResource("2_part")
+kind = 8
+length = 8.0
+mirror = true
+always_visible = true
+
+[node name="part_extension" type="Node3D" parent="Parts"]
+transform = Transform3D(0.0, 0, -1.0, 0, 1, 0, 1.0, 0, 0.0, 0, 3.7, 0)
+script = ExtResource("2_part")
+kind = 8
+length = 5.0
+mirror = true
+explode_dir = Vector3(0, 1, 0)

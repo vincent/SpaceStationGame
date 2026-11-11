@@ -13,3 +13,23 @@ signal interaction_closed
 signal toast(message: String)
 ## A save was loaded or a new game started; UI should refresh everything.
 signal game_reset
+## A module got the camera's focus (room view target).
+signal module_focused(module: Module)
+## UI asks to focus a module (room view) / to zoom out to the whole station.
+signal module_focus_requested(module: Module)
+signal station_view_requested
+## The camera zoom moved: 0 = station view, 1 = room view.
+signal view_changed(t: float)
+## The player tapped an empty slot's ghost outline in station view.
+signal ghost_slot_tapped(parent_uid: int, slot: StringName)
+## Open / close the exploded-view upgrade screen of a module.
+signal upgrade_view_requested(module: Module)
+signal upgrade_view_closed
+## A module started its power-on sequence (lights, strips, screens).
+signal power_on_started(module: Module)
+## A part snapped into place in the exploded view.
+signal part_snapped(module: Module, part: StringName)
+## A trade with a visitor went through.
+signal trade_completed
+## One-shot sound request (see AudioDirector.SOUNDS).
+signal sfx(sound: StringName)

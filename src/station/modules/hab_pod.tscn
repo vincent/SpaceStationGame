@@ -1,0 +1,26 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/station/module.gd" id="1_module"]
+[ext_resource type="Script" path="res://src/station/module_part.gd" id="2_part"]
+
+[node name="HabPod" type="Node3D"]
+script = ExtResource("1_module")
+module_id = &"hab_pod"
+interior_ascii = "##W##
+#.L.#
+#C..#
+##a##"
+hull_color = Color(0.604, 0.561, 0.753, 1)
+trim_color = Color(0.208, 0.173, 0.314, 1)
+cap_tint = Color(0.937, 0.890, 1.000, 1)
+light_color = Color(1.000, 0.816, 0.659, 1)
+greeble_seed = 37
+
+[node name="Parts" type="Node3D" parent="."]
+
+[node name="part_garden" type="Node3D" parent="Parts"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 3.0, 0)
+script = ExtResource("2_part")
+kind = 7
+length = 3.0
+explode_dir = Vector3(0, 1, 0)

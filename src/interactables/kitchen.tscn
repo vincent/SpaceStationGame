@@ -19,6 +19,8 @@ size = Vector3(0.3, 0.25, 0.3)
 
 [node name="Kitchen" type="Area3D"]
 script = ExtResource("1_script")
+routine_tag = &"eat"
+routine_minutes = 30.0
 display_name = "Improvised kitchen"
 base_color = Color(0.16, 0.17, 0.19, 1)
 accent_color = Color(1, 0.55, 0.18, 1)

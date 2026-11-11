@@ -1,22 +1,19 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/world/main.gd" id="1_main"]
-[ext_resource type="Script" path="res://src/world/station_builder.gd" id="2_builder"]
+[ext_resource type="Script" path="res://src/station/station.gd" id="2_station"]
 [ext_resource type="PackedScene" path="res://src/player/player.tscn" id="3_player"]
-[ext_resource type="Script" path="res://src/camera/iso_camera.gd" id="4_camera"]
-[ext_resource type="Script" path="res://src/world/cutaway_controller.gd" id="5_cutaway"]
+[ext_resource type="Script" path="res://src/camera/diorama_camera.gd" id="4_camera"]
+[ext_resource type="Script" path="res://src/rendering/cutaway_controller.gd" id="5_cutaway"]
 [ext_resource type="Script" path="res://src/ui/hud.gd" id="6_hud"]
 [ext_resource type="Script" path="res://src/ui/debug_overlay.gd" id="7_debug"]
 [ext_resource type="Script" path="res://src/camera/backdrop.gd" id="8_backdrop"]
-
-[sub_resource type="NavigationMesh" id="NavigationMesh_station"]
-geometry_parsed_geometry_type = 1
-geometry_collision_mask = 1
-cell_size = 0.25
-cell_height = 0.25
-agent_height = 1.75
-agent_radius = 0.5
-agent_max_climb = 0.25
+[ext_resource type="Script" path="res://src/rendering/clock_lighting.gd" id="9_clock"]
+[ext_resource type="Script" path="res://src/player/player_routine.gd" id="10_routine"]
+[ext_resource type="Script" path="res://src/station/exploded_view.gd" id="11_exploded"]
+[ext_resource type="Script" path="res://src/station/visitor_director.gd" id="12_visitors"]
+[ext_resource type="Script" path="res://src/audio/audio_director.gd" id="13_audio"]
+[ext_resource type="Script" path="res://src/ambient/exterior_life.gd" id="14_exterior"]
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_marker"]
 top_radius = 0.45
@@ -30,31 +27,54 @@ script = ExtResource("1_main")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 
-[node name="Sun" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.81915, 0.46985, -0.32899, 0.00000, 0.57358, 0.81915, 0.57358, -0.67101, 0.46985, 0, 12, 0)
-light_color = Color(1, 0.93, 0.85, 1)
-light_energy = 1.2
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.81915, 0.46985, -0.32899, 0, 0.57358, 0.81915, 0.57358, -0.67101, 0.46985, 0, 12, 0)
+light_color = Color(0.72, 0.82, 1, 1)
+light_energy = 0.75
 shadow_enabled = true
 
-[node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
-navigation_mesh = SubResource("NavigationMesh_station")
-
-[node name="Station" type="Node3D" parent="NavigationRegion3D"]
-script = ExtResource("2_builder")
+[node name="Station" type="Node3D" parent="."]
+script = ExtResource("2_station")
 
 [node name="Player" parent="." instance=ExtResource("3_player")]
 
-[node name="IsoCamera" type="Camera3D" parent="." node_paths=PackedStringArray("target")]
-script = ExtResource("4_camera")
-target = NodePath("../Player")
+[node name="Routine" type="Node" parent="Player" node_paths=PackedStringArray("player")]
+script = ExtResource("10_routine")
+player = NodePath("..")
 
-[node name="Backdrop" type="MeshInstance3D" parent="IsoCamera"]
+[node name="DioramaCamera" type="Node3D" parent="."]
+script = ExtResource("4_camera")
+
+[node name="Camera3D" type="Camera3D" parent="DioramaCamera"]
+projection = 1
+current = true
+
+[node name="Backdrop" type="MeshInstance3D" parent="DioramaCamera/Camera3D"]
 script = ExtResource("8_backdrop")
 
-[node name="CutawayController" type="Node" parent="." node_paths=PackedStringArray("player", "camera")]
+[node name="CutawayController" type="Node" parent="." node_paths=PackedStringArray("camera")]
 script = ExtResource("5_cutaway")
-player = NodePath("../Player")
-camera = NodePath("../IsoCamera")
+camera = NodePath("../DioramaCamera")
+
+[node name="ClockLighting" type="Node" parent="."]
+script = ExtResource("9_clock")
+
+[node name="ExplodedView" type="Node" parent="." node_paths=PackedStringArray("camera", "cutaway")]
+script = ExtResource("11_exploded")
+camera = NodePath("../DioramaCamera")
+cutaway = NodePath("../CutawayController")
+
+[node name="VisitorDirector" type="Node" parent="." node_paths=PackedStringArray("station")]
+script = ExtResource("12_visitors")
+station = NodePath("../Station")
+
+[node name="ExteriorLife" type="Node3D" parent="." node_paths=PackedStringArray("camera", "station")]
+script = ExtResource("14_exterior")
+camera = NodePath("../DioramaCamera")
+station = NodePath("../Station")
+
+[node name="AudioDirector" type="Node" parent="."]
+script = ExtResource("13_audio")
 
 [node name="TapMarker" type="MeshInstance3D" parent="."]
 mesh = SubResource("CylinderMesh_marker")

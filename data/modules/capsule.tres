@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ModuleDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/module_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"capsule"
+display_name = "Rescue capsule"
+description = "Your pod. Small, warm, and the only light for kilometres."
+scene_path = "res://src/station/modules/capsule.tscn"
+kind = &"capsule"
+size_class = 1
+buildable = false
+build_cost = Dictionary[StringName, int]({})
+repair_cost = Dictionary[StringName, int]({&"scrap_metal": 2})
+power_output = 3.0
+power_draw = 1.0
+slots = Dictionary[StringName, PackedStringArray]({&"A": PackedStringArray()})
+attach_slot = &"A"

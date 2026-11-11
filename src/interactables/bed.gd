@@ -9,3 +9,7 @@ func get_actions() -> Array[InteractionAction]:
 	for hours in SLEEP_OPTIONS:
 		actions.append(InteractionAction.new("Sleep %d h" % hours, GameState.sleep.bind(float(hours))))
 	return actions
+
+
+func perform_routine() -> StringName:
+	return &"sleeping"

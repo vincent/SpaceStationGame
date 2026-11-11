@@ -16,3 +16,9 @@ func get_actions() -> Array[InteractionAction]:
 func _cook() -> void:
 	if GameState.perform(MEAL_COST, MEAL_MINUTES, MEAL_EFFECTS, &"cooking"):
 		EventBus.toast.emit("A hot meal. Almost like home.")
+
+
+func perform_routine() -> StringName:
+	if GameState.inventory.has_all(MEAL_COST):
+		_cook()
+	return &""

@@ -22,6 +22,7 @@ static func button(text: String, callback: Callable = Callable()) -> Button:
 	b.custom_minimum_size = Vector2(0, TOUCH_SIZE)
 	if callback.is_valid():
 		b.pressed.connect(callback)
+	b.pressed.connect(func() -> void: EventBus.sfx.emit(&"click"))
 	return b
 
 

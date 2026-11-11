@@ -1,0 +1,41 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/station/module.gd" id="1_module"]
+[ext_resource type="Script" path="res://src/station/module_part.gd" id="2_part"]
+
+[node name="WreckCore" type="Node3D"]
+script = ExtResource("1_module")
+module_id = &"wreck_core"
+interior_ascii = "######c#####v####
+#S...#.....#....#
+a..L.D..L..D..L.b
+#..C.#..S..#.C..#
+#######W#########"
+hull_color = Color(0.435, 0.463, 0.565, 1)
+trim_color = Color(0.180, 0.192, 0.251, 1)
+cap_tint = Color(0.910, 0.788, 0.659, 1)
+light_color = Color(0.722, 0.957, 1.000, 1)
+greeble_seed = 23
+
+[node name="Parts" type="Node3D" parent="."]
+
+[node name="part_reactor" type="Node3D" parent="Parts"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -9, 3.0, -1.5)
+script = ExtResource("2_part")
+kind = 4
+length = 2.4
+explode_dir = Vector3(0, 1, 0)
+
+[node name="part_radiator" type="Node3D" parent="Parts"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -6.5, 3.0, -1.5)
+script = ExtResource("2_part")
+kind = 5
+length = 1.8
+explode_dir = Vector3(0.3, 1, 0)
+
+[node name="part_dish" type="Node3D" parent="Parts"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 11, 3.0, -2)
+script = ExtResource("2_part")
+kind = 6
+length = 2.6
+explode_dir = Vector3(0.3, 1, -0.4)

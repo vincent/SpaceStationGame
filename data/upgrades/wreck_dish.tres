@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UpgradeDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/upgrade_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"wreck_dish"
+module_id = &"wreck_core"
+display_name = "Comms dish"
+description = "Talks to passing ships. Morale up."
+part_node = &"part_dish"
+cost = Dictionary[StringName, int]({&"scrap_metal": 5})
+requires = []
+effects = Dictionary[StringName, float]({&"morale_decay": -0.6})

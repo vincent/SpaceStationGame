@@ -45,6 +45,35 @@ jobs:
           path: build/test-results.xml
           if-no-files-found: ignore
 
+  golden:
+    name: Golden images
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Godot
+        uses: actions/cache@v4
+        with:
+          path: .godot-bin
+          key: godot-${{ hashFiles('.godot-version') }}
+
+      - name: Install software GL + virtual display
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri
+
+      - name: Render & compare goldens
+        run: ./tools/golden.sh
+
+      - name: Upload renders and diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-diffs
+          path: build/golden/
+          retention-days: 7
+
   android:
     name: Android debug APK
     needs: test

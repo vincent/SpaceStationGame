@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UpgradeDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/upgrade_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"wreck_reactor"
+module_id = &"wreck_core"
+display_name = "Micro reactor"
+description = "Brings the wreck's old reactor back. +4 power."
+part_node = &"part_reactor"
+cost = Dictionary[StringName, int]({&"scrap_metal": 10, &"power_cell": 1})
+requires = []
+effects = Dictionary[StringName, float]({&"power_output": 4.0})

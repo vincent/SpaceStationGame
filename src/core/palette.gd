@@ -14,3 +14,9 @@ const ANTHRACITE := Color("2a2b31")   # walls, metal
 const STEEL := Color("4a4c58")        # floors
 const TEXT := Color("f3ecff")
 const TEXT_DIM := Color("a89cc8")
+
+# Hull colours, one per faction / era (module root nodes pick theirs).
+const HULL_RESCUE := Color("e0ac48")   # the capsule: rescue-service yellow
+const HULL_OLD_STATION := Color("6f7690")  # the wreck's original builders
+const HULL_COLONY := Color("9a8fc0")   # modules you add yourself
+const HULL_TRADER := Color("a35a8a")   # visiting merchants

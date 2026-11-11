@@ -26,7 +26,6 @@ GameState="*res://src/autoload/game_state.gd"
 [debug]
 
 gdscript/warnings/untyped_declaration=1
-gdscript/warnings/exclude_addons=true
 
 [display]
 
@@ -40,18 +39,50 @@ window/handheld/orientation=4
 
 enabled=PackedStringArray("res://addons/gut/plugin.cfg")
 
-[input_devices]
-
-pointing/emulate_mouse_from_touch=true
-
 [layer_names]
 
 3d_physics/layer_1="world"
 3d_physics/layer_2="player"
 3d_physics/layer_3="interactable"
 3d_physics/layer_4="walls"
+3d_physics/layer_5="module_pick"
 
 [rendering]
 
 renderer/rendering_method="mobile"
 textures/vram_compression/import_etc2_astc=true
+
+[shader_globals]
+
+cut_min={
+"type": "vec3",
+"value": Vector3(0, 0, 0)
+}
+cut_max={
+"type": "vec3",
+"value": Vector3(0, 0, 0)
+}
+cut_enabled={
+"type": "bool",
+"value": false
+}
+cut_cap_color={
+"type": "color",
+"value": Color(0.93, 0.87, 0.74, 1)
+}
+cut_ink_width={
+"type": "float",
+"value": 0.05
+}
+ink_color={
+"type": "color",
+"value": Color(0.04, 0.03, 0.12, 1)
+}
+debug_backfaces={
+"type": "bool",
+"value": false
+}
+interior_warmth={
+"type": "float",
+"value": 0.0
+}

@@ -1,14 +1,17 @@
 @tool
 class_name StationBuilder
 extends Node3D
-## Builds placeholder station geometry from an ASCII layout, so rooms can be
-## prototyped before real art exists. Edit `layout` in the inspector and press
-## "Rebuild" to preview in the editor. Generated nodes are never saved.
+## Builds a module's interior from an ASCII layout: floor tiles, wall
+## collisions, furniture, light anchors and slot doorways. The visible walls,
+## roof and keel are the module hull (HullMesher), built by Module.
+## Generated nodes are never saved.
 ##
 ## Legend (one character = one CELL x CELL square):
-##   #  wall              .  floor            (space)  nothing (outer space)
-##   D  doorway (floor)   P  player spawn     L  floor + ceiling light
+##   #  wall / bulkhead   .  floor            (space)  nothing (outer space)
+##   D  inner doorway     P  player spawn     L  floor + ceiling light
 ##   B  bed               K  kitchen          W  bay window (in a wall)
+##   S  salvage pile      C  console          T  trader
+##   a..z  slot doorway on the hull boundary (slot "A".."Z")
 ## Add new furniture by mapping a character in FURNITURE_SCENES.
 
 const CELL := 2.0
@@ -19,11 +22,15 @@ const FURNITURE_SCENES: Dictionary[String, String] = {
 	"B": "res://src/interactables/bed.tscn",
 	"K": "res://src/interactables/kitchen.tscn",
 	"W": "res://src/interactables/bay_window.tscn",
+	"S": "res://src/interactables/salvage_pile.tscn",
+	"C": "res://src/interactables/console.tscn",
+	"T": "res://src/interactables/trader.tscn",
 }
 ## Furniture that replaces a wall cell instead of standing on the floor.
 const WALL_FURNITURE := "W"
-const WALKABLE := ".PLDBK"
+const WALKABLE := ".PLDBKSCT"
 const FREE_FLOOR := ".PLD"
+const SLOT_LETTERS := "abcdefghijklmnopqrstuvwxyz"
 
 const DEFAULT_LAYOUT := """##W########
 #B..#....K#
@@ -42,9 +49,13 @@ const DEFAULT_LAYOUT := """##W########
 			build()
 @export_tool_button("Rebuild", "Reload") var rebuild_action: Callable = build
 
-## World position of the "P" cell, valid after build().
-var spawn_position := Vector3.ZERO
+## Local position of the "P" cell, valid after build() (Vector3.INF if none).
+var spawn_position := Vector3.INF
 var furniture_nodes: Array[Node3D] = []
+## Local positions of "L" cells (floor level).
+var light_positions: Array[Vector3] = []
+## Slot name ("A".."Z") -> {cell: Vector2i, outward: Vector2i}.
+var slot_cells: Dictionary[StringName, Dictionary] = {}
 
 var _generated: Node3D
 var _grid: PackedStringArray = []
@@ -60,39 +71,52 @@ func is_built() -> bool:
 	return _generated != null
 
 
+func get_grid() -> PackedStringArray:
+	return _grid
+
+
+func get_offset() -> Vector3:
+	return _offset
+
+
 func build() -> void:
 	if _generated != null:
 		_generated.free()
 	furniture_nodes.clear()
+	light_positions.clear()
+	slot_cells.clear()
+	spawn_position = Vector3.INF
 	_generated = Node3D.new()
 	_generated.name = "Generated"
 	add_child(_generated)
 
-	_grid = _parse(layout)
-	var rows := _grid.size()
-	var cols := 0
-	for row in _grid:
-		cols = maxi(cols, row.length())
-	_offset = -Vector3((cols - 1) * CELL * 0.5, 0.0, (rows - 1) * CELL * 0.5)
+	_grid = parse(layout)
+	var size := HullMesher.grid_size(_grid)
+	_offset = -Vector3((size.x - 1) * CELL * 0.5, 0.0, (size.y - 1) * CELL * 0.5)
 
 	var floor_cells: Array[Vector3] = []
-	for z in rows:
+	var wall_cells: Array[Vector3] = []
+	for z in size.y:
 		for x in _grid[z].length():
 			var c := _grid[z][x]
-			var pos := cell_to_world(Vector2i(x, z))
+			var cell := Vector2i(x, z)
+			var pos := cell_to_world(cell)
 			if c == "#":
-				_add_wall(pos, Vector2i(x, z))
+				wall_cells.append(pos)
 			elif c == WALL_FURNITURE:
-				_add_furniture(c, pos, Vector2i(x, z))
-			elif WALKABLE.contains(c):
+				_add_furniture(c, pos, cell)
+			elif is_walkable(c):
 				floor_cells.append(pos)
 				if c == "P":
 					spawn_position = pos
 				elif c == "L":
-					_add_light(pos)
+					light_positions.append(pos)
 				elif FURNITURE_SCENES.has(c):
-					_add_furniture(c, pos, Vector2i(x, z))
+					_add_furniture(c, pos, cell)
+				elif SLOT_LETTERS.contains(c):
+					slot_cells[StringName(c.to_upper())] = {"cell": cell, "outward": _outward(cell)}
 	_add_floor(floor_cells)
+	_add_wall_collisions(wall_cells)
 
 
 func cell_to_world(cell: Vector2i) -> Vector3:
@@ -100,12 +124,14 @@ func cell_to_world(cell: Vector2i) -> Vector3:
 
 
 func get_cell(cell: Vector2i) -> String:
-	if cell.y < 0 or cell.y >= _grid.size() or cell.x < 0 or cell.x >= _grid[cell.y].length():
-		return " "
-	return _grid[cell.y][cell.x]
+	return HullMesher.cell_char(_grid, cell)
 
 
-static func _parse(text: String) -> PackedStringArray:
+static func is_walkable(c: String) -> bool:
+	return c.length() == 1 and (WALKABLE.contains(c) or SLOT_LETTERS.contains(c))
+
+
+static func parse(text: String) -> PackedStringArray:
 	var lines := text.replace("\r", "").split("\n")
 	while lines.size() > 0 and lines[0].strip_edges() == "":
 		lines.remove_at(0)
@@ -114,9 +140,20 @@ static func _parse(text: String) -> PackedStringArray:
 	return lines
 
 
+## Direction from a boundary cell towards outer space.
+func _outward(cell: Vector2i) -> Vector2i:
+	for dir: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		if get_cell(cell + dir) == " ":
+			return dir
+	push_warning("StationBuilder: slot at %s is not on the hull boundary" % cell)
+	return Vector2i.DOWN
+
+
 # --- Geometry ----------------------------------------------------------------
 
 func _add_floor(cells: Array[Vector3]) -> void:
+	if cells.is_empty():
+		return
 	var tile := BoxMesh.new()
 	tile.size = Vector3(CELL - 0.06, FLOOR_THICKNESS, CELL - 0.06)
 	tile.material = ToonMaterials.get_material(Palette.STEEL, 0.0, false)
@@ -145,50 +182,20 @@ func _add_floor(cells: Array[Vector3]) -> void:
 		body.add_child(col)
 
 
-func _add_wall(pos: Vector3, cell: Vector2i) -> void:
-	var wall := Node3D.new()
-	wall.name = "Wall_%d_%d" % [cell.x, cell.y]
-	wall.position = pos
-	wall.add_to_group(&"cutaway")
-	_generated.add_child(wall)
-
+## One body for every wall cell (the visible walls are part of the hull mesh).
+func _add_wall_collisions(cells: Array[Vector3]) -> void:
 	var body := StaticBody3D.new()
+	body.name = "Walls"
 	body.collision_layer = Layers.WALLS
-	wall.add_child(body)
-	var col := CollisionShape3D.new()
+	body.collision_mask = 0
+	_generated.add_child(body)
 	var shape := BoxShape3D.new()
 	shape.size = Vector3(CELL, WALL_HEIGHT, CELL)
-	col.shape = shape
-	col.position.y = WALL_HEIGHT * 0.5
-	body.add_child(col)
-
-	# Visual is scaled down by CutawayController; collision stays.
-	var visual := Node3D.new()
-	visual.name = "Visual"
-	wall.add_child(visual)
-	var mesh := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(CELL, WALL_HEIGHT, CELL)
-	mesh.mesh = box
-	mesh.position.y = WALL_HEIGHT * 0.5
-	mesh.material_override = ToonMaterials.get_material(Palette.ANTHRACITE)
-	visual.add_child(mesh)
-	var trim := MeshInstance3D.new()
-	var trim_box := BoxMesh.new()
-	trim_box.size = Vector3(CELL - 0.3, 0.04, CELL - 0.3)
-	trim.mesh = trim_box
-	trim.position.y = WALL_HEIGHT
-	trim.material_override = ToonMaterials.get_material(Palette.DEEP_BLUE.lerp(Palette.VIOLET, 0.35), 0.0, false)
-	visual.add_child(trim)
-
-
-func _add_light(pos: Vector3) -> void:
-	var light := OmniLight3D.new()
-	light.position = pos + Vector3(0, WALL_HEIGHT - 0.3, 0)
-	light.light_color = Palette.NEON_CYAN.lerp(Color.WHITE, 0.3)
-	light.light_energy = 1.6
-	light.omni_range = CELL * 3.5
-	_generated.add_child(light)
+	for pos in cells:
+		var col := CollisionShape3D.new()
+		col.shape = shape
+		col.position = pos + Vector3(0, WALL_HEIGHT * 0.5, 0)
+		body.add_child(col)
 
 
 func _add_furniture(c: String, pos: Vector3, cell: Vector2i) -> void:
@@ -200,9 +207,10 @@ func _add_furniture(c: String, pos: Vector3, cell: Vector2i) -> void:
 		node.rotation.y = atan2(facing.x, facing.y)
 	_generated.add_child(node)
 	furniture_nodes.append(node)
-	if not Engine.is_editor_hint() and node is Interactable and facing != Vector2i.ZERO:
-		var dir := Vector3(facing.x, 0, facing.y)
-		(node as Interactable).approach_point = global_transform * (pos + dir * CELL * 0.8)
+	if node is Interactable and facing != Vector2i.ZERO:
+		# The object faces its free neighbour (+Z), so the approach point is
+		# straight ahead; it follows the module wherever it gets attached.
+		(node as Interactable).approach_distance = CELL * 0.8
 
 
 ## Direction (unit grid step) of the first adjacent free floor cell.
