@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tools/test.sh:*)",
+      "Bash(tools/lint.sh:*)",
+      "Bash(tools/import.sh:*)",
+      "Bash(tools/screenshot.sh:*)",
+      "Bash(./tools/test.sh:*)",
+      "Bash(./tools/lint.sh:*)",
+      "Bash(./tools/import.sh:*)",
+      "Bash(./tools/screenshot.sh:*)"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+# Godot
+.godot/
+*.translation
+export_credentials.cfg
+*.tmp
+
+# Local tooling
+.godot-bin/
+build/
+!build/.gdignore
+
+# Android signing (never commit keystores)
+*.keystore
+*.jks
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

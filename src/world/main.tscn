@@ -1,0 +1,66 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://src/world/station_builder.gd" id="2_builder"]
+[ext_resource type="PackedScene" path="res://src/player/player.tscn" id="3_player"]
+[ext_resource type="Script" path="res://src/camera/iso_camera.gd" id="4_camera"]
+[ext_resource type="Script" path="res://src/world/cutaway_controller.gd" id="5_cutaway"]
+[ext_resource type="Script" path="res://src/ui/hud.gd" id="6_hud"]
+[ext_resource type="Script" path="res://src/ui/debug_overlay.gd" id="7_debug"]
+[ext_resource type="Script" path="res://src/camera/backdrop.gd" id="8_backdrop"]
+
+[sub_resource type="NavigationMesh" id="NavigationMesh_station"]
+geometry_parsed_geometry_type = 1
+geometry_collision_mask = 1
+cell_size = 0.25
+cell_height = 0.25
+agent_height = 1.75
+agent_radius = 0.5
+agent_max_climb = 0.25
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_marker"]
+top_radius = 0.45
+bottom_radius = 0.45
+height = 0.03
+radial_segments = 24
+rings = 1
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_main")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.81915, 0.46985, -0.32899, 0.00000, 0.57358, 0.81915, 0.57358, -0.67101, 0.46985, 0, 12, 0)
+light_color = Color(1, 0.93, 0.85, 1)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
+navigation_mesh = SubResource("NavigationMesh_station")
+
+[node name="Station" type="Node3D" parent="NavigationRegion3D"]
+script = ExtResource("2_builder")
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+
+[node name="IsoCamera" type="Camera3D" parent="." node_paths=PackedStringArray("target")]
+script = ExtResource("4_camera")
+target = NodePath("../Player")
+
+[node name="Backdrop" type="MeshInstance3D" parent="IsoCamera"]
+script = ExtResource("8_backdrop")
+
+[node name="CutawayController" type="Node" parent="." node_paths=PackedStringArray("player", "camera")]
+script = ExtResource("5_cutaway")
+player = NodePath("../Player")
+camera = NodePath("../IsoCamera")
+
+[node name="TapMarker" type="MeshInstance3D" parent="."]
+mesh = SubResource("CylinderMesh_marker")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("6_hud")
+
+[node name="DebugOverlay" type="CanvasLayer" parent="."]
+script = ExtResource("7_debug")

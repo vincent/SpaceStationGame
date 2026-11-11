@@ -1,0 +1,47 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/interactables/bed.gd" id="1_script"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_pick"]
+size = Vector3(1.9, 0.9, 1.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(1.8, 0.5, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_frame"]
+size = Vector3(1.8, 0.4, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_mattress"]
+size = Vector3(1.6, 0.12, 0.85)
+
+[sub_resource type="BoxMesh" id="BoxMesh_pillow"]
+size = Vector3(0.35, 0.12, 0.7)
+
+[node name="Bed" type="Area3D"]
+script = ExtResource("1_script")
+display_name = "Improvised bed"
+base_color = Color(0.29, 0.3, 0.35, 1)
+accent_color = Color(0.42, 0.18, 0.75, 1)
+accent_emission = 0.0
+
+[node name="PickShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+shape = SubResource("BoxShape3D_pick")
+
+[node name="Body" type="StaticBody3D" parent="."]
+
+[node name="Shape" type="CollisionShape3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+shape = SubResource("BoxShape3D_body")
+
+[node name="Frame" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+mesh = SubResource("BoxMesh_frame")
+
+[node name="AccentMattress" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.05, 0.46, 0)
+mesh = SubResource("BoxMesh_mattress")
+
+[node name="Pillow" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.58, 0)
+mesh = SubResource("BoxMesh_pillow")

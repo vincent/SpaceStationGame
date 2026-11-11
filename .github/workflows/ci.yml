@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint & tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Godot
+        uses: actions/cache@v4
+        with:
+          path: .godot-bin
+          key: godot-${{ hashFiles('.godot-version') }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Lint (gdlint)
+        run: |
+          pip install "gdtoolkit==4.*"
+          ./tools/lint.sh
+
+      - name: Import & unit/integration tests (GUT)
+        run: ./tools/test.sh
+
+      - name: Publish test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: build/test-results.xml
+          if-no-files-found: ignore
+
+  android:
+    name: Android debug APK
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Cache Godot + export templates
+        uses: actions/cache@v4
+        with:
+          path: .godot-bin
+          key: godot-android-${{ hashFiles('.godot-version') }}
+
+      - name: Export APK
+        run: ./tools/export_android.sh debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SpaceStationTycoon-debug-apk
+          path: build/android/*.apk
+          retention-days: 14
