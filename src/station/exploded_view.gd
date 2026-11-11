@@ -30,6 +30,7 @@ var _saved_margin := 0.0
 
 
 func _ready() -> void:
+	add_to_group(&"exploded_view")
 	_ghost_material = ShaderMaterial.new()
 	_ghost_material.shader = GHOST_SHADER
 	_ghost_material.set_shader_parameter("color", Palette.YELLOW)

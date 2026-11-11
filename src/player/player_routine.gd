@@ -63,11 +63,27 @@ func interrupt() -> void:
 		player.model.scale = Vector3.ONE
 
 
-func _process(delta: float) -> void:
-	if not enabled or phase != Phase.IDLE:
-		return
+## True while the player is busy with UI: a HUD menu or the upgrade view.
+func is_ui_busy() -> bool:
 	var hud := get_tree().get_first_node_in_group(&"hud") as HUD
-	if player.is_moving() or not player.navigation_ready or (hud and hud.is_menu_open()):
+	if hud and hud.is_menu_open():
+		return true
+	var view := get_tree().get_first_node_in_group(&"exploded_view") as ExplodedView
+	return view != null and view.active
+
+
+func _process(delta: float) -> void:
+	if not enabled:
+		return
+	if is_ui_busy():
+		_idle = 0.0
+		if phase == Phase.WALKING:  # a menu opened mid-walk: stand still
+			player.stop()
+			interrupt()
+		return
+	if phase != Phase.IDLE:
+		return
+	if player.is_moving() or not player.navigation_ready:
 		_idle = 0.0
 		return
 	_idle += delta

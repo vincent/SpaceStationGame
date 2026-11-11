@@ -201,3 +201,48 @@ func test_visitor_docks_and_leaves() -> void:
 	await wait_seconds(VisitorDirector.APPROACH_SECONDS + 0.3)
 	assert_eq(director.visitor_uid, 0)
 	assert_eq(station.modules.size(), 2, "ship gone")
+
+
+func test_upgrade_cards_fit_on_screen() -> void:
+	var view: ExplodedView = main.get_node("ExplodedView")
+	var wreck := station.find_module(&"wreck_core")  # the module with the most parts
+	main.focus_module(wreck, true)
+	EventBus.upgrade_view_requested.emit(wreck)
+	await wait_seconds(ExplodedView.SECONDS + 0.4)
+	var overlay := view.find_children("*", "UpgradeOverlay", false, false)[0] as UpgradeOverlay
+	var screen := overlay.get_viewport().get_visible_rect().size
+	var cards := overlay.find_children("*", "PanelContainer", true, false)
+	assert_gt(cards.size(), 5)
+	for node in cards:
+		var card := node as Control
+		if not card.visible or card.get_parent() is PanelContainer:
+			continue
+		var rect := Rect2(card.position, card.size * card.scale)
+		assert_true(Rect2(Vector2.ZERO, screen).encloses(rect), "card %s inside the screen" % rect)
+	view.exit()
+	await wait_seconds(ExplodedView.SECONDS + 0.6)
+
+
+func test_idle_routine_waits_while_upgrade_view_is_open() -> void:
+	var routine := main.get_node("Player/Routine") as PlayerRoutine
+	routine.enabled = true
+	var view: ExplodedView = main.get_node("ExplodedView")
+	var capsule := station.find_module(&"capsule")
+	main.focus_module(capsule, true)
+	EventBus.upgrade_view_requested.emit(capsule)
+	assert_true(routine.is_ui_busy())
+	routine._process(PlayerRoutine.IDLE_SECONDS + 1.0)
+	assert_eq(routine.phase, PlayerRoutine.Phase.IDLE, "no routine while upgrading")
+	assert_false(player.is_moving())
+	view.exit()
+	await wait_seconds(ExplodedView.SECONDS + 0.6)
+	# A routine already walking stops when a menu opens.
+	assert_true(routine.start_routine())
+	assert_eq(routine.phase, PlayerRoutine.Phase.WALKING)
+	EventBus.upgrade_view_requested.emit(capsule)
+	routine._process(0.016)
+	assert_eq(routine.phase, PlayerRoutine.Phase.IDLE)
+	assert_false(player.is_moving(), "stopped when the upgrade view opened")
+	view.exit()
+	routine.enabled = false
+	await wait_seconds(ExplodedView.SECONDS + 0.6)
