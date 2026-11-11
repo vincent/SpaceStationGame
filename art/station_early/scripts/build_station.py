@@ -46,6 +46,8 @@ PAL = {
     # derived neutrals (mixes of the palette, used sparingly)
     "steel": "#3A3D47", "steel_lt": "#5A5D6A", "rust": "#7A3B22",
     "rust_dk": "#4E2A1E", "glass": "#0E1226", "crate": "#5B4A3A",
+    # weathered capsule livery (the wreck is the capsule's faded, older sibling)
+    "red_faded": "#A8483A", "offwhite_old": "#C8C2B4",
 }
 C = {k: hexcol(v) for k, v in PAL.items()}
 NOMASK = (0.0, 0.0, 0.0, 1.0)
@@ -392,6 +394,112 @@ class MB:
         return ob
 
 
+# ================================================================ rounded hulls (capsule style)
+def rr_profile(y0, y1, z0, z1, radii, grow=0.0, seg=6):
+    """Rounded-rectangle loop in YZ (counter-clockwise seen from +X). radii =
+    (front-bottom, front-top, back-top, back-bottom) = corners (y0,z0) (y0,z1) (y1,z1) (y1,z0).
+    `grow` offsets the outline outward (negative = inset). Always 4 * (seg + 1) points."""
+    y0, y1, z0, z1 = y0 - grow, y1 + grow, z0 - grow, z1 + grow
+    corners = (((y0, z0), (1, 1), math.pi), ((y1, z0), (-1, 1), 1.5 * math.pi),
+               ((y1, z1), (-1, -1), 0.0), ((y0, z1), (1, -1), 0.5 * math.pi))
+    rs = (radii[0], radii[3], radii[2], radii[1])
+    pts = []
+    for ((cy, cz), (sy, sz), a0), r in zip(corners, rs):
+        r = max(0.02, r + grow)
+        oy, oz = cy + sy * r, cz + sz * r
+        for i in range(seg + 1):
+            a = a0 + (math.pi / 2) * i / seg
+            pts.append((oy + r * math.cos(a), oz + r * math.sin(a)))
+    return pts
+
+
+def _loft(mb, loops, cap0=True, cap1=True):
+    """Closed solid from a list of equal-length vertex loops (bmesh verts)."""
+    faces = []
+    n = len(loops[0])
+    for a, b in zip(loops, loops[1:]):
+        for i in range(n):
+            j = (i + 1) % n
+            faces.append(mb.bm.faces.new((a[i], a[j], b[j], b[i])))
+    if cap0:
+        faces.append(mb.bm.faces.new(list(reversed(loops[0]))))
+    if cap1:
+        faces.append(mb.bm.faces.new(loops[-1]))
+    bmesh.ops.recalc_face_normals(mb.bm, faces=faces)
+    return faces
+
+
+def rounded_hull(mb, x0, x1, y0, y1, z0, z1, radii, dome=(0.0, 0.0), squeeze=0.45,
+                 step=1.6, seg=4, grow=0.0):
+    """Capsule-style hull: a rounded-rectangle section lofted along X, ring every
+    `step` m (panel seams), ends optionally domed over `dome` m (section scaled down
+    to `squeeze`). Watertight. Returns its faces (uncoloured)."""
+    prof = rr_profile(y0, y1, z0, z1, radii, grow, seg)
+    cy, cz = (y0 + y1) / 2, (z0 + z1) / 2
+    xs = []  # (x, scale)
+    d0, d1 = dome
+    nd = 3
+    for i in range(nd if d0 else 0):
+        t = (math.pi / 2) * (1 - i / nd)
+        xs.append((x0 + d0 * (1 - math.sin(t)), squeeze + (1 - squeeze) * math.cos(t)))
+    a, b = x0 + d0, x1 - d1
+    n = max(1, round((b - a) / step))
+    xs += [(a + (b - a) * i / n, 1.0) for i in range(n + 1)]
+    for i in range(1, nd + 1 if d1 else 1):
+        t = (math.pi / 2) * i / nd
+        xs.append((b + d1 * math.sin(t), squeeze + (1 - squeeze) * math.cos(t)))
+    loops = [[mb.bm.verts.new((x, cy + (py - cy) * k, cz + (pz - cz) * k)) for py, pz in prof]
+             for x, k in xs]
+    return _loft(mb, loops)
+
+
+def rounded_band(mb, x0, x1, y0, y1, z0, z1, radii, grow=0.12, inset=0.08, seg=4):
+    """Closed ring band hugging a rounded hull section (like the capsule RCS ring):
+    a tube from `inset` inside the skin to `grow` outside, x0..x1."""
+    po = rr_profile(y0, y1, z0, z1, radii, grow, seg)
+    pi = rr_profile(y0, y1, z0, z1, radii, -inset, seg)
+    rings = [[mb.bm.verts.new((x, py, pz)) for py, pz in pr]
+             for x, pr in ((x0, po), (x1, po), (x1, pi), (x0, pi))]
+    faces = []
+    n = len(po)
+    for k in range(4):
+        a, b = rings[k], rings[(k + 1) % 4]
+        for i in range(n):
+            j = (i + 1) % n
+            faces.append(mb.bm.faces.new((a[i], a[j], b[j], b[i])))
+    bmesh.ops.recalc_face_normals(mb.bm, faces=faces)
+    return faces
+
+
+def livery(mb, faces, split_z, rng, faded=0.3, wear=0.15):
+    """Paint faces like the capsule: offwhite above split_z (trim mask), red below;
+    a share of the panels is faded / older (the wreck's weathered livery)."""
+    panels = {}  # fade whole ~2 m hull panels, not single faces
+    for f in faces:
+        c = f.calc_center_median()
+        top = c.z > split_z
+        key = (round(c.x / 2.2), round(c.y / 2.0), round(c.z / 2.0), top)
+        if key not in panels:
+            panels[key] = rng.random() < faded
+        old = panels[key]
+        if top:
+            col, msk = C["offwhite_old" if old else "offwhite"], mask(wear, 0, 1)
+        else:
+            col, msk = C["red_faded" if old else "red"], mask(wear + 0.1)
+        f.material_index = HULL
+        for lo in f.loops:
+            lo[mb.base] = col
+            lo[mb.mask] = msk
+
+
+def paint(mb, faces, color, msk, mat=HULL):
+    for f in faces:
+        f.material_index = mat
+        for lo in f.loops:
+            lo[mb.base] = color
+            lo[mb.mask] = msk
+
+
 def smooth(me, angle=35.0):
     """Smooth shading, edges sharper than `angle` stay hard (toon-friendly)."""
     me.shade_smooth()
@@ -499,7 +607,8 @@ def build_kit(cols):
         mb.box((-0.38, y - 0.03, 0.12), (0.38, y + 0.03, 0.16), C["ink"], mask(0.8))
     done("gk_vent", mb)
     for nm, col, b in (("gk_panel_blue", "darkblue", 1.0), ("gk_panel_violet", "violet", 1.0),
-                       ("gk_panel_grey", "steel", 0.0)):
+                       ("gk_panel_grey", "steel", 0.0), ("gk_panel_white", "offwhite_old", 1.0),
+                       ("gk_panel_red", "red_faded", 0.0)):
         mb = MB()  # patched plate with 4 bolts
         mb.box((-0.5, -0.5, 0), (0.5, 0.5, 0.04), C[col], mask(0.3, 0, b))
         for sx in (-0.42, 0.42):
@@ -661,11 +770,6 @@ def build_wreck(cols, mats):
             cutters.append(cutter)
         pieces.append(ob)
 
-    def grid_box(mb, mn, mx, color, msk, cuts):
-        faces = mb.box(mn, mx, color, msk)
-        edges = list({e for f in faces for e in f.edges})
-        bmesh.ops.subdivide_edges(mb.bm, edges=edges, cuts=cuts, use_grid_fill=True)
-
     dz = (FLOOR_Z, FLOOR_Z + 2.4)
     room_a_doors = [  # doorway holes (slot doors), 1.6 m wide, 2.4 m high
         ((11.0, DOOR_Y - 0.8, dz[0]), (11.5, DOOR_Y + 0.8, dz[1])),   # A  (+X, capsule)
@@ -673,26 +777,49 @@ def build_wreck(cols, mats):
         ((2.4, -3.5, dz[0]), (3.4, -1.9, dz[1])),                     # V  (-X, visitors)
         ((9.4, -6.5, dz[0]), (11.0, -5.5, dz[1])),                    # C  (front)
     ]
-    shell(lambda mb: grid_box(mb, (-14, -1.5, 0), (11.5, 6, 7), C["anthracite"], mask(0.15), 5), 0.3)
-    shell(lambda mb: grid_box(mb, (-4, 0, 6.9), (5, 5, 9.6), C["darkblue"], mask(0.15), 3), 0.3)
-    shell(lambda mb: mb.cyl(2.4, 13, (-11.5, 2.6, 9.2), (0, 90, 0), C["anthracite"], mask(0.15), seg=24), 0.3)
-    # Room A: interior x 3.2..11.2, y -5.7..-1.7 (4 x 2 cells), floor top at z 0.28
-    shell(lambda mb: grid_box(mb, (2.9, -6, -0.02), (11.5, -1.4, 4), C["violet"], mask(0.2, 0, 1), 3), 0.3,
-          room_a_doors)
+    # Capsule-style hull: rounded sections, offwhite over red, ring bands. The wreck
+    # is the capsule's older sibling: faded panels, rust, a torn-open window.
+    HUB = dict(x0=-14, x1=11.5, y0=-1.5, y1=6, z0=0, z1=7, radii=(1.2, 1.8, 1.4, 1.2))
+    POD = dict(x0=-4, x1=5, y0=0, y1=5, z0=6.9, z1=10.0, radii=(1.0, 1.0, 1.0, 1.0))
+    TANK = dict(x0=-18, x1=-5, y0=0.2, y1=5.0, z0=6.8, z1=11.6, radii=(2.3,) * 4)
+    ROOM_A = dict(x0=2.9, x1=11.5, y0=-6, y1=-1.4, z0=-0.02, z1=4, radii=(0.3, 1.2, 0.7, 0.3))
 
-    def trim(mb):  # solid trim: band, skirt, cylinder ribs (B = trim)
-        mb.box((-14.1, -1.62, 4.6), (11.6, 6.1, 5.4), C["violet"], mask(0.25, 0, 1))
-        mb.box((-14.1, -1.62, -0.4), (11.6, 6.1, 0.6), C["darkblue"], mask(0.5, 0, 1))
-        for x in (-16.5, -11.5, -6.5):
-            mb.cyl(2.55, 0.5, (x, 2.6, 9.2), (0, 90, 0), C["violet"], mask(0.3, 0, 1), seg=24)
-        mb.box((-12.6, -1.56, 2.0), (-8.6, -1.45, 4.55), C["ink"], mask(0.9))
-        for x in (-12.0, -10.9, -9.8):
-            mb.box((x, -1.85, 2.0), (x + 0.22, -1.5, 4.55), C["steel"], mask(0.8))
-        mb.box((-12.6, -1.8, 3.2), (-8.6, -1.6, 3.4), C["steel"], mask(0.8))
-        for x in (-6.5, -4.0, -1.5, 1.0):
+    def sect(d):
+        return d["y0"], d["y1"], d["z0"], d["z1"], d["radii"]
+
+    def body(d, split, dome=(0.0, 0.0), squeeze=0.45, step=1.6):
+        def build(mb):
+            f = rounded_hull(mb, d["x0"], d["x1"], *sect(d), dome=dome, squeeze=squeeze, step=step)
+            livery(mb, f, split, random)
+        return build
+
+    shell(body(HUB, 3.1, dome=(1.8, 0.0), squeeze=0.6, step=2.2), 0.3)  # main hub (room B)
+    shell(body(POD, 8.2, dome=(1.2, 1.2), squeeze=0.4, step=2.2), 0.3)  # upper pod (room C)
+    shell(body(TANK, 8.6, dome=(2.0, 2.0), squeeze=0.3, step=2.2), 0.3)  # long tank
+    # Room A: interior x 3.2..11.2, y -5.7..-1.7 (4 x 2 cells), floor top at z 0.28;
+    # flat floor, flat front wall up to z 2.8 (doorway C, bay window), flat ends
+    shell(body(ROOM_A, 2.0, step=2.15), 0.3, room_a_doors)
+
+    def trim(mb):  # solid trim: ring bands, the torn window, portholes
+        for x in (-9.0, -2.0, 5.0):
+            paint(mb, rounded_band(mb, x - 0.3, x + 0.3, *sect(HUB)), C["offwhite"], mask(0.3, 0, 1))
+        paint(mb, rounded_band(mb, 10.85, 11.5, *sect(HUB), grow=0.1), C["steel_lt"], mask(0.4))
+        for x in (-15.2, -11.5, -7.8):
+            paint(mb, rounded_band(mb, x - 0.25, x + 0.25, *sect(TANK), grow=0.14), C["offwhite"],
+                  mask(0.3, 0, 1))
+        paint(mb, rounded_band(mb, 0.25, 0.75, *sect(POD), grow=0.1), C["red"], mask(0.3))
+        for x0, x1 in ((2.9, 3.35), (11.05, 11.5)):  # Room A end rings (doorways stay open)
+            paint(mb, rounded_band(mb, x0, x1, *sect(ROOM_A), grow=0.12), C["offwhite"], mask(0.3, 0, 1))
+        paint(mb, rounded_band(mb, 6.95, 7.35, *sect(ROOM_A), grow=0.08), C["red"], mask(0.3))
+        # the torn-open window of room B (dark gap + bent frame bars)
+        mb.box((-11.8, -1.56, 2.0), (-7.8, -1.45, 4.55), C["ink"], mask(0.9))
+        for x in (-11.2, -10.1, -9.0):
+            mb.box((x, -1.85, 2.0), (x + 0.22, -1.5, 4.55), C["steel_lt"], mask(0.8))
+        mb.box((-11.8, -1.8, 3.2), (-7.8, -1.6, 3.4), C["steel_lt"], mask(0.8))
+        for x in (-6.0, -3.5, -1.0, 1.5):
             mb.cyl(0.45, 0.16, (x, -1.53, 3.0), (90, 0, 0), C["glass"], mask(0.6))
-        for x in (-2.5, 0.0, 2.5):
-            mb.cyl(0.4, 0.16, (x, -0.03, 8.4), (90, 0, 0), C["glass"], mask(0.6))
+        for x in (-2.0, 0.5, 3.0):
+            mb.cyl(0.4, 0.16, (x, -0.03, 8.45), (90, 0, 0), C["glass"], mask(0.6))
 
     shell(trim)
     for ob in pieces:
@@ -731,15 +858,15 @@ def build_wreck(cols, mats):
         return own(mb.to_object(name, coll, mats, origin))
 
     def truss(mb):
-        mb.box((-34, 1.6, 8.6), (-18.6, 3.6, 9.4), C["steel"], mask(0.4))
+        mb.box((-34, 1.6, 8.6), (-17.0, 3.6, 9.4), C["steel_lt"], mask(0.4))
         for x in range(-33, -19, 3):
-            mb.box((x, 1.5, 7.6), (x + 0.3, 3.7, 10.4), C["steel"], mask(0.6))
+            mb.box((x, 1.5, 7.6), (x + 0.3, 3.7, 10.4), C["offwhite_old"], mask(0.6, 0, 1))
             mb.box((x, 2.4, 7.6), (x + 3.0, 2.8, 7.8), C["steel_lt"], mask(0.6), rot=(0, -18, 0))
-        mb.cyl(0.6, 1.6, (-24.5, 2.6, 10.0), (0, 90, 0), C["darkblue"], mask(0.3, 0, 1), seg=12)
+        mb.cyl(0.6, 1.6, (-24.5, 2.6, 10.0), (0, 90, 0), C["red_faded"], mask(0.4), seg=12)
     part("part_truss", truss)
 
     def solar(mb):
-        frame = C["violet"]
+        frame = C["offwhite"]
         for i in range(4):
             y0 = -6 + i * 1.9
             mb.box((-29, y0, 9.0), (-21, y0 + 1.75, 9.1), C["darkblue"], mask(0.3, 0, 1))
@@ -754,36 +881,38 @@ def build_wreck(cols, mats):
         for i in range(2):
             y0 = -5.5 + i * 2.2
             mb.box((-20.5, y0, 8.4), (-17.5, y0 + 2.0, 8.5), C["darkblue"], mask(0.5, 0, 1))
-        mb.box((-20.5, -1.3, 8.35), (-17.5, -1.15, 8.55), C["violet"], mask(0.6, 0, 1))
+        mb.box((-20.5, -1.3, 8.35), (-17.5, -1.15, 8.55), C["offwhite_old"], mask(0.6, 0, 1))
     sp2 = part("part_solar_broken", solar_broken, origin=(-19, -1.2, 8.5))
     sp2.rotation_euler = E(-35, 18, 12)
 
     part("part_antenna_a", lambda mb: (
-        mb.cyl(0.07, 4.0, (3.5, 1.2, 11.6), (0, 0, 0), C["steel_lt"], mask(0.4), seg=6),
-        mb.cyl(0.25, 0.08, (3.5, 1.2, 12.6), (0, 0, 0), C["steel_lt"], mask(0.4), seg=8),
-        mb.box((3.42, 1.12, 13.5), (3.58, 1.28, 13.62), C["pink"], mask(0, 0.0)),
-    ), origin=(3.5, 1.2, 9.6))
-    part("part_antenna_b", lambda mb: mb.cyl(0.05, 2.6, (2.5, 3.8, 10.9), (8, -6, 0), C["steel_lt"], mask(0.4), seg=6),
-         origin=(2.5, 3.8, 9.6))
+        mb.cyl(0.07, 4.0, (3.0, 1.2, 12.0), (0, 0, 0), C["steel_lt"], mask(0.4), seg=6),
+        mb.cyl(0.25, 0.08, (3.0, 1.2, 13.0), (0, 0, 0), C["offwhite"], mask(0.4), seg=8),
+        mb.box((2.92, 1.12, 13.9), (3.08, 1.28, 14.02), C["pink"], mask(0, 1.0), mat=EMI),
+    ), origin=(3.0, 1.2, 10.0))
+    part("part_antenna_b", lambda mb: mb.cyl(0.05, 2.6, (2.0, 3.8, 11.3), (8, -6, 0), C["steel_lt"], mask(0.4), seg=6),
+         origin=(2.0, 3.8, 10.0))
     part("part_dish", lambda mb: (
-        mb.cyl(1.3, 0.35, (-2.5, 3.5, 10.7), (35, 0, 20), C["steel_lt"], mask(0.5), r2=0.3, seg=16),
-        mb.cyl(0.1, 1.0, (-2.5, 3.5, 10.0), (0, 0, 0), C["steel"], mask(0.4), seg=6),
-    ), origin=(-2.5, 3.5, 9.6))
+        mb.cyl(1.3, 0.35, (-2.0, 3.5, 11.1), (35, 0, 20), C["offwhite"], mask(0.5, 0, 1), r2=0.3, seg=16),
+        mb.cyl(0.1, 1.0, (-2.0, 3.5, 10.4), (0, 0, 0), C["steel_lt"], mask(0.4), seg=6),
+    ), origin=(-2.0, 3.5, 10.0))
 
     def torn(mb):
-        mb.box((-12.6, -1.75, 4.55), (-9.4, -1.6, 5.9), C["anthracite"], mask(0.8))
-        mb.box((-12.6, -1.8, 5.5), (-9.4, -1.7, 5.7), C["violet"], mask(0.8, 0, 1))
-    tp = part("part_torn_plate", torn, origin=(-11, -1.6, 4.6))
+        mb.box((-11.8, -1.75, 4.55), (-8.6, -1.6, 5.5), C["offwhite_old"], mask(0.8, 0, 1))
+        mb.box((-11.8, -1.8, 4.75), (-8.6, -1.7, 4.95), C["red_faded"], mask(0.8))
+    tp = part("part_torn_plate", torn, origin=(-10.2, -1.6, 4.6))
     tp.rotation_euler = E(-38, 0, -6)
 
     # decorative docking rings on the upper hull (future modules; not game slots)
     part("part_dock_ring_top", lambda mb: (
-        mb.cyl(1.3, 0.5, (0.5, 2.5, 9.85), (0, 0, 0), C["steel"], mask(0.5), seg=20),
-        mb.cyl(0.9, 0.08, (0.5, 2.5, 10.12), (0, 0, 0), C["ink"], mask(0.3), seg=20),
+        mb.ring(1.3, 0.9, 0.5, (0.5, 2.5, 10.2), (0, 0, 0), C["offwhite"], mask(0.4, 0, 1), seg=20),
+        mb.cyl(0.9, 0.08, (0.5, 2.5, 10.05), (0, 0, 0), C["ink"], mask(0.3), seg=20),
+        mb.ring(1.42, 1.3, 0.14, (0.5, 2.5, 10.3), (0, 0, 0), C["neon"], mask(0.3, 0, 1), seg=20),
     ))
     part("part_dock_ring_side", lambda mb: (
-        mb.cyl(1.3, 0.5, (11.75, 2.25, 4.2), (0, 90, 0), C["steel"], mask(0.5), seg=20),
-        mb.cyl(0.9, 0.08, (12.02, 2.25, 4.2), (0, 90, 0), C["ink"], mask(0.3), seg=20),
+        mb.ring(1.3, 0.9, 0.5, (11.75, 2.25, 3.6), (0, 90, 0), C["offwhite"], mask(0.4, 0, 1), seg=20),
+        mb.cyl(0.9, 0.08, (11.55, 2.25, 3.6), (0, 90, 0), C["ink"], mask(0.3), seg=20),
+        mb.ring(1.42, 1.3, 0.14, (11.85, 2.25, 3.6), (0, 90, 0), C["neon"], mask(0.3, 0, 1), seg=20),
     ))
 
     lx, ly = 6.2, -5.25  # work lamp, against the front wall
@@ -859,14 +988,14 @@ def build_wreck(cols, mats):
     def cables(mb):
         # the extension cable: through doorway A (capsule) along the front wall to the lamp
         mb.tube([(12.2, -5.3, FLOOR_Z + 0.04), (10.9, -5.45, FLOOR_Z + 0.04), (9.6, -5.55, FLOOR_Z + 0.04),
-                 (7.4, -5.62, FLOOR_Z + 0.04), (6.5, -5.4, FLOOR_Z + 0.05)], 0.05, C["neon"], mask(0.1), INT)
+                 (7.4, -5.62, FLOOR_Z + 0.04), (6.5, -5.4, FLOOR_Z + 0.05)], 0.05, C["neon"], mask(0.1), INT, res=4)
         mb.tube([(3.6, -1.8, FLOOR_Z + 0.03), (4.8, -1.9, FLOOR_Z + 0.03), (5.6, -2.1, FLOOR_Z + 0.03),
-                 (6.4, -1.85, FLOOR_Z + 0.03)], 0.035, C["ink"], mask(0.3), INT)
+                 (6.4, -1.85, FLOOR_Z + 0.03)], 0.035, C["ink"], mask(0.3), INT, res=4)
         mb.tube([(9.0, -1.8, FLOOR_Z + 0.03), (9.6, -2.0, FLOOR_Z + 0.03), (11.0, -1.9, FLOOR_Z + 0.03)],
                 0.03, C["darkblue"], mask(0.3), INT)
         for x, h in ((5.0, 1.5), (5.3, 1.0), (7.0, 0.8), (9.1, 1.8)):
             mb.tube([(x, -1.85, 3.0), (x + 0.15, -2.05, 3.0 - h), (x + 0.4, -1.9, 3.0)], 0.03,
-                    C["ink"] if x != 5.3 else C["pink"], mask(0.2), INT)
+                    C["ink"] if x != 5.3 else C["pink"], mask(0.2), INT, res=4)
     prop("prop_cables", cables)
 
     G = gparent
@@ -883,72 +1012,73 @@ def build_wreck(cols, mats):
     def g(kit, loc, face, spin=0.0, scale=(1, 1, 1)):
         return own(put(kit, loc, face, spin, scale, co, G))
 
-    pipe_run((-14, -1.5, 1.05), (2.9, -1.5, 1.05), "-Y", co, G)
-    pipe_run((-14, -1.5, 1.4), (2.9, -1.5, 1.4), "-Y", co, G, kit="gk_pipe_thin", clamps=False)
-    pipe_run((-14, -1.5, 6.35), (11.5, -1.5, 6.35), "-Y", co, G, kit="gk_cables", clamps=False)
-    for x in (-6.5, -4.0, -1.5, 1.0):
+    # front face of the hub (y = -1.5): flat between z 1.2 and 5.2
+    pipe_run((-12, -1.5, 1.45), (2.9, -1.5, 1.45), "-Y", co, G)
+    pipe_run((-12, -1.5, 1.8), (2.9, -1.5, 1.8), "-Y", co, G, kit="gk_pipe_thin", clamps=False)
+    pipe_run((-12, -1.5, 5.0), (11.5, -1.5, 5.0), "-Y", co, G, kit="gk_cables", clamps=False)
+    for x in (-6.0, -3.5, -1.0, 1.5):
         g("gk_porthole_rim", (x, -1.5, 3.0), "-Y")
         g("gk_rust_streak", (x + 0.15, -1.5, 2.45), "-Y", 0, (1, 0.9 + 0.2 * random.random(), 1))
-    for x in (-5.25, -0.25):
-        g("gk_vent", (x, -1.5, 4.0), "-Y")
-        g("gk_rust_streak", (x - 0.2, -1.5, 3.7), "-Y", 0, (1.3, 1.1, 1))
-    g("gk_hazard", (8.5, -1.5, 6.0), "-Y", 0, (1.6, 1, 1))
-    g("gk_stencil_07", (3.0, -1.5, 6.0), "-Y", 0, (1.4, 1.4, 1))
-    g("gk_stencil_B2", (-3.0, -1.5, 2.0), "-Y")
-    for x, z, k in ((-13.0, 6.0, "gk_panel_blue"), (-7.0, 5.9, "gk_panel_grey"), (-1.0, 6.1, "gk_panel_violet"),
-                    (6.0, 6.0, "gk_panel_blue"), (-13.2, 1.9, "gk_panel_grey"), (-7.6, 3.6, "gk_panel_blue"),
-                    (1.9, 2.0, "gk_panel_violet")):
+    for x in (-4.75, 0.25):
+        g("gk_vent", (x, -1.5, 4.1), "-Y")
+        g("gk_rust_streak", (x - 0.2, -1.5, 3.8), "-Y", 0, (1.3, 1.1, 1))
+    g("gk_hazard", (8.5, -1.5, 4.6), "-Y", 0, (1.6, 1, 1))
+    g("gk_stencil_07", (3.0, -1.5, 4.55), "-Y", 0, (1.4, 1.4, 1))
+    g("gk_stencil_B2", (-2.3, -1.5, 2.0), "-Y")
+    for x, z, k in ((-7.0, 4.4, "gk_panel_white"), (-1.0, 4.5, "gk_panel_grey"), (6.0, 4.4, "gk_panel_red"),
+                    (-11.0, 1.9, "gk_panel_red"), (-7.0, 2.3, "gk_panel_white"), (1.9, 2.0, "gk_panel_grey")):
         g(k, (x, -1.5, z), "-Y", random.uniform(-3, 3), (1.2, 0.9, 1))
-    for x, z in ((-11.5, 1.8), (-2.6, 3.9), (-5.8, 2.1), (2.4, 3.8), (10.6, 4.3), (-13.5, 3.8), (-9, 6.6), (4.2, 6.6)):
+    for x, z in ((-10.5, 1.8), (-2.6, 3.9), (-5.2, 2.1), (2.4, 3.8), (10.6, 4.2), (-11.6, 4.8), (-8.3, 4.9), (4.2, 4.9)):
         g("gk_chip", (x, -1.5, z), "-Y", random.uniform(0, 180))
-    g("gk_bolts", (-10.6, -1.5, 5.65), "-Y", 0, (4, 1, 1))
-    g("gk_bolts", (7.5, -1.5, 4.4), "-Y", 0, (8, 1, 1))
-    g("gk_rust_streak", (-11.8, -1.5, 1.95), "-Y", 0, (1.5, 0.6, 1))
-    g("gk_rust_streak", (-9.2, -1.5, 1.95), "-Y", 0, (1.2, 0.5, 1))
-    g("gk_rust_streak", (5.0, -1.5, 6.25), "-Y", 0, (1, 0.5, 1))
-    g("gk_rust_streak", (10.0, -1.5, 6.25), "-Y", 0, (1, 0.45, 1))
-    # Room A outer parapet (below the cut, clear of doorway C)
+    g("gk_bolts", (-9.8, -1.5, 5.2), "-Y", 0, (4, 1, 1))
+    g("gk_bolts", (7.5, -1.5, 4.2), "-Y", 0, (8, 1, 1))
+    g("gk_rust_streak", (-11.0, -1.5, 1.95), "-Y", 0, (1.5, 0.6, 1))
+    g("gk_rust_streak", (-8.4, -1.5, 1.95), "-Y", 0, (1.2, 0.5, 1))
+    g("gk_rust_streak", (5.6, -1.5, 4.9), "-Y", 0, (1, 0.5, 1))
+    g("gk_rust_streak", (9.6, -1.5, 4.9), "-Y", 0, (1, 0.45, 1))
+    # Room A outer wall (below the cut, clear of doorway C)
     g("gk_hazard", (6.1, -6.0, 0.85), "-Y", 0, (2.9, 1, 1))
     g("gk_stencil_A01", (4.0, -6.0, 0.45), "-Y", 0, (0.7, 0.7, 1))
     g("gk_rust_streak", (8.6, -6.0, 0.72), "-Y", 0, (0.8, 0.3, 1))
-    # top of the main block (z = 7); the game adds part_reactor (10.4, 4.4) and
-    # part_radiator (10.6, 0.8) there, so keep that corner clear
-    for (x, y), spn in (((7.0, 3.6), 0), ((7.0, 1.6), 0), ((-12.5, -0.4), 90)):
+    g("gk_rust_streak", (4.9, -6.0, 1.3), "-Y", 0, (0.9, 0.6, 1))
+    g("gk_chip", (8.9, -6.0, 1.6), "-Y", 40)
+    # top deck of the hub (z = 7, flat between y 0.3 and 4.6); the game adds
+    # part_reactor (10.4, 4.4) and part_radiator (9.6, 0.8) there: keep that corner clear
+    for (x, y), spn in (((7.0, 3.6), 0), ((7.0, 1.6), 0)):
         g("gk_tank", (x, y, 7.0), "+Z", spn)
-    for x, y in ((8.6, -0.7), (1.4, -0.7), (-8.0, -0.7)):
+    for x, y in ((8.6, 0.6), (-8.0, 0.6)):
         g("gk_vent", (x, y, 7.0), "+Z")
-    pipe_run((-14, -1.05, 7.0), (11.5, -1.05, 7.0), "+Z", co, G)
-    pipe_run((5.4, 0.2, 7.0), (5.4, 5.6, 7.0), "+Z", co, G, kit="gk_pipe_thin", clamps=False)
-    for x, y in ((3.6, -0.6), (-3.0, -0.8), (-10.5, -0.9), (4.5, 5.6)):
+    pipe_run((-12, 0.45, 7.0), (9.0, 0.45, 7.0), "+Z", co, G)
+    pipe_run((5.6, 0.6, 7.0), (5.6, 4.4, 7.0), "+Z", co, G, kit="gk_pipe_thin", clamps=False)
+    for x, y in ((-3.0, 0.7), (-10.5, 0.8)):
         g("gk_box", (x, y, 7.0), "+Z", random.uniform(0, 90))
-    for x, y, k in ((-7.0, 1.0, "gk_panel_grey"), (3.0, 5.5, "gk_panel_blue"), (8.6, 5.3, "gk_panel_violet")):
-        g(k, (x, y, 7.0), "+Z", random.uniform(-10, 10), (1.6, 1.2, 1))
-    g("gk_stencil_14", (7.0, -0.2, 7.0), "+Z", 90, (1.4, 1.4, 1))
-    # upper box (room C)
-    g("gk_hazard", (0.5, 2.5, 9.6), "+Z", 0, (1.4, 1, 1))
-    g("gk_hazard", (0.5, 0.95, 9.6), "+Z", 0, (1.4, 1, 1))
-    g("gk_stencil_DOCK", (0.5, 4.3, 9.6), "+Z", 0, (0.8, 0.8, 1))
-    g("gk_stencil_C3", (4.0, 0.0, 8.4), "-Y")
-    for x in (-2.5, 0.0, 2.5):
-        g("gk_porthole_rim", (x, 0.0, 8.4), "-Y", 0, (0.85, 0.85, 1))
-        g("gk_rust_streak", (x + 0.1, 0.0, 7.95), "-Y", 0, (0.8, 0.6, 1))
-    g("gk_vent", (5.0, 2.5, 8.3), "+X")
-    g("gk_cables", (-3.6, 2.6, 9.6), "+Z", 90, (2.5, 1, 1))
-    # +X face of the main block (x = 11.5)
-    g("gk_hazard", (11.5, 2.25, 5.75), "+X", 0, (1.4, 1, 1))
-    g("gk_hazard", (11.5, 2.25, 2.65), "+X", 0, (1.4, 1, 1))
-    g("gk_stencil_C", (11.5, 4.8, 4.2), "+X", 0, (1.8, 1.8, 1))
-    g("gk_vent", (11.5, -0.4, 6.2), "+X")
-    g("gk_rust_streak", (11.5, -0.6, 5.9), "+X", 0, (1.2, 1.4, 1))
-    g("gk_panel_violet", (11.5, 4.9, 1.6), "+X", 5, (1.2, 1.2, 1))
-    g("gk_panel_blue", (11.5, -0.5, 1.5), "+X", -4, (1.0, 1.4, 1))
-    pipe_run((11.5, 0.6, 0.7), (11.5, 0.6, 6.8), "+X", co, G, kit="gk_pipe_thin", clamps=False)
-    g("gk_chip", (11.5, 3.6, 6.4), "+X", 30)
-    g("gk_chip", (11.5, 1.0, 1.0), "+X", 120)
-    # cylinder section
-    pipe_run((-17.8, 2.6, 11.6), (-5.2, 2.6, 11.6), "+Z", co, G, kit="gk_cables", clamps=False)
-    g("gk_box", (-14.0, 1.4, 11.35), "+Z", 20)
-    g("gk_box", (-9.0, 3.8, 11.35), "+Z", 70)
+    for x, y, k in ((-7.0, 1.0, "gk_panel_grey"), (8.6, 2.6, "gk_panel_red")):
+        g(k, (x, y, 7.0), "+Z", random.uniform(-10, 10), (1.2, 1.0, 1))
+    g("gk_stencil_14", (7.0, 0.8, 7.0), "+Z", 90, (1.2, 1.2, 1))
+    # upper pod (room C): flat top z 10 between x -2.8..3.8, y 1..4
+    g("gk_hazard", (0.5, 3.9, 10.0), "+Z", 0, (1.2, 1, 1))
+    g("gk_hazard", (0.5, 1.1, 10.0), "+Z", 0, (1.2, 1, 1))
+    g("gk_stencil_DOCK", (-1.6, 1.5, 10.0), "+Z", 0, (0.6, 0.6, 1))
+    g("gk_stencil_C3", (2.6, 0.0, 8.45), "-Y", 0, (0.7, 0.7, 1))
+    for x in (-2.0, 0.5, 3.0):
+        g("gk_porthole_rim", (x, 0.0, 8.45), "-Y", 0, (0.85, 0.85, 1))
+        g("gk_rust_streak", (x + 0.1, 0.0, 8.0), "-Y", 0, (0.8, 0.4, 1))
+    # +X face of the hub (x = 11.5)
+    g("gk_hazard", (11.5, 2.25, 5.35), "+X", 0, (1.4, 1, 1))
+    g("gk_hazard", (11.5, 2.25, 1.75), "+X", 0, (1.4, 1, 1))
+    g("gk_stencil_C", (11.5, 4.6, 4.2), "+X", 0, (1.2, 1.2, 1))
+    g("gk_vent", (11.5, -0.1, 5.0), "+X")
+    g("gk_rust_streak", (11.5, -0.3, 4.7), "+X", 0, (1.2, 1.4, 1))
+    g("gk_panel_red", (11.5, 4.4, 1.8), "+X", 5, (1.0, 1.0, 1))
+    pipe_run((11.5, 0.6, 1.3), (11.5, 0.6, 5.6), "+X", co, G, kit="gk_pipe_thin", clamps=False)
+    g("gk_chip", (11.5, 3.6, 5.4), "+X", 30)
+    g("gk_chip", (11.5, 1.0, 1.4), "+X", 120)
+    # long tank
+    pipe_run((-15.5, 2.6, 11.6), (-7.5, 2.6, 11.6), "+Z", co, G, kit="gk_cables", clamps=False)
+    g("gk_box", (-13.4, 1.9, 11.55), "+Z", 20)
+    g("gk_box", (-9.6, 3.3, 11.55), "+Z", 70)
+    g("gk_rust_streak", (-13.0, 0.2, 9.4), "-Y", 0, (1.2, 1.0, 1))
+    g("gk_stencil_SR7", (-11.5, 0.2, 9.0), "-Y", 0, (1.0, 1.0, 1))
 
     for ob in owned:
         if ob.parent is None:
@@ -1100,8 +1230,8 @@ def build_capsule(cols, mats):
 def build_debris(cols, mats):
     co = cols["BACKGROUND"]
     mb = MB()  # a torn hull plate with ribs (it came off the tear)
-    mb.box((-1.6, -0.08, -1.0), (1.6, 0.08, 1.0), C["anthracite"], mask(0.7))
-    mb.box((-1.6, 0.08, 0.2), (1.6, 0.12, 0.5), C["violet"], mask(0.6, 0, 1))
+    mb.box((-1.6, -0.08, -1.0), (1.6, 0.08, 1.0), C["offwhite_old"], mask(0.7, 0, 1))
+    mb.box((-1.6, 0.08, 0.2), (1.6, 0.12, 0.5), C["red_faded"], mask(0.6))
     for x in (-1.1, 0.0, 1.1):
         mb.box((x - 0.1, -0.35, -1.0), (x + 0.1, -0.08, 1.0), C["steel"], mask(0.8))
     a = mb.to_object("debris_plate", co, mats, origin=Vector())

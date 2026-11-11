@@ -25,7 +25,7 @@
     368
    ],
    [
-    "gb_stencil_SR7_01",
+    "gb_stencil_SR7_02",
     212
    ],
    [
@@ -43,21 +43,21 @@
   ]
  },
  "wreck_core": {
-  "triangles": 12672,
+  "triangles": 14892,
   "materials": [
    "M_emissive",
    "M_hull",
    "M_interior"
   ],
-  "objects": 139,
+  "objects": 131,
   "heaviest": [
    [
     "hull@wreck_core",
-    2628
+    5464
    ],
    [
     "prop_cables",
-    1280
+    920
    ],
    [
     "gb_tank_01",
@@ -68,20 +68,20 @@
     448
    ],
    [
-    "gb_tank_03",
-    448
+    "part_dock_ring_top",
+    396
+   ],
+   [
+    "part_dock_ring_side",
+    396
    ],
    [
     "gb_stencil_DOCK_01",
     228
    ],
    [
-    "prop_roomA_fittings",
-    196
-   ],
-   [
-    "gb_stencil_B2_01",
-    192
+    "gb_stencil_SR7_01",
+    212
    ]
   ]
  }

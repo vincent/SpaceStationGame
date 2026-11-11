@@ -17,7 +17,7 @@ and `/update-goldens` if the change is intended.
 | Module | Triangles (exported) | Materials | Objects |
 |---|---|---|---|
 | capsule | 4,126 | M_hull, M_interior, M_emissive | ~20 |
-| wreck_core | 12,672 | M_hull, M_interior, M_emissive | ~140 (shared kit meshes) |
+| wreck_core | 14,892 | M_hull, M_interior, M_emissive | ~140 (shared kit meshes) |
 
 The budget is ≤ 15k triangles and ≤ 3 materials per module. `export/stats.json`
 lists the heaviest objects. In game, every mesh is drawn with the palette material,
@@ -30,11 +30,18 @@ so the Blender materials only matter for the preview renders.
   `capsule_thruster` upgrades, so they stay hidden in game until bought.
   Cabin props are on the walls only: screens, light strip, rations shelf,
   first-aid kit.
-- **wreck_core**: one watertight `hull` built from a main block, an upper box
-  (room C), a cylinder, the Room A wing and solid trim, including the portholes
-  of rooms B and C. Room A has doorway holes for slots A, B, C and V. Parts:
-  truss, solar panel and a broken panel, two antennas, `part_dish` (the
-  `wreck_dish` upgrade), torn plate, two decorative dock rings, work lamp.
+- **wreck_core**: the capsule's older sibling, in the same shape language and a faded
+  version of its livery (offwhite over red, a share of the ~2 m hull panels in
+  `offwhite_old` / `red_faded`, rust streaks, chipped paint). One watertight `hull` built
+  from closed rounded solids (`rounded_hull`: a rounded-rectangle section lofted along X,
+  optional domed ends): the main hub (room B, domed −X end, flat top deck for the
+  scene-side reactor/radiator), the upper pod (room C), the long tank, and the Room A drum
+  (flat floor, flat front wall up to z 2.8 for doorway C and the bay window), plus ring
+  bands (`rounded_band`), the torn-open window and the portholes. Room A has doorway
+  holes for slots A, B, C and V. Parts: truss, solar panel and a broken panel, two
+  antennas, `part_dish` (the `wreck_dish` upgrade), torn plate, two decorative dock
+  rings, work lamp. In game the derelict wreck (wear 100 %) is mostly rust from the
+  shader's wear; repairing it reveals the livery.
 - **Room A**: props hug the walls: crate table, crates, toolbox, debris, pipes and a
   cable tray, hanging cables, notes, a vent with a rust streak, floor plates, and the
   neon-yellow extension cable from doorway A to the work lamp.

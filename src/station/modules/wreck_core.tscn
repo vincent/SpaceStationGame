@@ -12,8 +12,8 @@ interior_ascii = "######
 vC..S#
 b....a
 ##W#c#"
-hull_color = Color(0.33, 0.34, 0.4, 1)
-trim_color = Color(0.294, 0.247, 0.561, 1)
+hull_color = Color(0.784, 0.761, 0.706, 1)
+trim_color = Color(0.659, 0.282, 0.227, 1)
 cap_tint = Color(0.91, 0.875, 0.784, 1)
 light_color = Color(1, 0.71, 0.278, 1)
 art_palette = ExtResource("4_palette")
