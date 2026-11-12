@@ -5,8 +5,9 @@ extends RefCounted
 ## their state (derelict/repaired/upgraded), wear, power and installed parts.
 ## Pure logic (no nodes): the Station scene mirrors it through the signals.
 ##
-## A record is {uid, module_id, parent, slot, state, wear, powered, parts}.
-## `parent` is 0 for the root module.
+## A record is {uid, module_id, parent, slot, own_slot, state, wear, powered,
+## parts}. `parent` is 0 for the root module; `own_slot` is the module's own
+## slot that meets `slot` of the parent (its orientation, see StationGrid).
 
 signal module_added(uid: int)
 ## `reason`: &"repaired", &"powered", &"unpowered", &"upgraded", &"wear".
@@ -45,14 +46,17 @@ func clear() -> void:
 ## attachment is invalid (see `attach_error`).
 func add_module(
 		module_id: StringName, parent_uid: int = 0, slot: StringName = &"",
-		state: State = State.REPAIRED, wear: float = 0.2, powered: bool = false
+		state: State = State.REPAIRED, wear: float = 0.2, powered: bool = false,
+		by_slot: StringName = &""
 ) -> int:
-	if attach_error(module_id, parent_uid, slot) != "":
+	if attach_error(module_id, parent_uid, slot, by_slot) != "":
 		return 0
+	var def := db.get_module(module_id)
 	var uid := _next_uid
 	_next_uid += 1
 	_records[uid] = {
 		"uid": uid, "module_id": module_id, "parent": parent_uid, "slot": slot,
+		"own_slot": by_slot if by_slot != &"" else def.attach_slot,
 		"state": state, "wear": clampf(wear, MIN_WEAR, 1.0), "powered": false,
 		"parts": [] as Array[StringName],
 	}
@@ -62,8 +66,11 @@ func add_module(
 	return uid
 
 
-## "" when `module_id` can attach to `slot` of `parent_uid`, else the reason.
-func attach_error(module_id: StringName, parent_uid: int, slot: StringName) -> String:
+## "" when `module_id` can attach to `slot` of `parent_uid` by its own slot
+## `by_slot` (default: its attach slot), else the reason.
+func attach_error(
+		module_id: StringName, parent_uid: int, slot: StringName, by_slot: StringName = &""
+) -> String:
 	var def := db.get_module(module_id)
 	if def == null:
 		return "Unknown module %s" % module_id
@@ -75,11 +82,45 @@ func attach_error(module_id: StringName, parent_uid: int, slot: StringName) -> S
 	var err := ""
 	if not parent_def.slots.has(slot):
 		err = "%s has no slot %s" % [parent_def.display_name, slot]
-	elif occupant(parent_uid, slot) != 0:
+	elif occupant(parent_uid, slot) != 0 or (_records[parent_uid].parent != 0 and own_slot(parent_uid) == slot):
 		err = "Slot is taken"
-	elif not def.fits(parent_def.slots[slot], parent_def.size_class):
+	elif not def.fits(parent_def.slots[slot]):
 		err = "%s doesn't fit there" % def.display_name
+	else:
+		var by := by_slot if by_slot != &"" else def.attach_slot
+		if not def.slots.has(by):
+			err = "%s has no slot %s" % [def.display_name, by]
+		elif def.slot_size(by) > parent_def.slot_size(slot):
+			err = "Needs a %s hatch" % ModuleDef.SIZE_LABELS[def.slot_size(by)]
+		else:
+			err = StationGrid.placement_error(self, module_id, parent_uid, slot, by)
 	return err
+
+
+## The slots of `module_id` it can attach by on `slot` of `parent_uid`
+## (its orientations), the default attach slot first.
+func attach_options(module_id: StringName, parent_uid: int, slot: StringName) -> Array[StringName]:
+	var out: Array[StringName] = []
+	var def := db.get_module(module_id)
+	if def == null:
+		return out
+	var names: Array[StringName] = [def.attach_slot]
+	var others: Array[StringName] = def.slots.keys()
+	others.sort_custom(_by_name)
+	for s in others:
+		if s != def.attach_slot:
+			names.append(s)
+	for s in names:
+		if def.slots.has(s) and attach_error(module_id, parent_uid, slot, s) == "":
+			out.append(s)
+	return out
+
+
+## The slot of `uid` used to attach it to its parent.
+func own_slot(uid: int) -> StringName:
+	if not _records.has(uid):
+		return &""
+	return _records[uid].get("own_slot", get_def(uid).attach_slot)
 
 
 func remove_module(uid: int) -> void:
@@ -131,10 +172,11 @@ func free_slots(uid: int) -> Array[StringName]:
 	var def := get_def(uid)
 	if def == null:
 		return out
+	var used := own_slot(uid) if _records[uid].parent != 0 else &""
 	for slot: StringName in def.slots:
-		if occupant(uid, slot) == 0:
+		if slot != used and occupant(uid, slot) == 0:
 			out.append(slot)
-	out.sort()
+	out.sort_custom(_by_name)
 	return out
 
 
@@ -288,7 +330,7 @@ func to_dict() -> Dictionary:
 			continue
 		modules.append({
 			"uid": id, "module_id": String(r.module_id), "parent": r.parent, "slot": String(r.slot),
-			"state": r.state, "wear": r.wear, "powered": r.powered,
+			"own_slot": String(r.own_slot), "state": r.state, "wear": r.wear, "powered": r.powered,
 			"parts": Array(r.parts).map(func(p: StringName) -> String: return String(p)),
 		})
 	return {"next_uid": _next_uid, "modules": modules}
@@ -304,13 +346,19 @@ func from_dict(data: Dictionary) -> void:
 		var parts: Array[StringName] = []
 		for p: String in m.get("parts", []):
 			parts.append(StringName(p))
+		var def := db.get_module(StringName(m.module_id))
 		_records[uid] = {
 			"uid": uid, "module_id": StringName(m.module_id), "parent": int(m.get("parent", 0)),
-			"slot": StringName(m.get("slot", "")), "state": int(m.get("state", State.REPAIRED)),
+			"slot": StringName(m.get("slot", "")),
+			"own_slot": StringName(m.get("own_slot", def.attach_slot)), "state": int(m.get("state", State.REPAIRED)),
 			"wear": float(m.get("wear", 0.2)), "powered": bool(m.get("powered", false)), "parts": parts,
 		}
 	_next_uid = maxi(int(data.get("next_uid", 1)), (uids().max() if not _records.is_empty() else 0) + 1)
 	reset.emit()
+
+
+static func _by_name(a: StringName, b: StringName) -> bool:
+	return String(a) < String(b)
 
 
 static func _fmt(value: float) -> String:

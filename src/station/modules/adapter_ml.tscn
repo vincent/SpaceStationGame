@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/station/module.gd" id="1_module"]
+
+[node name="AdapterML" type="Node3D"]
+script = ExtResource("1_module")
+module_id = &"adapter_ml"
+interior_ascii = "#a#
+#L#
+#b#"
+hull_color = Color(0.62, 0.64, 0.7, 1)
+trim_color = Color(0.85, 0.65, 0.2, 1)
+cap_tint = Color(0.92, 0.93, 0.96, 1)
+light_color = Color(0.85, 0.95, 1, 1)
+greeble_seed = 83

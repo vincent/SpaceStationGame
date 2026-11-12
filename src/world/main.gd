@@ -4,9 +4,9 @@ extends Node3D
 ##
 ## Touch mapping:
 ##   station view (zoomed out): tap module = focus/zoom in · tap ghost slot =
-##     build menu · drag = pan · pinch/wheel = zoom
+##     build menu · drag = pan
 ##   room view (zoomed in): tap floor = walk · tap object = its actions ·
-##     tap another module = focus it · pinch out = back to station view
+##     tap another module = focus it · "Station view" button = back out
 
 ## A press that moves further than this (px) is a drag, not a tap.
 const TAP_MAX_DISTANCE := 18.0

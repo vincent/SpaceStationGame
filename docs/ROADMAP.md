@@ -55,6 +55,19 @@ Status markers: `[x]` done · `[~]` in progress / partial · `[ ]` todo
 - [ ] Economy, later: storage caps (silos), wear → efficiency, production-chain overview, agri bay Blender art, conversion modules, crew eating food
 - [ ] Station development axes: culture, economy, religion
 
+## Modular station (custom layouts)
+- [x] Placement data-side: `StationGrid` (orientation via own slot, footprint overlaps), save v5
+- [x] Build menu Rotate + footprint preview; ghosts only where something fits
+- [x] Walkable procedural connectors: `corridor` (1-1), `junction_t` (1-2), `hub_x` (1-3)
+- [x] Hatch sizes S/M/L (`slot_sizes`), smaller fits larger; `adapter_ml` (M→L)
+- [x] Blender module kit `art/kit/` + `tools/art.sh` (validators, renders, export) + `tools/new_module.py`
+- [x] `/new-module` command + `docs/MODULE_CATALOG.md` (10 modules + connectors)
+- [x] Pilot: `hub_node`, `hab_drum` (+ antenna / radiator upgrades)
+- [ ] Remaining catalog modules (see docs/MODULE_CATALOG.md), connector art
+- [ ] Station-view zoom for large (L) modules; deferred mechanics (heat, gravity, hangar)
+- [ ] Move `station_early` onto the kit
+- [ ] Loops: join two free slots that meet (needs gap-free placement)
+
 ## Content pipeline (docs/CONTENT_PIPELINE.md)
 - [x] Upgrade parts on art mounts (`mount_*` + `UpgradeDef.mount`), validation tests, `--upgrade=all`
 - [x] Encounters / story beats as data: triggers, conditions, outcomes, choices, schedules, saved story state

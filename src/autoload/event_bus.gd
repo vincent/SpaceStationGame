@@ -22,6 +22,9 @@ signal station_view_requested
 signal view_changed(t: float)
 ## The player tapped an empty slot's ghost outline in station view.
 signal ghost_slot_tapped(parent_uid: int, slot: StringName)
+## Build menu: outline where `module_id` would go (attached by `by_slot`);
+## an empty `module_id` clears the preview.
+signal build_preview(module_id: StringName, parent_uid: int, slot: StringName, by_slot: StringName)
 ## Open / close the exploded-view upgrade screen of a module.
 signal upgrade_view_requested(module: Module)
 signal upgrade_view_closed

@@ -16,9 +16,10 @@ story encounters are data-driven: `docs/CONTENT_PIPELINE.md`.
 | One test file / tests by name | `tools/test.sh -gselect=test_inventory` · `tools/test.sh -gunit_test_name=merge` |
 | Lint | `tools/lint.sh` (needs `pip install "gdtoolkit==4.*"`) |
 | Parse/import check only | `tools/import.sh` |
-| Screenshot (works headless via xvfb) | `tools/screenshot.sh build/shot.png [--view=station\|room] [--focus=wreck_core] [--power=all] [--upgrade=all] [--encounter=intro] [--story=off] [--stock=food:20] [--popover=food] [--explode] [--time=22] [--debug-panel] [--delay=5]` (all hooks: `DebugOverlay._run_cli_commands()`) |
+| Screenshot (works headless via xvfb) | `tools/screenshot.sh build/shot.png [--view=station\|room] [--focus=wreck_core] [--power=all] [--upgrade=all] [--encounter=intro] [--story=off] [--stock=food:20] [--layout=demo] [--popover=food] [--build-menu] [--explode] [--time=22] [--debug-panel] [--delay=5]` (all hooks: `DebugOverlay._run_cli_commands()`) |
 | Golden images (compare / re-record) | `tools/golden.sh` · `tools/golden.sh --update [scene]` (or `/update-goldens`) |
 | Run game / open editor | `tools/run.sh` · `tools/editor.sh` |
+| Build a kit module (Blender ≥ 4.2) | `tools/art.sh <id> [--render]` → `tools/new_module.py <id>` (or `/new-module`) |
 | Android debug APK | `tools/export_android.sh` (needs ANDROID_HOME + JDK 17) → `tools/install_android.sh` |
 
 `tools/godot.sh` downloads the pinned Godot into `.godot-bin/` on first use;
@@ -33,7 +34,7 @@ changes also take a screenshot, look at it, and run `tools/golden.sh`.
 src/autoload/   EventBus (signals only), GameClock (time), GameState (needs, inventory, stock + wallet, station, story, actions, save/load)
 src/core/       Pure logic & helpers: Needs, Inventory, ItemDB/ItemData, StationStock, Production, StationState, ModuleDB/ModuleDef/UpgradeDef,
                 EncounterDef/EncounterDB, StoryState, StoryContext, StoryOutcome, Storyteller,
-                DayCycle, Palette, Layers, ToonMaterials
+                DayCycle, Palette, Layers, ToonMaterials, StationGrid (placement/overlaps)
 src/world/      main.tscn/main.gd (taps → focus/build/walk/interact), StationBuilder (module interior from ASCII)
 src/station/    Station (scene mirror of StationState), Module (hull+interior+lights+parts+slots), Slot, ModulePart,
                 HullMesher/MeshKit (procedural watertight hulls), ExplodedView, VisitorDirector, modules/*.tscn
@@ -95,9 +96,16 @@ the glowing accent color); map a layout character to it in
 
 **New module type:** copy a scene in `src/station/modules/` (root = Module, `Parts/part_*`
 = ModulePart), add `data/modules/<id>.tres` (scene path, costs, power, `slots` = slot
-letter → accepted ids/kinds). `test_module_data.gd` checks scene and data agree.
+letter → accepted ids/kinds, `layout` = copy of the scene's `interior_ascii`; art modules
+also `massing` rects + `slot_frames`). `test_module_data.gd` checks scene and data agree.
+Placement (orientation = which own slot attaches, overlap check) is `StationGrid`, data only.
 
-**New / updated module art (Blender):** follow the checklist and troubleshooting table in
+**New module (kit art, preferred):** `/new-module <id>`: spec `art/modules/<id>.py` built by
+`art/kit/` (`tools/art.sh`), Godot side by `tools/new_module.py`. Briefs: `docs/MODULE_CATALOG.md`.
+Slots have sizes (`slot_sizes`, S/M/L = 1/2/3, default `size_class`): a module fits a hatch of
+its size or larger.
+
+**New / updated module art (Blender, hand-made like station_early):** follow the checklist and troubleshooting table in
 `docs/ART_PIPELINE.md` (layout fit → export → import script → inherited scene → tests,
 screenshots, `/update-goldens`). Example set: `art/station_early/` (`notes.md`).
 
@@ -145,5 +153,5 @@ summon a visitor, camera pitch/yaw/size sliders, save/load). New cheats: `_add_r
 - Typed-dictionary `.tres` syntax: `Dictionary[StringName, float]({&"food": 15.0})`.
 - Input: mouse events are emulated from touch. Station view: tap module = focus, tap ghost
   slot = build menu, drag = pan. Room view: tap floor = walk, tap object = actions, tap
-  another module = focus it. Pinch/wheel = zoom between the tiers. Inventory: drag-and-drop,
+  another module = focus it. No pinch/wheel zoom: the "Station view" button goes back out. Inventory: drag-and-drop,
   double-tap/right-click = use.

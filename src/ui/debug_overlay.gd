@@ -201,6 +201,8 @@ func _run_cli_commands() -> void:
 				GameState.stock.set_amount(StringName(kv[0]), float(kv[1]))
 			else:
 				push_warning("--stock: '%s' is not <bulk item>:<amount>" % entry)
+	if args.get("layout", "") == "demo":
+		_cheat_demo_layout()
 	if args.has("build"):
 		for module_id in String(args.build).split(",", false):
 			_cheat_build(StringName(module_id))
@@ -241,6 +243,13 @@ func _run_cli_commands() -> void:
 		hud.production_popover.toggle(StringName(args.popover), chip)
 	if args.has("interact"):
 		_interact_with_named(String(args.interact))
+	if args.has("build-menu"):  # build menu of the first free slot
+		await get_tree().process_frame
+		var st := GameState.station
+		for uid in st.uids():
+			if not st.free_slots(uid).is_empty():
+				EventBus.ghost_slot_tapped.emit(uid, st.free_slots(uid)[0])
+				break
 	if args.has("screenshot"):
 		await get_tree().create_timer(float(args.get("delay", "3"))).timeout
 		var image := get_viewport().get_texture().get_image()
@@ -283,6 +292,28 @@ func _cheat_build(module_id: StringName) -> void:
 				st.add_module(module_id, uid, slot, StationState.State.REPAIRED, 0.3, false)
 				return
 	push_warning("--build: no free slot for '%s'" % module_id)
+
+
+## A branched station for screenshots: wreck B -> corridor -> cross hub,
+## with a rotated T-junction, a hab pod and an agri bay on its arms; wreck C
+## -> hub node -> habitat drum + docking adapter (kit art modules).
+func _cheat_demo_layout() -> void:
+	var st := GameState.station
+	var wreck := st.find_module(&"wreck_core")
+	st.repair(wreck)
+	var r := StationState.State.REPAIRED
+	var corridor := st.add_module(&"corridor", wreck, &"B", r, 0.3)
+	var hub := st.add_module(&"hub_x", corridor, &"B", r, 0.3)
+	var t := st.add_module(&"junction_t", hub, &"B", r, 0.3, false, &"B")
+	st.add_module(&"hab_pod", hub, &"D", r, 0.3)
+	st.add_module(&"agri_bay", t, &"A", r, 0.3)
+	st.add_module(&"solar_array", t, &"C", r, 0.3)
+	var node := st.add_module(&"hub_node", wreck, &"C", r, 0.3)
+	for module_id: StringName in [&"hab_drum", &"adapter_ml"]:
+		for slot in st.free_slots(node):
+			if st.attach_error(module_id, node, slot) == "":
+				st.add_module(module_id, node, slot, r, 0.3)
+				break
 
 
 func _cheat_state(module_id: String, power: bool) -> void:

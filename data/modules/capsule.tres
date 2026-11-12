@@ -9,7 +9,7 @@ display_name = "Rescue capsule"
 description = "Your pod. Small, warm, and the only light for kilometres."
 scene_path = "res://src/station/modules/capsule.tscn"
 kind = &"capsule"
-size_class = 1
+size_class = 2
 buildable = false
 build_cost = Dictionary[StringName, int]({})
 repair_cost = Dictionary[StringName, int]({&"scrap_metal": 2})
@@ -17,3 +17,8 @@ power_output = 3.0
 power_draw = 1.0
 slots = Dictionary[StringName, PackedStringArray]({&"A": PackedStringArray()})
 attach_slot = &"A"
+layout = "#####
+aP.B#
+a..K#
+#####"
+massing = Array[Rect2]([Rect2(-4.76, -2.5, 9.66, 5)])

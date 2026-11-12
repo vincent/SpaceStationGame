@@ -81,6 +81,52 @@ by script in `art/station_early/` (see its `notes.md`).
   floor level. Slots are horizontal only (a marker's +Z must lie in the XZ
   plane): no roof docking.
 
+## Module kit (new modules)
+
+New modules are built with the **module kit**, not by hand: `art/kit/` (Python, Blender
+>= 4.2) + one spec per module, `art/modules/<id>.py`. Procedure: `/new-module <id>`;
+briefs: [MODULE_CATALOG.md](MODULE_CATALOG.md).
+
+    tools/art.sh <id> [--render] [--no-export]   # build, validate, export, preview
+    tools/new_module.py <id> [--name=..]         # create / sync the Godot side
+
+- `art/kit/core.py`: palette (`PAL`, append-only), mesh builder `MB`, capsule-style
+  `rounded_hull` / `rounded_band`, greeble kit (`gk_*`). Copied from the early diorama's
+  `build_station.py`, which keeps its own copy for now.
+- `art/kit/module.py`: `Module` = one module. The origin is the layout centre on the
+  floor (Blender z 0). `piece()` closed solids (merged into one `hull`), `doorway()` (hole
+  + size-coloured collar + `slot_X` from the layout letter), `light`, `mount`, `part`,
+  `prop`, `greeble`, `pipe`, `cut_box`.
+- **Checks** (any failure = non-zero exit): watertight hull, triangle budget, palette
+  colours only, every layout letter has a doorway, slot yaw a multiple of 90° and
+  outside the footprint, the nav door point (1.15 m inside) on a walkable cell, and
+  every walkable cell inside the room (ray parity at its corners: no floor tile or
+  bed sticking through a curved wall).
+- **Output**: `assets/models/modules/<id>.glb` + the shared `kit_palette.png` (fixed
+  swatch order), sidecar `art/modules/export/<id>.json` (layout, slot frames, sizes,
+  massing), previews `art/modules/renders/<id>_{closed,cut,top}.png` (not committed),
+  `.blend` in `art/modules/build/` (not committed: the spec is the source).
+- `new_module.py` creates the `.tres` (placeholder gameplay values), the inherited
+  `.tscn` and the `.import` files once; afterwards it only syncs `layout`, `slots`
+  (new letters), `slot_sizes`, `slot_frames`, `massing` and `interior_ascii`.
+
+## Station placement (data side)
+
+Modules are placed scene-free by `StationGrid` (`src/core/station_grid.gd`), so the
+`.tres` must describe the art's plan:
+
+- `layout`: copy of the scene's `interior_ascii`. Procedural modules get their
+  footprint (one rect per non-space cell, HullMesher's thin walls) and slot frames
+  from it.
+- `massing` (art only): `Array[Rect2]` in local metres (x, z) covering the hull in
+  plan. Leave out what floats above module roofs (the wreck's tank and pod).
+- `slot_frames` (art only, when the markers differ from the layout):
+  slot → `Vector3(x, z, yaw°)`, i.e. each `slot_X` marker's position and facing.
+
+`test_module_data` fails if the frames don't match the scene's slots or a slot lies
+inside the footprint. A child attaches by any of its slots (the build menu's
+Rotate); `StationGrid.placement_error` refuses overlaps ("Blocked by …").
+
 ## Object names (read by `src/tools/module_import.gd`)
 
 Set `res://src/tools/module_import.gd` as the glTF's **Import Script**

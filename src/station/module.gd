@@ -52,6 +52,8 @@ const ART_WALL := 0.3
 
 var uid := 0
 var def: ModuleDef
+## The slot this module is attached by (StationState own_slot); "" = default.
+var attach_slot_name: StringName = &""
 var state: int = StationState.State.REPAIRED
 var powered := true
 var wear := 0.2
@@ -196,6 +198,8 @@ func get_spawn_position() -> Vector3:
 
 
 func get_attach_slot() -> Slot:
+	if attach_slot_name != &"":
+		return slots.get(attach_slot_name)
 	return slots.get(def.attach_slot if def else &"A")
 
 
@@ -544,7 +548,7 @@ func _build_slots() -> void:
 		slot.rotation.y = atan2(out3.x, out3.z)
 		if def:
 			slot.accepts = def.slots.get(slot_name, PackedStringArray(["module"]))
-			slot.size_class = def.size_class
+			slot.size_class = def.slot_size(slot_name)
 		_built.add_child(slot)
 		slots[slot_name] = slot
 		_hatches[slot_name] = _make_hatch(slot_name, door, out3, hatch_mat)

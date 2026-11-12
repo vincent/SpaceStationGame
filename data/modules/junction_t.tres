@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ModuleDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/module_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"junction_t"
+display_name = "T-junction"
+description = "Splits one passage into two. Branch out."
+scene_path = "res://src/station/modules/junction_t.tscn"
+kind = &"module"
+size_class = 2
+buildable = true
+build_cost = Dictionary[StringName, int]({&"scrap_metal": 5})
+build_minutes = 60.0
+repair_cost = Dictionary[StringName, int]({&"scrap_metal": 1})
+power_output = 0.0
+power_draw = 0.0
+slots = Dictionary[StringName, PackedStringArray]({&"A": PackedStringArray("module"), &"B": PackedStringArray("module"), &"C": PackedStringArray("module")})
+attach_slot = &"A"
+layout = "###
+bLc
+#a#"

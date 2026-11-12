@@ -29,6 +29,15 @@ func can_accept(def: ModuleDef) -> bool:
 
 
 ## World transform a module must have so that its `own_slot` meets this slot.
+## Uses the module's rest transform, so building on a module that is still
+## playing its arrival animation lands in the right place.
 func mate_transform(own_slot: Slot) -> Transform3D:
 	var flip := Transform3D(Basis(Vector3.UP, PI), Vector3.ZERO)
-	return global_transform * flip * own_slot.transform.inverse()
+	return rest_transform() * flip * own_slot.transform.inverse()
+
+
+## World transform of this slot with its module at rest.
+func rest_transform() -> Transform3D:
+	if module == null or not is_inside_tree():
+		return global_transform
+	return module.rest_transform * module.global_transform.affine_inverse() * global_transform

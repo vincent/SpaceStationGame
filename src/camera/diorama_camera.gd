@@ -5,7 +5,8 @@ extends Node3D
 ## input. Zoom moves continuously between two tiers:
 ##   t = 0  station view: the whole station AABB (+ margin) fits the frame
 ##   t = 1  room view:    the focused module fits the frame
-## Drag pans (clamped to the station), pinch/wheel zooms, focus_on() tweens.
+## Drag pans (clamped to the station); only focus_on() changes the zoom (no
+## pinch/wheel: tapping a module zooms in, the "Station view" button out).
 
 signal zoom_changed(t: float)
 signal focus_changed(target: Node3D)
@@ -42,8 +43,6 @@ var _station_aabb := AABB(Vector3(-10, -1, -10), Vector3(20, 4, 20))
 var _focus_aabb := AABB(Vector3(-4, -1, -4), Vector3(8, 4, 8))
 var _tween: Tween
 var _touches: Dictionary[int, Vector2] = {}
-var _pinch_start_distance := 0.0
-var _pinch_start_size := 0.0
 var _last_gesture_msec := -10000
 var _drag_from := Vector2.INF
 var _dragging := false
@@ -74,7 +73,10 @@ func get_station_aabb() -> AABB:
 func focus_on(target: Node3D, tier: Tier = Tier.ROOM, instant: bool = false) -> void:
 	var changed := target != focus_target
 	focus_target = target
-	if target and target.has_method(&"get_world_aabb"):
+	# Rest bounds when it has them: a module may still be playing its arrival drop.
+	if target and target.has_method(&"get_rest_aabb"):
+		_focus_aabb = target.call(&"get_rest_aabb")
+	elif target and target.has_method(&"get_world_aabb"):
 		_focus_aabb = target.call(&"get_world_aabb")
 	var goal := 1.0 if tier == Tier.ROOM else 0.0
 	if _tween:
@@ -204,11 +206,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not input_enabled:
 		return
 	if event is InputEventMouseButton:
-		if event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_zoom_by(1.0 / 0.9)
-		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_zoom_by(0.9)
-		elif event.button_index == MOUSE_BUTTON_LEFT:
+		if event.button_index == MOUSE_BUTTON_LEFT:
 			_drag_from = event.position if event.pressed else Vector2.INF
 			if not event.pressed and _dragging:
 				_dragging = false
@@ -218,9 +216,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			_dragging = true
 		if _dragging:
 			_pan_pixels(event.relative)
-	elif event is InputEventMagnifyGesture:
-		_zoom_by(event.factor)
-		_last_gesture_msec = Time.get_ticks_msec()
 	elif event is InputEventPanGesture:
 		_pan_pixels(-event.delta * 8.0)
 	elif event is InputEventScreenTouch:
@@ -228,18 +223,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_touches[event.index] = event.position
 		else:
 			_touches.erase(event.index)
-		_pinch_start_distance = 0.0
 	elif event is InputEventScreenDrag:
 		_touches[event.index] = event.position
-		if _touches.size() == 2:
-			_update_pinch()
-
-
-## factor > 1 zooms in (towards room view).
-func _zoom_by(factor: float) -> void:
-	if _tween:
-		_tween.kill()
-	_set_t(t_for_size(camera.size / factor))
+		if _touches.size() >= 2:
+			_last_gesture_msec = Time.get_ticks_msec()
 
 
 func _pan_pixels(relative: Vector2) -> void:
@@ -249,15 +236,3 @@ func _pan_pixels(relative: Vector2) -> void:
 	pan += (-global_basis.x * relative.x + global_basis.y * relative.y) * world_per_px
 	_update_camera()
 
-
-func _update_pinch() -> void:
-	var points := _touches.values()
-	var dist: float = (points[0] as Vector2).distance_to(points[1])
-	if _pinch_start_distance <= 0.0:
-		_pinch_start_distance = dist
-		_pinch_start_size = camera.size
-	elif dist > 1.0:
-		if _tween:
-			_tween.kill()
-		_set_t(t_for_size(_pinch_start_size * _pinch_start_distance / dist))
-	_last_gesture_msec = Time.get_ticks_msec()

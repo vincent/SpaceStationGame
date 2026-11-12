@@ -18,3 +18,9 @@ power_draw = 2.0
 production = Dictionary[StringName, float]({&"water": 0.3})
 slots = Dictionary[StringName, PackedStringArray]({&"A": PackedStringArray("capsule", "module"), &"B": PackedStringArray("module"), &"C": PackedStringArray("module"), &"V": PackedStringArray("visitor")})
 attach_slot = &"A"
+layout = "######
+vC..S#
+b....a
+##Wc##"
+massing = Array[Rect2]([Rect2(-4.3, -2.3, 8.6, 4.6), Rect2(-21.2, -9.7, 25.5, 7.25)])
+slot_frames = Dictionary[StringName, Vector3]({&"A": Vector3(4.45, 1, 90), &"B": Vector3(-4.45, 1, -90), &"C": Vector3(1, 2.45, 0), &"V": Vector3(-4.45, -1, -90)})

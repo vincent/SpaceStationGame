@@ -145,6 +145,47 @@ func test_building_a_module_attaches_and_links_navigation() -> void:
 	assert_true(_has_path(player.global_position, room), "path from capsule to the new module")
 
 
+func test_branching_station_through_connectors() -> void:
+	var wreck := station.find_module(&"wreck_core")
+	GameState.give({&"scrap_metal": 60})
+	GameState.repair_module(wreck.uid)
+	var corridor := GameState.build_module(&"corridor", wreck.uid, &"B")
+	var hub := GameState.build_module(&"hub_x", corridor, &"B")
+	assert_gt(hub, 0)
+	# Rotated: the T attaches by its slot B, not its default A.
+	var t := GameState.build_module(&"junction_t", hub, &"B", &"B")
+	assert_gt(t, 0)
+	var hab := GameState.build_module(&"hab_pod", hub, &"D")
+	assert_gt(hab, 0)
+	var hub_module := station.get_module(hub)
+	var t_module := station.get_module(t)
+	assert_eq(t_module.get_attach_slot().slot_name, &"B")
+	assert_eq(hub_module.slots[&"B"].occupied_by, t_module)
+	# The scene agrees with the data-side placement (StationGrid).
+	var expected: Dictionary[int, Transform3D] = StationGrid.transforms(GameState.station)
+	for uid: int in expected:
+		var module := station.get_module(uid)
+		assert_almost_eq(module.rest_transform.origin, expected[uid].origin, Vector3.ONE * 0.02,
+			"%s placed as StationGrid says" % module.name)
+	# No two hulls overlap.
+	var mods: Array = station.modules.values()
+	for i in mods.size():
+		for j in range(i + 1, mods.size()):
+			var a: Module = mods[i]
+			var b: Module = mods[j]
+			if a.def.kind == &"visitor" or b.def.kind == &"visitor":
+				continue
+			assert_false(StationGrid.overlaps(
+				StationGrid.world_rects(a.def, a.rest_transform), StationGrid.world_rects(b.def, b.rest_transform)),
+				"%s / %s overlap" % [a.name, b.name])
+	await wait_seconds(0.8)  # arrival animations + navigation map sync
+	var far := station.get_module(hab)
+	var room := far.interior.to_global(far.interior.cell_to_world(Vector2i(2, 1)))
+	assert_true(_has_path(player.global_position, room), "walk from the capsule through corridor + hub")
+	var end := t_module.interior.to_global(t_module.interior.cell_to_world(Vector2i(1, 1)))
+	assert_true(_has_path(player.global_position, end), "walk into the rotated T-junction")
+
+
 func test_modules_on_wreck_slots_dont_overlap() -> void:
 	var wreck := station.find_module(&"wreck_core")
 	var capsule := station.find_module(&"capsule")

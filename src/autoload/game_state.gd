@@ -10,7 +10,7 @@ extends Node
 const SAVE_PATH := "user://savegame.json"
 ## 2: station modules (StationState) added. 3: story (flags, encounters).
 ## 4: station stock (bulk resources); rations became food.
-const SAVE_VERSION := 4
+const SAVE_VERSION := 5
 const INVENTORY_SLOTS := 20
 
 ## Bulk ids go to the station stock, the rest to the inventory.
@@ -216,12 +216,13 @@ func _on_time_advanced(minutes: float) -> void:
 
 # --- Station actions ---------------------------------------------------------
 
-## "" when the module can be built on `slot` of `parent_uid`, else why not.
-func build_error(module_id: StringName, parent_uid: int, slot: StringName) -> String:
+## "" when the module can be built on `slot` of `parent_uid` (attached by its
+## own slot `by_slot`, default its attach slot), else why not.
+func build_error(module_id: StringName, parent_uid: int, slot: StringName, by_slot: StringName = &"") -> String:
 	var def := module_db.get_module(module_id)
 	if def == null or not def.buildable:
 		return "Can't build that"
-	var err := station.attach_error(module_id, parent_uid, slot)
+	var err := station.attach_error(module_id, parent_uid, slot, by_slot)
 	if err != "":
 		return err
 	if not has_all(def.build_cost):
@@ -229,13 +230,13 @@ func build_error(module_id: StringName, parent_uid: int, slot: StringName) -> St
 	return ""
 
 
-func build_module(module_id: StringName, parent_uid: int, slot: StringName) -> int:
-	if build_error(module_id, parent_uid, slot) != "":
+func build_module(module_id: StringName, parent_uid: int, slot: StringName, by_slot: StringName = &"") -> int:
+	if build_error(module_id, parent_uid, slot, by_slot) != "":
 		return 0
 	var def := module_db.get_module(module_id)
 	pay(def.build_cost)
 	spend_time(def.build_minutes, &"working")
-	var uid := station.add_module(module_id, parent_uid, slot, StationState.State.REPAIRED, 0.3, false)
+	var uid := station.add_module(module_id, parent_uid, slot, StationState.State.REPAIRED, 0.3, false, by_slot)
 	EventBus.toast.emit("%s attached." % def.display_name)
 	story_event(&"built", module_id)
 	return uid

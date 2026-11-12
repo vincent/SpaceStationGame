@@ -9,14 +9,13 @@ signal module_attached(module: Module)
 signal layout_changed
 
 const GHOST_SHADER := preload("res://assets/shaders/ghost.gdshader")
-## Size of the ghost outline drawn beyond a free slot (cells).
-const GHOST_CELLS := Vector3(3, 1.6, 3)
 
 var state: StationState
 var modules: Dictionary[int, Module] = {}
 
 var _links: Dictionary[int, NavigationLink3D] = {}
 var _ghosts: Node3D
+var _preview: MeshInstance3D
 var _ghost_material: ShaderMaterial
 
 
@@ -26,6 +25,12 @@ func _ready() -> void:
 	add_child(_ghosts)
 	_ghost_material = ShaderMaterial.new()
 	_ghost_material.shader = GHOST_SHADER
+	_preview = MeshInstance3D.new()
+	_preview.name = "BuildPreview"
+	_preview.material_override = _ghost_material
+	_preview.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_preview)
+	EventBus.build_preview.connect(show_build_preview)
 
 
 ## Starts mirroring `p_state` (usually GameState.station).
@@ -120,7 +125,7 @@ func attach(module: Module, slot: Slot) -> void:
 	link.bidirectional = true
 	add_child(link)
 	link.global_transform = Transform3D.IDENTITY
-	link.start_position = slot.module.to_global(slot.door_position)
+	link.start_position = slot.module.rest_transform * slot.door_position
 	link.end_position = module.to_global(own.door_position)
 	_links[module.uid] = link
 	module_attached.emit(module)
@@ -158,17 +163,56 @@ func refresh_ghosts() -> void:
 			continue
 		for slot_name in state.free_slots(uid):
 			var slot: Slot = module.slots.get(slot_name)
-			if slot and not GameState.module_db.buildable_for(slot.accepts, slot.size_class).is_empty():
-				_ghosts.add_child(_make_ghost(uid, slot))
+			if slot == null:
+				continue
+			var box := _ghost_box(uid, slot)
+			if box.has_volume():
+				_ghosts.add_child(_make_ghost(uid, slot_name, box))
 
 
-func _make_ghost(uid: int, slot: Slot) -> Node3D:
+## Station-local outline of the smallest buildable module that fits `slot`
+## (empty AABB when none does). Uses the real placement (StationGrid), so the
+## ghost sits on the station plane and never cuts into a neighbour.
+func _ghost_box(uid: int, slot: Slot) -> AABB:
+	var best := AABB()
+	for def in GameState.module_db.buildable_for(slot.accepts, slot.size_class):
+		var options := state.attach_options(def.id, uid, slot.slot_name)
+		if options.is_empty():
+			continue
+		var box := _footprint_box(def, uid, slot.slot_name, options[0])
+		if not best.has_volume() or box.size.x * box.size.z < best.size.x * best.size.z:
+			best = box
+	return best
+
+
+## Station-local bounding box `def` would occupy on `slot` of `parent_uid`,
+## attached by its own slot `by_slot`.
+func _footprint_box(def: ModuleDef, parent_uid: int, slot: StringName, by_slot: StringName) -> AABB:
+	var xform := StationGrid.mate(StationGrid.transforms(state)[parent_uid], state.get_def(parent_uid), slot, def, by_slot)
+	var rects := StationGrid.world_rects(def, xform)
+	var r: Rect2 = rects[0]
+	for other in rects:
+		r = r.merge(other)
+	var bottom := HullMesher.KEEL_BOTTOM
+	var height := Module.WALL_HEIGHT - bottom + HullMesher.ROOF_THICKNESS
+	return AABB(Vector3(r.position.x, bottom, r.position.y), Vector3(r.size.x, height, r.size.y))
+
+
+## Outlines the footprint `module_id` would take on `slot` of `parent_uid`,
+## attached by its own slot `by_slot` (empty `module_id`: hide).
+func show_build_preview(module_id: StringName, parent_uid: int, slot: StringName, by_slot: StringName) -> void:
+	var def := GameState.module_db.get_module(module_id)
+	if def == null or not state.has_module(parent_uid):
+		_preview.mesh = null
+		return
+	var kit := MeshKit.new()
+	kit.box_edges(_footprint_box(def, parent_uid, slot, by_slot), 0.09, Color.WHITE)
+	_preview.mesh = kit.commit()
+
+
+func _make_ghost(uid: int, slot_name: StringName, box: AABB) -> Node3D:
 	var ghost := Node3D.new()
-	ghost.name = "Ghost_%d_%s" % [uid, slot.slot_name]
-	ghost.transform = slot.global_transform
-	var size := GHOST_CELLS * Module.CELL
-	size.y = Module.WALL_HEIGHT - HullMesher.KEEL_BOTTOM + HullMesher.ROOF_THICKNESS
-	var box := AABB(Vector3(-size.x * 0.5, HullMesher.KEEL_BOTTOM, 0.2), size)
+	ghost.name = "Ghost_%d_%s" % [uid, slot_name]
 	var kit := MeshKit.new()
 	kit.box_edges(box, 0.09, Color.WHITE)
 	var mesh := MeshInstance3D.new()
@@ -181,7 +225,7 @@ func _make_ghost(uid: int, slot: Slot) -> Node3D:
 	area.collision_mask = 0
 	area.monitoring = false
 	area.set_meta(&"ghost_parent_uid", uid)
-	area.set_meta(&"ghost_slot", slot.slot_name)
+	area.set_meta(&"ghost_slot", slot_name)
 	var col := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
 	shape.size = box.size
@@ -200,6 +244,7 @@ func _spawn(uid: int, animate: bool) -> Module:
 	var module := scene.instantiate() as Module
 	module.uid = uid
 	module.def = def
+	module.attach_slot_name = state.own_slot(uid)
 	module.name = "Module_%s_%d" % [def.id, uid]
 	add_child(module)
 	module.build()

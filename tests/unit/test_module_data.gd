@@ -30,6 +30,21 @@ func test_every_module_scene_matches_its_definition() -> void:
 		for slot: StringName in module.slots:
 			assert_true(def.slots.has(slot), "%s def declares slot %s" % [id, slot])
 		assert_true(module.slots.has(def.attach_slot), "%s attach slot exists" % id)
+		assert_eq(def.layout, module.interior_ascii, "%s def layout = scene interior_ascii" % id)
+		# StationGrid places modules from data only: its slot frames must be the scene's.
+		var frames := StationGrid.slot_frames(def)
+		for slot: StringName in module.slots:
+			var s: Slot = module.slots[slot]
+			assert_true(frames.has(slot), "%s grid knows slot %s" % [id, slot])
+			if frames.has(slot):
+				var f: Transform3D = frames[slot]
+				assert_almost_eq(f.origin, s.transform.origin, Vector3.ONE * 0.02, "%s slot %s position" % [id, slot])
+				assert_almost_eq(f.basis.z, s.transform.basis.z, Vector3.ONE * 0.02, "%s slot %s facing" % [id, slot])
+				var rects := StationGrid.footprint(def)
+				var inside := false
+				for r in rects:
+					inside = inside or r.grow(-0.05).has_point(Vector2(f.origin.x, f.origin.z))
+				assert_false(inside, "%s slot %s lies outside its footprint" % [id, slot])
 
 
 func test_upgrades_resolve_to_parts() -> void:
