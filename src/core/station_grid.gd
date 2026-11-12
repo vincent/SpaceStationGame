@@ -14,11 +14,33 @@ extends RefCounted
 
 ## Footprints may touch; they overlap only beyond this (m).
 const TOLERANCE := 0.05
+## Size of the spatial hash cells (m) used to find a footprint's neighbours.
+const BUCKET := 8.0
+
+
+## Per-def cache of slot_frames() / footprint() (parsing the layout is slow and
+## placement checks call them O(modules) times):
+## instance id -> [layout, slot_frames, massing, frames, rects]. An entry is
+## recomputed when the def's layout, slot frames or massing were replaced.
+static var _cache: Dictionary[int, Array] = {}
+
+
+static func _cached(def: ModuleDef) -> Array:
+	var entry: Array = _cache.get(def.get_instance_id(), [])
+	if entry.is_empty() or entry[0] != def.layout or not is_same(entry[1], def.slot_frames) \
+			or not is_same(entry[2], def.massing):
+		entry = [def.layout, def.slot_frames, def.massing, _compute_slot_frames(def), _compute_footprint(def)]
+		_cache[def.get_instance_id()] = entry
+	return entry
 
 
 ## Slot letter -> local frame (origin at the doorway's outer face + Slot.GAP,
-## basis z pointing out of the module).
+## basis z pointing out of the module). Shared (cached): don't modify.
 static func slot_frames(def: ModuleDef) -> Dictionary[StringName, Transform3D]:
+	return _cached(def)[3]
+
+
+static func _compute_slot_frames(def: ModuleDef) -> Dictionary[StringName, Transform3D]:
 	var out: Dictionary[StringName, Transform3D] = {}
 	var grid := StationBuilder.parse(def.layout)
 	var offset := _offset(grid)
@@ -61,6 +83,10 @@ static func outward(grid: PackedStringArray, cell: Vector2i) -> Vector2i:
 
 ## Local plan footprint (x -> Rect2.x, z -> Rect2.y).
 static func footprint(def: ModuleDef) -> Array[Rect2]:
+	return _cached(def)[4]
+
+
+static func _compute_footprint(def: ModuleDef) -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	if not def.massing.is_empty():
 		out.assign(def.massing)
@@ -85,7 +111,11 @@ static func mate(parent_xform: Transform3D, parent_def: ModuleDef, parent_slot: 
 
 
 ## uid -> world transform of every module (root at the origin).
+## World transform of every module (cached on the state until its structure
+## changes: shared, don't modify).
 static func transforms(state: StationState) -> Dictionary[int, Transform3D]:
+	if state.placement_cache.has(&"transforms"):
+		return state.placement_cache[&"transforms"]
 	var out: Dictionary[int, Transform3D] = {}
 	for uid in state.uids():  # parents always come first
 		var rec := state.get_record(uid)
@@ -99,6 +129,7 @@ static func transforms(state: StationState) -> Dictionary[int, Transform3D]:
 			out[uid] = Transform3D.IDENTITY
 			continue
 		out[uid] = mate(out[rec.parent], parent_def, rec.slot, def, own)
+	state.placement_cache[&"transforms"] = out
 	return out
 
 
@@ -138,13 +169,69 @@ static func placement_error(state: StationState, module_id: StringName, parent_u
 	if absf(fposmod(yaw + PI / 4.0, PI / 2.0) - PI / 4.0) > 0.01:
 		return "Slots don't line up"
 	var rects := world_rects(def, xform)
-	for uid in all:
-		var other := state.get_def(uid)
-		if other.kind == &"visitor":
-			continue
-		if overlaps(rects, world_rects(other, all[uid])):
-			return "Blocked by %s" % other.display_name
+	var box := bounds(rects).grow(-TOLERANCE)
+	var placed := _placed_rects(state)
+	for uid in _nearby(state, box):
+		var entry: Array = placed[uid]  # [bounds, rects]
+		if box.intersects(entry[0]) and overlaps(rects, entry[1]):
+			return "Blocked by %s" % state.get_def(uid).display_name
 	return ""
+
+
+## uid -> [bounds, world rects] of every non-visitor module, and the spatial
+## hash of their bounds (cached on the state until its structure changes).
+static func _placed_rects(state: StationState) -> Dictionary:
+	if state.placement_cache.has(&"rects"):
+		return state.placement_cache[&"rects"]
+	var all := transforms(state)
+	var out := {}
+	var buckets := {}
+	for uid in all:
+		var def := state.get_def(uid)
+		if def.kind == &"visitor":
+			continue
+		var rects := world_rects(def, all[uid])
+		var box := bounds(rects)
+		out[uid] = [box, rects]
+		for cell in _cells(box):
+			if not buckets.has(cell):
+				buckets[cell] = [] as Array[int]
+			buckets[cell].append(uid)
+	state.placement_cache[&"rects"] = out
+	state.placement_cache[&"buckets"] = buckets
+	return out
+
+
+## Modules whose bounds share a hash cell with `box`, in uid order.
+static func _nearby(state: StationState, box: Rect2) -> Array[int]:
+	_placed_rects(state)
+	var buckets: Dictionary = state.placement_cache[&"buckets"]
+	var found := {}
+	for cell in _cells(box):
+		for uid: int in buckets.get(cell, []):
+			found[uid] = true
+	var out: Array[int] = []
+	out.assign(found.keys())
+	out.sort()
+	return out
+
+
+static func _cells(box: Rect2) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var lo := Vector2i((box.position / BUCKET).floor())
+	var hi := Vector2i((box.end / BUCKET).floor())
+	for x in range(lo.x, hi.x + 1):
+		for y in range(lo.y, hi.y + 1):
+			out.append(Vector2i(x, y))
+	return out
+
+
+## Bounding rectangle of `rects` (empty Rect2 when there are none).
+static func bounds(rects: Array[Rect2]) -> Rect2:
+	var out := rects[0] if not rects.is_empty() else Rect2()
+	for r in rects:
+		out = out.merge(r)
+	return out
 
 
 static func _offset(grid: PackedStringArray) -> Vector3:

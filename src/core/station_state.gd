@@ -25,6 +25,9 @@ const UPGRADE_WEAR_STEP := 0.08
 const MIN_WEAR := 0.12
 
 var db: ModuleDB
+## Derived structure data (sorted uids, slot occupants, StationGrid's transforms
+## and footprints), reset whenever the structure changes (add / remove / clear / load).
+var placement_cache: Dictionary = {}
 
 var _records: Dictionary[int, Dictionary] = {}
 var _next_uid := 1
@@ -36,6 +39,7 @@ func _init(p_db: ModuleDB) -> void:
 
 func clear() -> void:
 	_records.clear()
+	placement_cache.clear()
 	_next_uid = 1
 	reset.emit()
 
@@ -60,6 +64,7 @@ func add_module(
 		"state": state, "wear": clampf(wear, MIN_WEAR, 1.0), "powered": false,
 		"parts": [] as Array[StringName],
 	}
+	placement_cache.clear()
 	module_added.emit(uid)
 	if powered:
 		set_powered(uid, true)
@@ -129,6 +134,7 @@ func remove_module(uid: int) -> void:
 	for child in children_of(uid):
 		remove_module(child)
 	_records.erase(uid)
+	placement_cache.clear()
 	module_removed.emit(uid)
 
 
@@ -146,9 +152,12 @@ func get_def(uid: int) -> ModuleDef:
 
 ## All uids, parents always before their children.
 func uids() -> Array[int]:
-	var out: Array[int] = _records.keys()
-	out.sort()
-	return out
+	if not placement_cache.has(&"uids"):
+		var sorted: Array[int] = _records.keys()
+		sorted.sort()
+		placement_cache[&"uids"] = sorted
+	var out: Array[int] = placement_cache[&"uids"]
+	return out.duplicate()
 
 
 func children_of(uid: int) -> Array[int]:
@@ -161,10 +170,14 @@ func children_of(uid: int) -> Array[int]:
 
 ## uid of the module attached to `slot` of `parent_uid`, or 0.
 func occupant(parent_uid: int, slot: StringName) -> int:
-	for id in uids():
-		if _records[id].parent == parent_uid and _records[id].slot == slot:
-			return id
-	return 0
+	if not placement_cache.has(&"occupants"):
+		var index := {}
+		for id in uids():
+			var key := Vector2i(_records[id].parent, hash(_records[id].slot))
+			if not index.has(key):  # lowest uid wins, like a scan in uid order
+				index[key] = id
+		placement_cache[&"occupants"] = index
+	return placement_cache[&"occupants"].get(Vector2i(parent_uid, hash(slot)), 0)
 
 
 func free_slots(uid: int) -> Array[StringName]:
@@ -338,6 +351,7 @@ func to_dict() -> Dictionary:
 
 func from_dict(data: Dictionary) -> void:
 	_records.clear()
+	placement_cache.clear()
 	for m: Dictionary in data.get("modules", []):
 		var uid := int(m.get("uid", 0))
 		if uid <= 0 or db.get_module(StringName(m.get("module_id", ""))) == null:

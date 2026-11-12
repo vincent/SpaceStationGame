@@ -174,15 +174,31 @@ func refresh_ghosts() -> void:
 ## (empty AABB when none does). Uses the real placement (StationGrid), so the
 ## ghost sits on the station plane and never cuts into a neighbour.
 func _ghost_box(uid: int, slot: Slot) -> AABB:
-	var best := AABB()
-	for def in GameState.module_db.buildable_for(slot.accepts, slot.size_class):
-		var options := state.attach_options(def.id, uid, slot.slot_name)
-		if options.is_empty():
-			continue
-		var box := _footprint_box(def, uid, slot.slot_name, options[0])
-		if not best.has_volume() or box.size.x * box.size.z < best.size.x * best.size.z:
-			best = box
-	return best
+	# Smallest plan area first (a 90° turn keeps it): the first that fits wins.
+	var defs := GameState.module_db.buildable_for(slot.accepts, slot.size_class)
+	defs.sort_custom(func(a: ModuleDef, b: ModuleDef) -> bool: return _plan_area(a) < _plan_area(b))
+	for def in defs:
+		var by := _first_orientation(def, uid, slot.slot_name)
+		if by != &"":
+			return _footprint_box(def, uid, slot.slot_name, by)
+	return AABB()
+
+
+static func _plan_area(def: ModuleDef) -> float:
+	return StationGrid.bounds(StationGrid.footprint(def)).get_area()
+
+
+## The first own slot `def` can attach by on `slot` of `parent_uid` (default
+## attach slot first, like StationState.attach_options), or &"".
+func _first_orientation(def: ModuleDef, parent_uid: int, slot: StringName) -> StringName:
+	if state.attach_error(def.id, parent_uid, slot) == "":
+		return def.attach_slot
+	var others: Array[StringName] = def.slots.keys()
+	others.sort_custom(func(a: StringName, b: StringName) -> bool: return String(a) < String(b))
+	for by in others:
+		if by != def.attach_slot and state.attach_error(def.id, parent_uid, slot, by) == "":
+			return by
+	return &""
 
 
 ## Station-local bounding box `def` would occupy on `slot` of `parent_uid`,

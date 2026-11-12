@@ -17,6 +17,7 @@ story encounters are data-driven: `docs/CONTENT_PIPELINE.md`.
 | Lint | `tools/lint.sh` (needs `pip install "gdtoolkit==4.*"`) |
 | Parse/import check only | `tools/import.sh` |
 | Screenshot (works headless via xvfb) | `tools/screenshot.sh build/shot.png [--view=station\|room] [--focus=wreck_core] [--power=all] [--upgrade=all] [--encounter=intro] [--story=off] [--stock=food:20] [--layout=demo] [--popover=food] [--build-menu] [--explode] [--time=22] [--debug-panel] [--delay=5]` (all hooks: `DebugOverlay._run_cli_commands()`) |
+| Perf stress test (huge station + frame-time report) | `tools/stress.sh [modules=80] [seconds=10] [hooks...]` (`--layout=stress --modules=N --perf=S`; layout = `StressLayout`) |
 | Golden images (compare / re-record) | `tools/golden.sh` · `tools/golden.sh --update [scene]` (or `/update-goldens`) |
 | Run game / open editor | `tools/run.sh` · `tools/editor.sh` |
 | Build a kit module (Blender ≥ 4.2) | `tools/art.sh <id> [--render]` → `tools/new_module.py <id>` (or `/new-module`) |

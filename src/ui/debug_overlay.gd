@@ -162,6 +162,8 @@ func _give_selected() -> void:
 ##   --stock=<id>:<n>[,...] set station stock amounts (bulk items)
 ##   --popover=<id>         open the status bar popover of a resource (or power)
 ##   --freeze               pause the clock and character routines (goldens)
+##   --layout=demo|stress   a branched demo station, or a huge one (--modules=<n>, default 80)
+##   --perf=<seconds>       sample frame times for that long, print a report and quit
 ##   --build=<id>[,<id>]    attach modules on the first free slots (free, instant)
 ##   --repair=<module_id>   repair a module instantly (also: all)
 ##   --power=<module_id>    repair + power a module instantly (also: all)
@@ -203,6 +205,8 @@ func _run_cli_commands() -> void:
 				push_warning("--stock: '%s' is not <bulk item>:<amount>" % entry)
 	if args.get("layout", "") == "demo":
 		_cheat_demo_layout()
+	elif args.get("layout", "") == "stress":
+		await _cheat_stress_layout(int(args.get("modules", "80")))
 	if args.has("build"):
 		for module_id in String(args.build).split(",", false):
 			_cheat_build(StringName(module_id))
@@ -250,6 +254,10 @@ func _run_cli_commands() -> void:
 			if not st.free_slots(uid).is_empty():
 				EventBus.ghost_slot_tapped.emit(uid, st.free_slots(uid)[0])
 				break
+	if args.has("perf"):
+		await _perf_report(float(args.perf) if args.perf != "" else 10.0)
+		if not args.has("screenshot"):
+			get_tree().quit()
 	if args.has("screenshot"):
 		await get_tree().create_timer(float(args.get("delay", "3"))).timeout
 		var image := get_viewport().get_texture().get_image()
@@ -314,6 +322,75 @@ func _cheat_demo_layout() -> void:
 			if st.attach_error(module_id, node, slot) == "":
 				st.add_module(module_id, node, slot, r, 0.3)
 				break
+
+
+## A huge station (perf stress test): repairs the wreck and grows `count`
+## modules breadth-first (StressLayout), then reports how long the state and
+## the scene mirror took.
+func _cheat_stress_layout(count: int) -> void:
+	var st := GameState.station
+	st.repair(st.find_module(&"wreck_core"))
+	var start := Time.get_ticks_usec()
+	var added := StressLayout.grow(st, count)
+	var built_ms := (Time.get_ticks_usec() - start) / 1000.0
+	await get_tree().process_frame
+	var first_frame_ms := (Time.get_ticks_usec() - start) / 1000.0
+	print("STRESS: %d modules added (%d asked, %d total) in %.0f ms, first frame after %.0f ms" % [
+		added, count, st.uids().size(), built_ms, first_frame_ms])
+	var station := get_tree().current_scene.get_node_or_null(^"Station") as Station
+	if station:  # runs on every stock / inventory change: must stay cheap
+		start = Time.get_ticks_usec()
+		station.refresh_ghosts()
+		print("STRESS: one refresh_ghosts() %.1f ms" % ((Time.get_ticks_usec() - start) / 1000.0))
+
+
+## Samples frame times for `seconds` (after a 1 s warm-up) and prints FPS,
+## frame time percentiles and render/scene counters.
+func _perf_report(seconds: float) -> void:
+	await get_tree().create_timer(1.0).timeout
+	var times: Array[float] = []
+	var end := Time.get_ticks_msec() + int(seconds * 1000.0)
+	var last := Time.get_ticks_usec()
+	var draw_calls := 0
+	var primitives := 0
+	var process_ms := 0.0
+	var process_max := 0.0
+	while Time.get_ticks_msec() < end:
+		await get_tree().process_frame
+		var now := Time.get_ticks_usec()
+		times.append((now - last) / 1000.0)
+		last = now
+		var p := Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+		process_ms += p
+		process_max = maxf(process_max, p)
+		draw_calls = maxi(draw_calls, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
+		primitives = maxi(primitives, int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)))
+	if times.is_empty():
+		return
+	var sorted := times.duplicate()
+	sorted.sort()
+	var total := 0.0
+	for t in times:
+		total += t
+	var avg := total / times.size()
+	var pct := func(p: float) -> float: return sorted[mini(int(p * sorted.size()), sorted.size() - 1)]
+	var lines := PackedStringArray([
+		"PERF: %d frames in %.1f s, %s renderer" % [
+			times.size(), total / 1000.0, RenderingServer.get_current_rendering_method()],
+		"PERF: fps avg %.1f | frame ms avg %.2f p50 %.2f p95 %.2f p99 %.2f max %.2f" % [
+			1000.0 / avg, avg, pct.call(0.5), pct.call(0.95), pct.call(0.99), sorted[-1]],
+		"PERF: process (CPU, scripts) avg %.2f max %.2f ms | physics %.2f ms nav %.2f ms" % [
+			process_ms / times.size(), process_max,
+			Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
+			Performance.get_monitor(Performance.TIME_NAVIGATION_PROCESS) * 1000.0],
+		"PERF: modules %d | nodes %d | objects %d | draw calls max %d | primitives max %d" % [
+			GameState.station.uids().size(), Performance.get_monitor(Performance.OBJECT_NODE_COUNT),
+			Performance.get_monitor(Performance.OBJECT_COUNT), draw_calls, primitives],
+		"PERF: static mem %.0f MiB | video mem %.0f MiB" % [
+			Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0,
+			Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0],
+	])
+	print("\n".join(lines))
 
 
 func _cheat_state(module_id: String, power: bool) -> void:
