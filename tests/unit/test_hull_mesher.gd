@@ -63,3 +63,20 @@ func test_spine_only_deep_inside() -> void:
 	var grid := StationBuilder.parse(LAYOUTS[1])
 	assert_true(HullMesher.is_solid(grid, Vector2i(8, 2), 3))
 	assert_false(HullMesher.is_solid(grid, Vector2i(8, 1), 3))
+
+
+func test_outer_wall_lines_are_thin() -> void:
+	# Trader-like: top/bottom rows and the left column hold only walls -> thin;
+	# the right column has the slot doorway -> stays a whole cell.
+	var grid := StationBuilder.parse("#####\n#T..a\n#####")
+	var lines := HullMesher.edge_lines(grid, 2.0, Vector3.ZERO)
+	assert_almost_eq(lines.x[1] - lines.x[0], HullMesher.THIN_WALL, 0.001, "left wall thin")
+	assert_almost_eq(lines.x[5] - lines.x[4], 2.0, 0.001, "doorway column whole")
+	assert_almost_eq(lines.z[1] - lines.z[0], HullMesher.THIN_WALL, 0.001, "top wall thin")
+	assert_almost_eq(lines.z[3] - lines.z[2], HullMesher.THIN_WALL, 0.001, "bottom wall thin")
+	assert_almost_eq(lines.x[2] - lines.x[1], 2.0, 0.001, "room cells untouched")
+	var aabb: AABB = _build("#####\n#T..a\n#####").aabb
+	assert_lt(aabb.size.z, 2.0 + 2.0 * HullMesher.THIN_WALL + 0.5, "hull hugs the room")
+	# A bay window in an outer wall still allows thinning; floor does not.
+	assert_true(HullMesher.is_thin_cell(StationBuilder.parse("##W##\n#...#\n##a##"), Vector2i(2, 0)))
+	assert_false(HullMesher.is_thin_cell(StationBuilder.parse("##W##\n#...#\n##a##"), Vector2i(2, 2)))

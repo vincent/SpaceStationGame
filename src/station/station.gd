@@ -70,11 +70,17 @@ func find_module(module_id: StringName) -> Module:
 
 
 ## The module whose hull contains `world_pos` (null if outside every hull).
+## The module containing `world_pos`. Bounds can nest (a ship docked inside a
+## big module's box, e.g. the trader at the wreck), so the smallest wins.
 func module_at(world_pos: Vector3) -> Module:
+	var best: Module = null
+	var best_volume := INF
 	for module: Module in modules.values():
-		if module.get_world_aabb().grow(0.05).has_point(world_pos):
-			return module
-	return null
+		var box := module.get_world_aabb().grow(0.05)
+		if box.has_point(world_pos) and box.get_volume() < best_volume:
+			best = module
+			best_volume = box.get_volume()
+	return best
 
 
 func get_aabb() -> AABB:

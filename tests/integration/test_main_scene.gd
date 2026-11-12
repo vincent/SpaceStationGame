@@ -197,6 +197,9 @@ func test_visitor_docks_and_leaves() -> void:
 	assert_eq(ship.def.kind, &"visitor")
 	assert_not_null(_find_interactable("trader"))
 	await wait_seconds(VisitorDirector.APPROACH_SECONDS + 0.3)
+	# The docked ship sits inside the wreck's bounds: standing in it must
+	# focus the ship (camera follow + cutaway), not the wreck.
+	assert_eq(station.module_at(_find_interactable("trader").global_position), ship)
 	director.depart()
 	await wait_seconds(VisitorDirector.APPROACH_SECONDS + 0.3)
 	assert_eq(director.visitor_uid, 0)

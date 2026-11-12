@@ -161,6 +161,7 @@ func _give_selected() -> void:
 ##   --debug-panel          open this panel
 ##   --inventory            open the inventory
 ##   --freeze               pause the clock and character routines (goldens)
+##   --build=<id>[,<id>]    attach modules on the first free slots (free, instant)
 ##   --repair=<module_id>   repair a module instantly (also: all)
 ##   --power=<module_id>    repair + power a module instantly (also: all)
 ##   --upgrade=<upgrade_id> install an upgrade instantly (also: all)
@@ -192,6 +193,10 @@ func _run_cli_commands() -> void:
 			r.set(&"enabled", false)
 		for life: Node in main.find_children("*", "ExteriorLife", true, false):
 			life.process_mode = Node.PROCESS_MODE_DISABLED
+	if args.has("build"):
+		for module_id in String(args.build).split(",", false):
+			_cheat_build(StringName(module_id))
+		await get_tree().process_frame  # the Station mirror attaches them
 	for key: String in ["repair", "power"]:
 		if args.has(key):
 			_cheat_state(String(args[key]), key == "power")
@@ -207,6 +212,8 @@ func _run_cli_commands() -> void:
 			push_warning("--encounter: no encounter '%s'" % args.encounter)
 	if args.has("visitor"):
 		_summon_visitor()
+		if args.has("focus"):  # frame the ship once it has docked
+			await get_tree().create_timer(VisitorDirector.APPROACH_SECONDS + 0.3).timeout
 	if args.has("cut") and args.cut == "off":
 		_toggle_cut()
 	if args.has("backfaces"):
@@ -252,6 +259,17 @@ func _cli_view(main: Node, module_id: String, view: String) -> void:
 	main.call(&"focus_module", module, true)
 	if view == "station":
 		(main.get_node(^"DioramaCamera") as DioramaCamera).focus_on(module, DioramaCamera.Tier.STATION, true)
+
+
+## Attaches a module on the first free slot that takes it (no cost, no time).
+func _cheat_build(module_id: StringName) -> void:
+	var st := GameState.station
+	for uid in st.uids():
+		for slot in st.free_slots(uid):
+			if st.attach_error(module_id, uid, slot) == "":
+				st.add_module(module_id, uid, slot, StationState.State.REPAIRED, 0.3, false)
+				return
+	push_warning("--build: no free slot for '%s'" % module_id)
 
 
 func _cheat_state(module_id: String, power: bool) -> void:

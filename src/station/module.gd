@@ -114,6 +114,8 @@ func build() -> void:
 	if has_art():
 		interior.hide_slot_floor = true
 		interior.wall_furniture_inset = CELL * 0.5 - ART_WALL * 0.5
+	elif _wall_furniture_in_thin_walls():
+		interior.wall_furniture_inset = CELL * 0.5 - HullMesher.THIN_WALL * 0.5
 	nav_region.add_child(interior)
 	interior.build()
 
@@ -445,6 +447,20 @@ func _lights_from_entrance() -> Array[int]:
 
 
 # --- Building ----------------------------------------------------------------
+
+## Procedural hull: are all bay windows in thinned outer walls (HullMesher)?
+## Then they move in to sit inside the thin wall, as in imported art.
+func _wall_furniture_in_thin_walls() -> bool:
+	var grid := StationBuilder.parse(interior_ascii)
+	var found := false
+	for z in grid.size():
+		for x in grid[z].length():
+			if StationBuilder.WALL_FURNITURE.contains(grid[z][x]):
+				if not HullMesher.is_thin_cell(grid, Vector2i(x, z)):
+					return false
+				found = true
+	return found
+
 
 func _build_hull() -> void:
 	var mat := ToonMaterials.get_cut_material(hull_color, 0.0, true, trim_color)
