@@ -158,7 +158,7 @@ colliders, furniture, spawn); art only has to line up with its cells.
 | **G** | emissive mask — running lights, screens; glows only when the module is powered |
 | **B** | trim mask — mixes the hull colour towards the module's trim colour (panels, stripes) |
 
-Wear itself is an instance uniform (`wear`, 0–1) blended with world-space
+Wear itself is a per-module uniform (`wear`, 0–1, on the module's own material copies) blended with world-space
 grunge noise, so one mesh covers derelict → cared-for.
 
 With an `art_palette`, B is effectively off (trim colours are already in the

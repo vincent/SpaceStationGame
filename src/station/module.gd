@@ -81,6 +81,9 @@ var _strip_level := 1.0
 var _fx_level := 1.0
 var _hatches: Dictionary[StringName, Node3D] = {}
 var _cut_geometry: Array[GeometryInstance3D] = []
+## This module's own copies of the toon_cut materials its geometry uses
+## (per-module values: wear, power, cap tint, sweeps).
+var _cut_materials: Array[ShaderMaterial] = []
 var _art_greebles: Array[Node3D] = []
 var _cut_box: MeshInstance3D
 var _sequence: Tween
@@ -102,6 +105,7 @@ func build() -> void:
 	_light_cards.clear()
 	_light_levels.clear()
 	_cut_geometry.clear()
+	_cut_materials.clear()
 	_built = Node3D.new()
 	_built.name = "Built"
 	add_child(_built)
@@ -135,6 +139,7 @@ func build() -> void:
 	_ambient = Node3D.new()
 	_ambient.name = "Ambient"
 	_built.add_child(_ambient)
+	_localize_cut_materials()
 	_apply_instance_params()
 	_apply_light_levels()
 	refresh_parts()
@@ -404,7 +409,9 @@ func _set_fx_level(level: float) -> void:
 	_fx_level = level
 	for node in find_children("*", "GeometryInstance3D", true, false):
 		if node.is_in_group(&"powered_fx"):
-			(node as GeometryInstance3D).set_instance_shader_parameter(&"active", level)
+			var mat := (node as GeometryInstance3D).material_override as ShaderMaterial
+			if mat:  # each fx mesh owns its material (AmbientKit, Console)
+				mat.set_shader_parameter(&"active", level)
 
 
 func _set_light_level(index: int, level: float) -> void:
@@ -424,8 +431,9 @@ func _apply_light_levels() -> void:
 		_lights[i].light_energy = LIGHT_ENERGY * _light_levels[i] * scale
 		_lights[i].light_color = color
 		_lights[i].visible = _light_levels[i] > 0.01
-		_light_cards[i].set_instance_shader_parameter(&"intensity", _light_levels[i] * scale)
-		_light_cards[i].set_instance_shader_parameter(&"tint", color)
+		var card_mat := _light_cards[i].material_override as ShaderMaterial
+		card_mat.set_shader_parameter(&"intensity", _light_levels[i] * scale)
+		card_mat.set_shader_parameter(&"tint", color)
 
 
 func _process(_delta: float) -> void:
@@ -515,7 +523,7 @@ func _build_lights() -> void:
 		root.add_child(light)
 		var card := MeshInstance3D.new()
 		card.mesh = card_mesh
-		card.material_override = card_mat
+		card.material_override = card_mat.duplicate()  # own intensity / tint
 		card.position = pos + Vector3(0, 0.02, 0)
 		card.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(card)
@@ -693,6 +701,29 @@ func _apply_instance_params() -> void:
 
 
 func _set_param(param: StringName, value: Variant) -> void:
+	for mat in _cut_materials:
+		mat.set_shader_parameter(param, value)
+
+
+## Swaps the shared (cached) toon_cut materials of the cut geometry for copies
+## owned by this module, so _set_param() changes this module only.
+func _localize_cut_materials() -> void:
+	var local := {}  # shared material -> this module's copy
+	var swap := func(mat: Material) -> Material:
+		if not (mat is ShaderMaterial and (mat as ShaderMaterial).shader == ToonMaterials.TOON_CUT_SHADER):
+			return null
+		if not local.has(mat):
+			var copy := mat.duplicate() as ShaderMaterial  # shallow: the outline next_pass stays shared
+			local[mat] = copy
+			_cut_materials.append(copy)
+		return local[mat]
 	for geo in _cut_geometry:
-		if is_instance_valid(geo):
-			geo.set_instance_shader_parameter(param, value)
+		var over: Material = swap.call(geo.material_override)
+		if over:
+			geo.material_override = over
+		elif geo is MeshInstance3D and (geo as MeshInstance3D).mesh:
+			var mesh := geo as MeshInstance3D
+			for i in mesh.get_surface_override_material_count():
+				var surface: Material = swap.call(mesh.get_active_material(i))
+				if surface:
+					mesh.set_surface_override_material(i, surface)

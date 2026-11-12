@@ -55,6 +55,22 @@ func test_station_mirrors_game_state() -> void:
 	assert_false(capsule.get_world_aabb().intersects(wreck.get_world_aabb().grow(-0.02)), "hulls don't overlap")
 
 
+func test_modules_own_their_cut_materials() -> void:
+	var capsule := station.find_module(&"capsule")
+	var wreck := station.find_module(&"wreck_core")
+	assert_false(wreck._cut_materials.is_empty())
+	for mat in wreck._cut_materials:
+		assert_false(capsule._cut_materials.has(mat), "no cut material shared between modules")
+	for geo in wreck._cut_geometry:
+		var mat := geo.material_override as ShaderMaterial
+		if mat and mat.shader == ToonMaterials.TOON_CUT_SHADER:
+			assert_true(wreck._cut_materials.has(mat), "%s uses the module's own copy" % geo.name)
+	wreck.set_wear(0.9)
+	capsule.set_wear(0.2)
+	assert_almost_eq(float(wreck._cut_materials[0].get_shader_parameter(&"wear")), 0.9, 0.001)
+	assert_almost_eq(float(capsule._cut_materials[0].get_shader_parameter(&"wear")), 0.2, 0.001)
+
+
 func test_player_spawns_in_capsule() -> void:
 	assert_almost_eq(player.global_position, station.spawn_position(), Vector3.ONE * 0.01)
 	assert_eq(station.module_at(player.global_position), station.find_module(&"capsule"))

@@ -10,6 +10,7 @@ extends Node3D
 
 var rng := RandomNumberGenerator.new()
 var _timer := 5.0
+var _ship_material: ShaderMaterial
 
 
 func _ready() -> void:
@@ -34,8 +35,10 @@ func spawn_traffic() -> Node3D:
 	kit.box(Vector3(-1.3, 0, 0), Vector3(0.2, 0.25, 0.25), Color(0, 1, 0))
 	var ship := MeshInstance3D.new()
 	ship.mesh = kit.commit()
-	ship.material_override = ToonMaterials.get_cut_material(Palette.STEEL, 0.0, true)
-	ship.set_instance_shader_parameter(&"sweep_range", Vector2(-1000, 1000))
+	if _ship_material == null:  # strips lit wherever the ship flies
+		_ship_material = ToonMaterials.get_cut_material(Palette.STEEL, 0.0, true).duplicate()
+		_ship_material.set_shader_parameter(&"sweep_range", Vector2(-1000, 1000))
+	ship.material_override = _ship_material
 	ship.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var light := OmniLight3D.new()
 	light.light_color = Palette.NEON_PINK if rng.randf() < 0.5 else Palette.NEON_CYAN

@@ -12,7 +12,8 @@ uniform int mode = 0;
 uniform vec4 color : source_color = vec4(0.18, 0.89, 0.9, 1.0);
 uniform float energy = 3.0;
 uniform float speed = 1.0;
-instance uniform float active = 1.0;
+// Driven by the module (powered_fx group); each fx mesh has its own material.
+uniform float active = 1.0;
 
 void vertex() {
 	if (mode == 2) {

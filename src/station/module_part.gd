@@ -45,7 +45,7 @@ func build(material: Material) -> void:
 	mesh_instance.material_override = material
 
 
-## Every GeometryInstance3D of the part (for instance uniforms), including
+## Every GeometryInstance3D of the part (the module gives it its own cut material copies), including
 ## the part node itself when the import script put the script on a mesh.
 func geometries() -> Array[GeometryInstance3D]:
 	var out: Array[GeometryInstance3D] = []

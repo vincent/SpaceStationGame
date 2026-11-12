@@ -22,14 +22,15 @@ uniform vec4 sweep_color : source_color = vec4(1.0, 0.83, 0.1, 1.0);
 // swatch) instead of strip_color, so a lamp glows amber and a screen cyan.
 uniform bool emission_from_texture = false;
 
-// Per module (GeometryInstance3D.set_instance_shader_parameter).
-instance uniform vec4 cap_tint : source_color = vec4(1.0, 1.0, 1.0, 1.0);
-instance uniform float wear = 0.0;
-instance uniform float power_level = 1.0;
+// Per module: each Module owns copies of its cut materials and sets these on
+// them (plain uniforms: per-instance ones ran out of global slots past ~40 modules).
+uniform vec4 cap_tint : source_color = vec4(1.0, 1.0, 1.0, 1.0);
+uniform float wear = 0.0;
+uniform float power_level = 1.0;
 // x = world X where power/repair sweeps start, y = where they end.
-instance uniform vec2 sweep_range = vec2(-10.0, 10.0);
+uniform vec2 sweep_range = vec2(-10.0, 10.0);
 // 0 = idle, (0, 1] = repair sweep band position.
-instance uniform float repair_flash = 0.0;
+uniform float repair_flash = 0.0;
 
 float hash3(vec3 p) {
 	p = fract(p * 0.3183099 + 0.1);

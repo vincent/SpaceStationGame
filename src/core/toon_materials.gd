@@ -30,7 +30,8 @@ static func get_material(color: Color, emission: float = 0.0, outline: bool = tr
 
 
 ## Material for station structure. `trim` is mixed in by the vertex colour B
-## mask; per-module values (wear, power, cap tint) are instance uniforms.
+## mask. Shared: Module swaps in its own copies for per-module values (wear,
+## power, cap tint, sweeps).
 static func get_cut_material(
 		color: Color, emission: float = 0.0, outline: bool = true, trim: Color = Color(0.16, 0.17, 0.2)
 ) -> ShaderMaterial:
