@@ -721,14 +721,15 @@ def pipe_run(a, b, face, coll, parent, kit="gk_pipe", clamps=True, interior=Fals
 
 # ================================================================ modules
 # Module grids (must match the interior_ascii of src/station/modules/*.tscn):
-#   wreck_core  "######" / "vC..S#" / "b....a" / "##W#c#"   6 x 4 cells
-#   capsule     "#####"  / "aP.B#"  / "#..K#" / "#####"      5 x 4 cells
+#   wreck_core  "######" / "vC..S#" / "b....a" / "##Wc##"   6 x 4 cells
+#   capsule     "#####"  / "aP.B#"  / "a..K#" / "#####"      5 x 4 cells (doorway spans both rows: the
+#               docking port is on the capsule axis)
 # One cell = 2 m. Game floor top (y = 0) = Blender z 0.3. ASCII column -> +X,
 # ASCII row -> -Y (Godot +Z = Blender -Y). Module origin = layout centre on the floor.
 CELL = 2.0
 FLOOR_Z = 0.3
 WRECK_ORIGIN = Vector((7.2, -3.7, FLOOR_Z))
-CAP_ORIGIN = Vector((16.8, -5.7, FLOOR_Z))
+CAP_ORIGIN = Vector((16.8, -4.7, FLOOR_Z))  # axis on DOOR_Y: docking port centred on the nose
 DOOR_Y = -4.7  # row of the capsule doorway (wreck slot A / capsule slot A)
 SLOT_OUT = 0.15  # slot markers sit just outside the hull (Slot.GAP)
 
@@ -775,7 +776,7 @@ def build_wreck(cols, mats):
         ((11.0, DOOR_Y - 0.8, dz[0]), (11.5, DOOR_Y + 0.8, dz[1])),   # A  (+X, capsule)
         ((2.4, DOOR_Y - 0.8, dz[0]), (3.4, DOOR_Y + 0.8, dz[1])),     # B  (-X)
         ((2.4, -3.5, dz[0]), (3.4, -1.9, dz[1])),                     # V  (-X, visitors)
-        ((9.4, -6.5, dz[0]), (11.0, -5.5, dz[1])),                    # C  (front)
+        ((7.4, -6.5, dz[0]), (9.0, -5.5, dz[1])),                     # C  (front)
     ]
     # Capsule-style hull: rounded sections, offwhite over red, ring bands. The wreck
     # is the capsule's older sibling: faded panels, rust, a torn-open window.
@@ -810,7 +811,7 @@ def build_wreck(cols, mats):
         paint(mb, rounded_band(mb, 0.25, 0.75, *sect(POD), grow=0.1), C["red"], mask(0.3))
         for x0, x1 in ((2.9, 3.35), (11.05, 11.5)):  # Room A end rings (doorways stay open)
             paint(mb, rounded_band(mb, x0, x1, *sect(ROOM_A), grow=0.12), C["offwhite"], mask(0.3, 0, 1))
-        paint(mb, rounded_band(mb, 6.95, 7.35, *sect(ROOM_A), grow=0.08), C["red"], mask(0.3))
+        paint(mb, rounded_band(mb, 5.0, 5.4, *sect(ROOM_A), grow=0.08), C["red"], mask(0.3))
         # the torn-open window of room B (dark gap + bent frame bars)
         mb.box((-11.8, -1.56, 2.0), (-7.8, -1.45, 4.55), C["ink"], mask(0.9))
         for x in (-11.2, -10.1, -9.0):
@@ -930,7 +931,7 @@ def build_wreck(cols, mats):
         empty("slot_A@wreck_core", (11.5 + SLOT_OUT, DOOR_Y, FLOOR_Z), co, "SINGLE_ARROW", 0.8, (0, 0, 90)),
         empty("slot_B@wreck_core", (2.9 - SLOT_OUT, DOOR_Y, FLOOR_Z), co, "SINGLE_ARROW", 0.8, (0, 0, -90)),
         empty("slot_V@wreck_core", (2.9 - SLOT_OUT, -2.7, FLOOR_Z), co, "SINGLE_ARROW", 0.8, (0, 0, -90)),
-        empty("slot_C@wreck_core", (10.2, -6.0 - SLOT_OUT, FLOOR_Z), co, "SINGLE_ARROW", 0.8, (0, 0, 0)),
+        empty("slot_C@wreck_core", (8.2, -6.0 - SLOT_OUT, FLOOR_Z), co, "SINGLE_ARROW", 0.8, (0, 0, 0)),
     ]
     for s in slots:
         s["note"] = "local -Y (Blender) = +Z (Godot) points out of the module"
@@ -952,7 +953,7 @@ def build_wreck(cols, mats):
 
     # ---------------------------------------------------------- Room A interior (props)
     # Game furniture owns cells C (4.2, -2.7), S (10.2, -2.7) and the window W (front
-    # wall, x 8.2); props hug the walls and stay out of the doorways.
+    # wall, x 6.2); doorway C is at x 8.2. Props hug the walls and stay out of the doorways.
     def prop(name, build):
         mb = MB()
         build(mb)
@@ -970,9 +971,9 @@ def build_wreck(cols, mats):
     prop("prop_crate_table", table)
 
     def toolbox(mb):
-        mb.box((8.3, -5.6, FLOOR_Z), (9.0, -5.25, 0.6), C["red"], mask(0.4), mat=INT, rot=(0, 0, -8))
-        mb.box((8.55, -5.45, 0.6), (8.75, -5.4, 0.68), C["ink"], mask(0.2), mat=INT, rot=(0, 0, -8))
-        mb.box((7.6, -5.5, FLOOR_Z), (8.0, -5.4, 0.33), C["steel_lt"], mask(0.3), mat=INT, rot=(0, 0, 30))
+        mb.box((10.0, -5.6, FLOOR_Z), (10.7, -5.25, 0.6), C["red"], mask(0.4), mat=INT, rot=(0, 0, -8))
+        mb.box((10.25, -5.45, 0.6), (10.45, -5.4, 0.68), C["ink"], mask(0.2), mat=INT, rot=(0, 0, -8))
+        mb.box((9.4, -5.5, FLOOR_Z), (9.8, -5.4, 0.33), C["steel_lt"], mask(0.3), mat=INT, rot=(0, 0, 30))
     prop("prop_toolbox", toolbox)
 
     def debris(mb):
@@ -1046,9 +1047,9 @@ def build_wreck(cols, mats):
     # Room A outer wall (below the cut, clear of doorway C)
     g("gk_hazard", (6.1, -6.0, 0.85), "-Y", 0, (2.9, 1, 1))
     g("gk_stencil_A01", (4.0, -6.0, 0.45), "-Y", 0, (0.7, 0.7, 1))
-    g("gk_rust_streak", (8.6, -6.0, 0.72), "-Y", 0, (0.8, 0.3, 1))
+    g("gk_rust_streak", (10.0, -6.0, 0.72), "-Y", 0, (0.8, 0.3, 1))
     g("gk_rust_streak", (4.9, -6.0, 1.3), "-Y", 0, (0.9, 0.6, 1))
-    g("gk_chip", (8.9, -6.0, 1.6), "-Y", 40)
+    g("gk_chip", (10.4, -6.0, 1.6), "-Y", 40)
     # top deck of the hub (z = 7, flat between y 0.3 and 4.6); the game adds
     # part_reactor (10.4, 4.4) and part_radiator (9.6, 0.8) there: keep that corner clear
     for (x, y), spn in (((7.0, 3.6), 0), ((7.0, 1.6), 0)):
@@ -1108,7 +1109,7 @@ def build_capsule(cols, mats):
 
     cx, y, ax = CAP_ORIGIN.x, CAP_ORIGIN.y, FLOOR_Z + 1.0
     R, half = 2.5, 2.4
-    dy = DOOR_Y  # the doorway row (row 1) is 1 m off the capsule axis
+    dy = DOOR_Y  # the docking port is on the capsule axis (between the two floor rows)
     # ---------------------------------------------------------- hull: capsule shape, two-tone
     mb = MB()
     v = bmesh.ops.create_uvsphere(mb.bm, u_segments=32, v_segments=16, radius=R)["verts"]

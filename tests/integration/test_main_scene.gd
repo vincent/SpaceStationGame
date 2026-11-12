@@ -145,6 +145,21 @@ func test_building_a_module_attaches_and_links_navigation() -> void:
 	assert_true(_has_path(player.global_position, room), "path from capsule to the new module")
 
 
+func test_modules_on_wreck_slots_dont_overlap() -> void:
+	var wreck := station.find_module(&"wreck_core")
+	var capsule := station.find_module(&"capsule")
+	GameState.give({&"scrap_metal": 40})
+	GameState.repair_module(wreck.uid)
+	var front := station.get_module(GameState.build_module(&"agri_bay", wreck.uid, &"C"))
+	var side := station.get_module(GameState.build_module(&"hab_pod", wreck.uid, &"B"))
+	assert_not_null(front)
+	assert_not_null(side)
+	var front_box := front.get_rest_aabb().grow(-0.02)
+	var side_box := side.get_rest_aabb().grow(-0.02)
+	assert_false(front_box.intersects(capsule.get_world_aabb()), "slot C module clears the capsule")
+	assert_false(front_box.intersects(side_box), "slot C module clears the slot B module")
+
+
 func test_load_rebuilds_station() -> void:
 	var wreck := station.find_module(&"wreck_core")
 	GameState.give({&"scrap_metal": 20})

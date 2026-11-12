@@ -1,6 +1,6 @@
 {
  "capsule": {
-  "triangles": 4126,
+  "triangles": 4062,
   "materials": [
    "M_emissive",
    "M_hull",
@@ -10,7 +10,7 @@
   "heaviest": [
    [
     "hull@capsule",
-    1958
+    1894
    ],
    [
     "part_nose_collar",
@@ -43,7 +43,7 @@
   ]
  },
  "wreck_core": {
-  "triangles": 14892,
+  "triangles": 14890,
   "materials": [
    "M_emissive",
    "M_hull",
@@ -53,7 +53,7 @@
   "heaviest": [
    [
     "hull@wreck_core",
-    5464
+    5462
    ],
    [
     "prop_cables",

@@ -24,7 +24,8 @@ lists the heaviest objects. In game, every mesh is drawn with the palette materi
 so the Blender materials only matter for the preview renders.
 
 - **capsule**: a 9.8 × 5 m pod (r 2.5). Its two-tone hull has two holes cut through
-  its 0.2 m wall: the docking doorway in the nose and the open side hatch.
+  its 0.2 m wall: the docking doorway in the middle of the nose (its axis is on the
+  wreck's doorway-A row, so the collar is centred on the dome) and the open side hatch.
   Parts: nose collar (docking tube), RCS ring, canopy, hatch door, `part_antenna`
   and `part_thruster` (the engine bell). Those two are the `capsule_antenna` /
   `capsule_thruster` upgrades, so they stay hidden in game until bought.
@@ -58,15 +59,16 @@ The ASCII layouts are the gameplay truth, so the art follows them:
 
 | Module | `interior_ascii` | Notes |
 |---|---|---|
-| capsule | `#####` / `aP.B#` / `#..K#` / `#####` | 3 × 2 cells. The bed and kitchen cut the navmesh, so the room needs 2 rows. |
-| wreck_core | `######` / `vC..S#` / `b....a` / `##W#c#` | Room A only: 4 × 2 cells. Rooms B and C are closed art. |
+| capsule | `#####` / `aP.B#` / `a..K#` / `#####` | 3 × 2 cells. The bed and kitchen cut the navmesh, so the room needs 2 rows. The doorway `a` spans both rows: the docking port sits on the axis, between them. |
+| wreck_core | `######` / `vC..S#` / `b....a` / `##Wc##` | Room A only: 4 × 2 cells. Rooms B and C are closed art. |
 
 - **Grid placement.** One cell is 2 m, the game floor (y = 0) is Blender z 0.3, ASCII
   columns run along +X and rows along −Y. The module origin is the layout centre on
-  the floor: wreck (7.2, −3.7, 0.3), capsule (16.8, −5.7, 0.3).
+  the floor: wreck (7.2, −3.7, 0.3), capsule (16.8, −4.7, 0.3).
 - **Slots.** These are empties 0.15 m outside each doorway, at floor level. Their
   local −Y in Blender becomes +Z in Godot, pointing out of the module:
-  - wreck: A (+X, capsule), B and V (−X), C (front)
+  - wreck: A (+X, capsule), B and V (−X), C (front, x 8.2: one cell left of the
+    capsule so a module on C clears the capsule nose, and slot B's module)
   - capsule: A (nose)
 
   The decorative top and side dock rings are not slots: game slots are horizontal

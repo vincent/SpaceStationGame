@@ -10,7 +10,7 @@ module_id = &"wreck_core"
 interior_ascii = "######
 vC..S#
 b....a
-##W#c#"
+##Wc##"
 hull_color = Color(0.784, 0.761, 0.706, 1)
 trim_color = Color(0.659, 0.282, 0.227, 1)
 cap_tint = Color(0.91, 0.875, 0.784, 1)
