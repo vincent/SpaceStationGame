@@ -5,10 +5,11 @@
 [resource]
 script = ExtResource("1_item")
 id = &"scrap_metal"
-display_name = "Scrap metal"
-description = "Hull plating torn from the rescue capsule."
-max_stack = 50
+display_name = "Scrap"
+description = "Hull plating and salvage. Pays for building and repairs."
+max_stack = 999
 color = Color(0.55, 0.57, 0.62, 1)
 usable = false
 use_effects = Dictionary[StringName, float]({})
 tags = PackedStringArray("material")
+bulk = true

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EncounterDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/encounter_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"first_harvest"
+trigger = &"produced"
+condition = "subject == \"food\""
+channel = &"dialog"
+title = "First harvest"
+lines = PackedStringArray("The grow lamps hum. Between the leaves, something you can actually eat.", "It isn't much. But it's yours, and it will grow back.")
+outcomes = PackedStringArray("need morale 15", "flag first_harvest")
+choices = Array[Dictionary]([{"text": "Save it for later", "outcomes": PackedStringArray("toast The stores fill up, one leaf at a time.")}, {"text": "Eat it right away", "condition": "has_item(\"food\", 1)", "outcomes": PackedStringArray("take food 1", "need food 20")}])

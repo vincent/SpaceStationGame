@@ -1,6 +1,10 @@
 # Plan — station economy (resources & production)
 
-Status: **plan, not implemented**.
+Status: **implemented** (P1–P6). Developer guide: `docs/CONTENT_PIPELINE.md` §4.
+Deviations: the `produced` trigger counts whole units in the story counter
+`produced_<id>`; planters (`G` layout character) are interactables that show
+the bay's status; the status bar hides during the exploded view;
+`--popover=<id>` opens a popover for screenshots.
 
 The station gets its own state: stocks of **resources** (scrap, water,
 food...) that **powered modules produce and

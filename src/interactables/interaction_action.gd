@@ -5,7 +5,7 @@ extends RefCounted
 var label: String
 var callback: Callable
 var enabled: bool
-## Shown when disabled ("Needs 1 ration + 1 water").
+## Shown when disabled ("No food in stock").
 var hint: String
 
 

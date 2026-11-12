@@ -1,7 +1,7 @@
 class_name HUD
 extends CanvasLayer
-## In-game overlay: clock, needs bars, inventory button, object menus,
-## encounters, toasts.
+## In-game overlay: clock, station status bar (resources + power), needs
+## bars, inventory button, object menus, encounters, toasts.
 ## Built in code so layout changes stay reviewable in diffs.
 
 const NEED_COLORS: Dictionary[StringName, Color] = {
@@ -9,6 +9,9 @@ const NEED_COLORS: Dictionary[StringName, Color] = {
 	Needs.ENERGY: Palette.NEON_CYAN,
 	Needs.MORALE: Palette.NEON_PINK,
 }
+## Room left of / right of the status bar for the clock and the needs panel.
+const STATUS_BAR_SIDE_LEFT := 200.0
+const STATUS_BAR_SIDE_RIGHT := 300.0
 const CRITICAL_MESSAGES: Dictionary[StringName, String] = {
 	Needs.FOOD: "You're starving.",
 	Needs.ENERGY: "You can barely keep your eyes open.",
@@ -20,8 +23,9 @@ var inventory_panel: InventoryPanel
 var module_panel: ModulePanel
 var build_menu: BuildMenu
 var encounter_panel: EncounterPanel
+var status_bar: StatusBar
+var production_popover: ProductionPopover
 var _clock_label: Label
-var _power_label: Label
 var _bars: Dictionary[StringName, ProgressBar] = {}
 var _toast: Label
 var _toast_tween: Tween
@@ -48,15 +52,18 @@ func _ready() -> void:
 	layer_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(layer_root)
 
-	# Clock + power budget (top-left)
+	# Clock (top-left)
 	var clock_panel := PanelContainer.new()
-	var clock_box := VBoxContainer.new()
-	clock_panel.add_child(clock_box)
 	_clock_label = UITheme.label("", false, Palette.YELLOW)
-	clock_box.add_child(_clock_label)
-	_power_label = UITheme.label("", true, Palette.NEON_CYAN)
-	clock_box.add_child(_power_label)
+	clock_panel.add_child(_clock_label)
 	layer_root.add_child(clock_panel)
+
+	# Station status bar (top-centre, between the clock and the needs)
+	status_bar = StatusBar.new()
+	status_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	status_bar.offset_left = STATUS_BAR_SIDE_LEFT
+	status_bar.offset_right = -STATUS_BAR_SIDE_RIGHT
+	layer_root.add_child(status_bar)
 
 	# Needs (top-right)
 	var needs_panel := PanelContainer.new()
@@ -120,6 +127,10 @@ func _ready() -> void:
 	encounter_panel.position.y = 120
 	layer_root.add_child(encounter_panel)
 
+	production_popover = ProductionPopover.new()
+	layer_root.add_child(production_popover)
+	status_bar.chip_pressed.connect(production_popover.toggle)
+
 	# Toast (top-center)
 	_toast = UITheme.label("", false, Palette.TEXT)
 	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
@@ -136,11 +147,10 @@ func _ready() -> void:
 	GameClock.minute_changed.connect(func(_m: int) -> void: _refresh_clock())
 	EventBus.toast.connect(show_toast)
 	EventBus.game_reset.connect(_refresh_all)
-	GameState.station.module_changed.connect(func(_uid: int, _r: StringName) -> void: _refresh_power())
-	GameState.station.module_added.connect(func(_uid: int) -> void: _refresh_power())
-	GameState.station.module_removed.connect(func(_uid: int) -> void: _refresh_power())
-	GameState.station.reset.connect(_refresh_power)
-	EventBus.upgrade_view_requested.connect(func(_m: Module) -> void: close_menus())
+	EventBus.upgrade_view_requested.connect(func(_m: Module) -> void:
+		close_menus()
+		status_bar.hide())  # the upgrade overlay owns the top of the screen
+	EventBus.upgrade_view_closed.connect(status_bar.show)
 	_refresh_all()
 
 
@@ -149,10 +159,12 @@ func close_menus() -> void:
 	interaction_menu.close()
 	inventory_panel.hide()
 	build_menu.hide()
+	production_popover.close()
 
 
 func is_menu_open() -> bool:
-	return interaction_menu.visible or inventory_panel.visible or build_menu.visible
+	return interaction_menu.visible or inventory_panel.visible or build_menu.visible \
+		or production_popover.visible
 
 
 func show_toast(message: String) -> void:
@@ -167,18 +179,12 @@ func show_toast(message: String) -> void:
 
 func _refresh_all() -> void:
 	_refresh_clock()
-	_refresh_power()
 	for need in _bars:
 		_bars[need].value = GameState.needs.get_value(need)
 
 
 func _refresh_clock() -> void:
 	_clock_label.text = GameClock.format_time()
-
-
-func _refresh_power() -> void:
-	var st := GameState.station
-	_power_label.text = "Power %s / %s" % [snappedf(st.power_draw(), 0.1), snappedf(st.power_output(), 0.1)]
 
 
 func _on_need_changed(need: StringName, value: float) -> void:

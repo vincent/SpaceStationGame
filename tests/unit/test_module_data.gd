@@ -70,6 +70,18 @@ func test_upgrade_definitions_are_valid() -> void:
 		assert_false(_requires_cycle(id, []), "%s: requires cycle" % id)
 
 
+func test_production_uses_bulk_items() -> void:
+	var items := ItemDB.new()
+	items.load_dir()
+	var producers := 0
+	for id in db.module_ids():
+		var def := db.get_module(id)
+		var errors := UpgradeDef.validate_production(String(id), def.production, items)
+		assert_eq(errors.size(), 0, "\n".join(errors))
+		producers += 1 if not def.production.is_empty() else 0
+	assert_gt(producers, 1, "the wreck and the agri bay produce")
+
+
 func test_part_nodes_are_unique_per_module() -> void:
 	for module_id in db.module_ids():
 		var seen := {}

@@ -11,6 +11,7 @@ extends Node3D
 ##   D  inner doorway     P  player spawn     L  floor + ceiling light
 ##   B  bed               K  kitchen          W  bay window (in a wall)
 ##   S  salvage pile      C  console          T  trader
+##   G  planter (agri bay)
 ##   a..z  slot doorway on the hull boundary (slot "A".."Z")
 ## Add new furniture by mapping a character in FURNITURE_SCENES.
 
@@ -25,10 +26,11 @@ const FURNITURE_SCENES: Dictionary[String, String] = {
 	"S": "res://src/interactables/salvage_pile.tscn",
 	"C": "res://src/interactables/console.tscn",
 	"T": "res://src/interactables/trader.tscn",
+	"G": "res://src/interactables/planter.tscn",
 }
 ## Furniture that replaces a wall cell instead of standing on the floor.
 const WALL_FURNITURE := "W"
-const WALKABLE := ".PLDBKSCT"
+const WALKABLE := ".PLDBKSCTG"
 const FREE_FLOOR := ".PLD"
 const SLOT_LETTERS := "abcdefghijklmnopqrstuvwxyz"
 

@@ -17,6 +17,7 @@ const TRIGGERS: Dictionary[StringName, String] = {
 	&"built": "a module was built (subject = module id)",
 	&"visitor": "a visitor ship docked (subject = ship module id)",
 	&"traded": "a trade went through",
+	&"produced": "a resource was produced for the first time (subject = resource id, e.g. food)",
 	&"interacted": "the player opened an object's menu (subject = scene name, e.g. salvage_pile)",
 	&"scheduled": "only through the `schedule` outcome",
 }

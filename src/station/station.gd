@@ -42,6 +42,7 @@ func bind(p_state: StationState) -> void:
 	state.reset.connect(rebuild)
 	if not GameState.inventory.changed.is_connected(refresh_ghosts):
 		GameState.inventory.changed.connect(refresh_ghosts)
+		GameState.stock.count_changed.connect(func(_id: StringName, _n: int) -> void: refresh_ghosts())
 	rebuild()
 
 

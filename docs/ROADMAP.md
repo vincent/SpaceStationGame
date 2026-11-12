@@ -50,7 +50,9 @@ Status markers: `[x]` done · `[~]` in progress / partial · `[ ]` todo
 
 ## Checkpoint 3 — Visitors & economy
 - [x] Docking port, ships attach to the station
-- [~] Traders: buy/sell/exchange goods & services (fixed item swaps)
+- [~] Traders: buy/sell/exchange goods & services (fixed swaps; selling food is the first income loop)
+- [x] Station economy (docs/PLAN_STATION_ECONOMY.md): bulk resources in a station stock, module/upgrade production (wreck water → agri bay food, hydroponics tier), status bar + production popover, `produced` trigger, save v4 migration
+- [ ] Economy, later: storage caps (silos), wear → efficiency, production-chain overview, agri bay Blender art, conversion modules, crew eating food
 - [ ] Station development axes: culture, economy, religion
 
 ## Content pipeline (docs/CONTENT_PIPELINE.md)

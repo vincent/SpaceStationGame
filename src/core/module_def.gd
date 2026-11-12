@@ -21,6 +21,9 @@ extends Resource
 @export var repair_minutes: float = 120.0
 @export var power_output: float = 0.0
 @export var power_draw: float = 0.0
+## Resources made (+) / used (-) per game hour while running (see Production).
+## Ids are bulk items, e.g. {&"food": 0.15, &"water": -0.15}.
+@export var production: Dictionary[StringName, float] = {}
 ## Slot letter of the interior ASCII (upper case) -> what it accepts: module
 ## ids or kinds (e.g. ["module"], ["visitor"], ["capsule"]).
 @export var slots: Dictionary[StringName, PackedStringArray] = {}

@@ -29,6 +29,9 @@ const EFFECTS: Array[StringName] = [
 ## Upgrade ids that must be installed first (on the same module).
 @export var requires: Array[StringName] = []
 @export var effects: Dictionary[StringName, float] = {}
+## Production added to the module's own (per game hour, + output / - input).
+## A tier is an upgrade with a bigger output; see Production.
+@export var production: Dictionary[StringName, float] = {}
 ## Story flags set when the upgrade is installed (encounters read them with
 ## flag("name")). The "upgraded" encounter trigger fires as well.
 @export var sets_flags: Array[StringName] = []
@@ -65,4 +68,17 @@ func validate(items: ItemDB = null) -> PackedStringArray:
 		for item: StringName in cost:
 			if items.get_item(item) == null:
 				errors.append("%s: cost uses unknown item %s" % [id, item])
+		errors.append_array(validate_production(String(id), production, items))
+	return errors
+
+
+## Production dictionaries: bulk item ids, non-zero rates.
+static func validate_production(owner: String, prod: Dictionary, items: ItemDB) -> PackedStringArray:
+	var errors: PackedStringArray = []
+	for res: StringName in prod:
+		var item := items.get_item(res)
+		if item == null or not item.bulk:
+			errors.append("%s: production %s is not a bulk item" % [owner, res])
+		if is_zero_approx(float(prod[res])):
+			errors.append("%s: production %s is 0" % [owner, res])
 	return errors

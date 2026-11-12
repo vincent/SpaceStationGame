@@ -1,24 +1,37 @@
 extends Interactable
-## Improvised kitchen: turns rations + water into a real meal.
+## Improvised kitchen: a meal takes one unit of a food resource from the
+## station stock. Its effects are the item's `use_effects`.
 
-const MEAL_COST: Dictionary[StringName, int] = {&"ration": 1, &"water": 1}
 const MEAL_MINUTES := 30.0
-const MEAL_EFFECTS: Dictionary[StringName, float] = {Needs.FOOD: 40.0, Needs.MORALE: 5.0}
+
+
+## Bulk items you can eat here (usable, tagged "food"), in id order.
+static func meal_items() -> Array[ItemData]:
+	var out: Array[ItemData] = []
+	for id in GameState.item_db.ids():
+		var item := GameState.item_db.get_item(id)
+		if item.bulk and item.usable and item.tags.has("food"):
+			out.append(item)
+	return out
 
 
 func get_actions() -> Array[InteractionAction]:
-	var can_cook := GameState.inventory.has_all(MEAL_COST)
-	return [
-		InteractionAction.new("Cook a meal (30 min)", _cook, can_cook, "Needs 1 ration + 1 water"),
-	]
+	var actions: Array[InteractionAction] = []
+	for item in meal_items():
+		var gain := roundi(item.use_effects.get(Needs.FOOD, 0.0))
+		actions.append(InteractionAction.new("Eat (+%d food) · %d left" % [gain, GameState.count(item.id)],
+			_eat.bind(item), GameState.count(item.id) >= 1, "No %s in stock" % item.display_name.to_lower()))
+	return actions
 
 
-func _cook() -> void:
-	if GameState.perform(MEAL_COST, MEAL_MINUTES, MEAL_EFFECTS, &"cooking"):
+func _eat(item: ItemData) -> void:
+	if GameState.perform({item.id: 1}, MEAL_MINUTES, item.use_effects, &"cooking"):
 		EventBus.toast.emit("A hot meal. Almost like home.")
 
 
 func perform_routine() -> StringName:
-	if GameState.inventory.has_all(MEAL_COST):
-		_cook()
+	for item in meal_items():
+		if GameState.count(item.id) >= 1:
+			_eat(item)
+			break
 	return &""

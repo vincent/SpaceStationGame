@@ -23,13 +23,12 @@ func _ready() -> void:
 
 	var toggle := UITheme.button("DBG", toggle_panel)
 	toggle.custom_minimum_size = Vector2(64, 44)
-	toggle.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	toggle.position.y = 8
+	toggle.position = Vector2(16, 80)  # under the clock (the status bar owns the top centre)
 	toggle.modulate.a = 0.6
 	root.add_child(toggle)
 
 	_panel = PanelContainer.new()
-	_panel.position = Vector2(16, 90)
+	_panel.position = Vector2(16, 132)
 	_panel.hide()
 	root.add_child(_panel)
 	var scroll := ScrollContainer.new()
@@ -152,14 +151,16 @@ func _set_all_needs(value: float) -> void:
 
 func _give_selected() -> void:
 	var id := StringName(_item_picker.get_item_text(_item_picker.selected))
-	var leftover := GameState.inventory.add(id, 5)
-	EventBus.toast.emit("Gave %d %s" % [5 - leftover, id])
+	GameState.give({id: 5})
+	EventBus.toast.emit("Gave 5 %s (%s)" % [id, "stock" if GameState.item_db.is_bulk(id) else "inventory"])
 
 
 ## Command-line dev hooks (after "--" on the Godot command line), used by
 ## tools/screenshot.sh, tools/golden.sh and handy to reproduce a state:
 ##   --debug-panel          open this panel
 ##   --inventory            open the inventory
+##   --stock=<id>:<n>[,...] set station stock amounts (bulk items)
+##   --popover=<id>         open the status bar popover of a resource (or power)
 ##   --freeze               pause the clock and character routines (goldens)
 ##   --build=<id>[,<id>]    attach modules on the first free slots (free, instant)
 ##   --repair=<module_id>   repair a module instantly (also: all)
@@ -193,6 +194,13 @@ func _run_cli_commands() -> void:
 			r.set(&"enabled", false)
 		for life: Node in main.find_children("*", "ExteriorLife", true, false):
 			life.process_mode = Node.PROCESS_MODE_DISABLED
+	if args.has("stock"):
+		for entry in String(args.stock).split(",", false):
+			var kv := entry.split(":")
+			if kv.size() == 2 and GameState.item_db.is_bulk(StringName(kv[0])):
+				GameState.stock.set_amount(StringName(kv[0]), float(kv[1]))
+			else:
+				push_warning("--stock: '%s' is not <bulk item>:<amount>" % entry)
 	if args.has("build"):
 		for module_id in String(args.build).split(",", false):
 			_cheat_build(StringName(module_id))
@@ -201,8 +209,9 @@ func _run_cli_commands() -> void:
 		if args.has(key):
 			_cheat_state(String(args[key]), key == "power")
 	if args.has("upgrade"):
-		var ids: Array[StringName] = GameState.module_db.upgrade_ids() if args.upgrade == "all" \
-			else [StringName(args.upgrade)] as Array[StringName]
+		var ids: Array[StringName] = [StringName(args.upgrade)]
+		if args.upgrade == "all":
+			ids = GameState.module_db.upgrade_ids()
 		for _pass in 3:  # "all": later passes install upgrades whose requirements came first
 			for id in ids:
 				_cheat_upgrade(id)
@@ -226,6 +235,10 @@ func _run_cli_commands() -> void:
 	if args.has("time"):
 		var target_hour := int(args.time)
 		GameClock.advance(fposmod((target_hour - GameClock.hour()) * 60.0 - GameClock.minute(), 1440.0))
+	if args.has("popover") and hud:
+		await get_tree().process_frame
+		var chip: Control = hud.status_bar.chips.get(StringName(args.popover))
+		hud.production_popover.toggle(StringName(args.popover), chip)
 	if args.has("interact"):
 		_interact_with_named(String(args.interact))
 	if args.has("screenshot"):

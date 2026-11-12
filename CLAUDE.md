@@ -16,7 +16,7 @@ story encounters are data-driven: `docs/CONTENT_PIPELINE.md`.
 | One test file / tests by name | `tools/test.sh -gselect=test_inventory` · `tools/test.sh -gunit_test_name=merge` |
 | Lint | `tools/lint.sh` (needs `pip install "gdtoolkit==4.*"`) |
 | Parse/import check only | `tools/import.sh` |
-| Screenshot (works headless via xvfb) | `tools/screenshot.sh build/shot.png [--view=station\|room] [--focus=wreck_core] [--power=all] [--upgrade=all] [--encounter=intro] [--story=off] [--explode] [--time=22] [--debug-panel] [--delay=5]` (all hooks: `DebugOverlay._run_cli_commands()`) |
+| Screenshot (works headless via xvfb) | `tools/screenshot.sh build/shot.png [--view=station\|room] [--focus=wreck_core] [--power=all] [--upgrade=all] [--encounter=intro] [--story=off] [--stock=food:20] [--popover=food] [--explode] [--time=22] [--debug-panel] [--delay=5]` (all hooks: `DebugOverlay._run_cli_commands()`) |
 | Golden images (compare / re-record) | `tools/golden.sh` · `tools/golden.sh --update [scene]` (or `/update-goldens`) |
 | Run game / open editor | `tools/run.sh` · `tools/editor.sh` |
 | Android debug APK | `tools/export_android.sh` (needs ANDROID_HOME + JDK 17) → `tools/install_android.sh` |
@@ -30,8 +30,8 @@ changes also take a screenshot, look at it, and run `tools/golden.sh`.
 ## Architecture
 
 ```
-src/autoload/   EventBus (signals only), GameClock (time), GameState (needs, inventory, station, story, actions, save/load)
-src/core/       Pure logic & helpers: Needs, Inventory, ItemDB/ItemData, StationState, ModuleDB/ModuleDef/UpgradeDef,
+src/autoload/   EventBus (signals only), GameClock (time), GameState (needs, inventory, stock + wallet, station, story, actions, save/load)
+src/core/       Pure logic & helpers: Needs, Inventory, ItemDB/ItemData, StationStock, Production, StationState, ModuleDB/ModuleDef/UpgradeDef,
                 EncounterDef/EncounterDB, StoryState, StoryContext, StoryOutcome, Storyteller,
                 DayCycle, Palette, Layers, ToonMaterials
 src/world/      main.tscn/main.gd (taps → focus/build/walk/interact), StationBuilder (module interior from ASCII)
@@ -40,10 +40,10 @@ src/station/    Station (scene mirror of StationState), Module (hull+interior+li
 src/rendering/  CutawayController (cut box shader globals), ClockLighting
 src/camera/     DioramaCamera (fixed oblique ortho rig, zoom tiers, pan), Backdrop (starfield quad)
 src/player/     Player (CharacterBody3D + NavigationAgent3D), PlayerRoutine (idle auto-routines)
-src/interactables/  Interactable base + Bed, Kitchen, BayWindow, SalvagePile, Console, Trader (+ .tscn each)
+src/interactables/  Interactable base + Bed, Kitchen, BayWindow, SalvagePile, Console, Trader, Planter (+ .tscn each)
 src/ambient/    AmbientKit (state-driven props), ExteriorLife (traffic, debris)
 src/audio/      SfxSynth (placeholder sounds), AudioDirector
-src/ui/         HUD, ModulePanel, BuildMenu, UpgradeOverlay, InteractionMenu, EncounterPanel, InventoryPanel/Slot,
+src/ui/         HUD, StatusBar, ProductionPopover, ModulePanel, BuildMenu, UpgradeOverlay, InteractionMenu, EncounterPanel, InventoryPanel/Slot,
                 DebugOverlay, UITheme
 src/tools/      Blender import post-processing (module_import.gd + ModuleImportRules)
 data/items/, data/modules/, data/upgrades/, data/encounters/   One .tres per item / module type / upgrade / story beat
@@ -68,8 +68,11 @@ Rules of thumb:
   `GameState.build_module / repair_module / toggle_power / buy_upgrade`.
 - Pure logic classes (`extends RefCounted`) get unit tests; scene behaviour gets an
   integration test in `tests/integration/`.
+- **Costs and rewards go through the wallet:** `GameState.count / has_all / give / pay`.
+  Bulk items (`ItemData.bulk`: scrap, water, food) live in `GameState.stock` (StationStock),
+  the rest in `inventory`; never call `inventory.add/remove` for costs.
 - Saves are JSON (`user://savegame.json`) via each system's `to_dict()/from_dict()`
-  (story too: `StoryState`).
+  (story too: `StoryState`; stock: `StationStock`). v≤3 saves migrate bulk items to the stock.
   Bump `GameState.SAVE_VERSION` when the format changes.
 
 ## How-tos
@@ -102,6 +105,10 @@ screenshots, `/update-goldens`). Example set: `art/station_early/` (`notes.md`).
 effects from `UpgradeDef.EFFECTS`). The part is either authored (`Parts/<part_node>` in the
 scene) or, preferred, spawned on a `mount_<name>` marker of the art (`mount`, `part_kind`
 placeholder or `part_scene`). Checklist: `docs/CONTENT_PIPELINE.md`; `test_module_data.gd` validates it.
+
+**New resource / producer:** bulk item `data/items/<id>.tres` (`bulk = true`, `color` for the
+status-bar chip); `production` (per game hour, + output / − input) on a module `.tres` or an
+upgrade (adds to the module's). Rules in `Production`; checklist in `docs/CONTENT_PIPELINE.md` §4.
 
 **New encounter (story beat):** add `data/encounters/<id>.tres` (`trigger`, `condition` = Godot
 expression over `StoryContext`, `lines`, `outcomes`/`choices` = `StoryOutcome` verbs).

@@ -9,7 +9,7 @@ extends Node
 signal interaction_requested(interactable: Interactable)
 ## The interaction menu was closed (action chosen or cancelled).
 signal interaction_closed
-## Short message to show the player ("Not enough rations").
+## Short message to show the player ("Not enough food").
 signal toast(message: String)
 ## A save was loaded or a new game started; UI should refresh everything.
 signal game_reset

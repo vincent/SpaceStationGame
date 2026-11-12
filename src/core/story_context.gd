@@ -9,8 +9,9 @@ extends RefCounted
 ##   count("debris_seen")          story counter
 ##   seen("first_signal")          times an encounter fired
 ##   hours_since("first_signal")   game hours since it last fired (INF if never)
-##   item("scrap_metal")           items carried
+##   item("scrap_metal")           units owned (station stock or inventory)
 ##   has_item("scrap_metal", 5)    at least that many
+##   rate("food")                  net production per game hour (live)
 ##   has_module("hab_pod")         a module of that type exists
 ##   repaired("wreck_core")        exists and isn't derelict
 ##   powered("wreck_core")         exists and switched on
@@ -24,6 +25,7 @@ const INPUTS: PackedStringArray = ["subject"]
 
 var story: StoryState
 var inventory: Inventory
+var stock: StationStock
 var station: StationState
 var needs: Needs
 var rng := RandomNumberGenerator.new()
@@ -31,9 +33,11 @@ var rng := RandomNumberGenerator.new()
 var _cache: Dictionary[String, Expression] = {}
 
 
-func _init(p_story: StoryState, p_inventory: Inventory, p_station: StationState, p_needs: Needs) -> void:
+func _init(p_story: StoryState, p_inventory: Inventory, p_stock: StationStock, p_station: StationState,
+		p_needs: Needs) -> void:
 	story = p_story
 	inventory = p_inventory
+	stock = p_stock
 	station = p_station
 	needs = p_needs
 	rng.randomize()
@@ -97,12 +101,18 @@ func hours_since(id: String) -> float:
 	return INF if last == -INF else (GameClock.total_minutes - last) / GameClock.MINUTES_PER_HOUR
 
 
+## An id lives either in the stock (bulk) or in the inventory, so the sum
+## is the count without needing the item database.
 func item(id: String) -> int:
-	return inventory.count_of(StringName(id))
+	return inventory.count_of(StringName(id)) + stock.count(StringName(id))
 
 
 func has_item(id: String, amount: int) -> bool:
-	return inventory.count_of(StringName(id)) >= amount
+	return item(id) >= amount
+
+
+func rate(id: String) -> float:
+	return Production.rates(station, stock).get(StringName(id), 0.0)
 
 
 func has_module(module_id: String) -> bool:

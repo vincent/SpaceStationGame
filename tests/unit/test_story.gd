@@ -14,8 +14,10 @@ func before_each() -> void:
 	var station := StationState.new(modules)
 	station.add_module(&"wreck_core", 0, &"", StationState.State.DERELICT, 1.0, false)
 	var inventory := Inventory.new(items, 10)
-	inventory.add(&"scrap_metal", 3)
-	context = StoryContext.new(story, inventory, station, Needs.new())
+	inventory.add(&"power_cell", 1)
+	var stock := StationStock.new()
+	stock.add(&"scrap_metal", 3.5)
+	context = StoryContext.new(story, inventory, stock, station, Needs.new())
 
 
 func test_flags_and_counters() -> void:
@@ -64,6 +66,7 @@ func test_conditions() -> void:
 	assert_true(context.evaluate(""))
 	assert_true(context.evaluate('flag("met") and not flag("other")'))
 	assert_true(context.evaluate('has_item("scrap_metal", 3) and item("scrap_metal") == 3'))
+	assert_true(context.evaluate('item("power_cell") == 1 and rate("food") == 0.0'))
 	assert_false(context.evaluate('repaired("wreck_core")'), "wreck starts derelict")
 	assert_true(context.evaluate('has_module("wreck_core") and not powered("wreck_core")'))
 	assert_true(context.evaluate('subject == "wreck_core"', &"wreck_core"))

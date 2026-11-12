@@ -15,7 +15,7 @@ func before_all() -> void:
 	modules = ModuleDB.new()
 	modules.load_dirs()
 	var station := StationState.new(modules)
-	context = StoryContext.new(StoryState.new(), Inventory.new(items, 10), station, Needs.new())
+	context = StoryContext.new(StoryState.new(), Inventory.new(items, 10), StationStock.new(), station, Needs.new())
 
 
 func test_encounters_load() -> void:

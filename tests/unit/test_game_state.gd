@@ -13,7 +13,10 @@ func after_all() -> void:
 
 func test_new_game_gives_starting_items() -> void:
 	for id in GameState.STARTING_ITEMS:
-		assert_eq(GameState.inventory.count_of(id), GameState.STARTING_ITEMS[id])
+		assert_eq(GameState.count(id), GameState.STARTING_ITEMS[id])
+	assert_eq(GameState.stock.count(&"food"), GameState.STARTING_ITEMS[&"food"], "bulk items go to the stock")
+	assert_eq(GameState.inventory.count_of(&"food"), 0)
+	assert_eq(GameState.inventory.count_of(&"power_cell"), GameState.STARTING_ITEMS[&"power_cell"])
 
 
 func test_time_passing_decays_needs() -> void:
@@ -32,9 +35,10 @@ func test_sleep_restores_energy_and_advances_clock() -> void:
 
 func test_perform_consumes_cost_and_applies_effects() -> void:
 	GameState.needs.set_value(Needs.FOOD, 20)
-	var ok := GameState.perform({&"ration": 1, &"water": 1}, 30, {Needs.FOOD: 40.0})
+	var ok := GameState.perform({&"food": 1, &"power_cell": 1}, 30, {Needs.FOOD: 40.0})
 	assert_true(ok)
-	assert_eq(GameState.inventory.count_of(&"ration"), GameState.STARTING_ITEMS[&"ration"] - 1)
+	assert_eq(GameState.count(&"food"), GameState.STARTING_ITEMS[&"food"] - 1)
+	assert_eq(GameState.count(&"power_cell"), GameState.STARTING_ITEMS[&"power_cell"] - 1)
 	assert_gt(GameState.needs.get_value(Needs.FOOD), 55.0)
 
 
@@ -44,34 +48,26 @@ func test_perform_fails_without_items() -> void:
 	assert_eq(GameClock.total_minutes, before, "no time spent")
 
 
-func test_use_item_applies_effect() -> void:
-	GameState.needs.set_value(Needs.FOOD, 50)
-	var slot := -1
-	for i in GameState.inventory.size:
-		var s := GameState.inventory.get_slot(i)
-		if not s.is_empty() and s.id == &"ration":
-			slot = i
-	assert_true(GameState.use_item(slot))
-	assert_eq(GameState.needs.get_value(Needs.FOOD), 65.0)
-
-
 func test_cannot_use_material() -> void:
 	for i in GameState.inventory.size:
 		var s := GameState.inventory.get_slot(i)
-		if not s.is_empty() and s.id == &"scrap_metal":
+		if not s.is_empty() and s.id == &"power_cell":
 			assert_false(GameState.use_item(i))
 
 
 func test_save_and_load() -> void:
 	var path := "user://test_save.json"
 	GameClock.advance(300)
-	GameState.inventory.remove(&"ration", 2)
+	GameState.pay({&"food": 2})
+	GameState.stock.add(&"water", 0.4)
 	assert_true(GameState.save_game(path))
 	var saved_minutes := GameClock.total_minutes
 	GameState.new_game()
 	assert_true(GameState.load_game(path))
 	assert_eq(GameClock.total_minutes, saved_minutes)
-	assert_eq(GameState.inventory.count_of(&"ration"), GameState.STARTING_ITEMS[&"ration"] - 2)
+	assert_eq(GameState.count(&"food"), GameState.STARTING_ITEMS[&"food"] - 2)
+	assert_almost_eq(GameState.stock.amount(&"water"), GameState.STARTING_ITEMS[&"water"] + 0.4, 0.001,
+		"fractional stock survives")
 	DirAccess.remove_absolute(path)
 
 
@@ -91,13 +87,13 @@ func test_new_game_starts_with_capsule_docked_to_dark_wreck() -> void:
 func test_repair_costs_scrap_and_time() -> void:
 	var before := GameClock.total_minutes
 	assert_true(GameState.repair_module(_wreck()))
-	assert_eq(GameState.inventory.count_of(&"scrap_metal"), GameState.STARTING_ITEMS[&"scrap_metal"] - 6)
+	assert_eq(GameState.count(&"scrap_metal"), GameState.STARTING_ITEMS[&"scrap_metal"] - 6)
 	assert_gt(GameClock.total_minutes, before)
 	assert_false(GameState.repair_module(_wreck()), "already repaired")
 
 
 func test_repair_needs_scrap() -> void:
-	GameState.inventory.remove(&"scrap_metal", GameState.inventory.count_of(&"scrap_metal"))
+	GameState.stock.set_amount(&"scrap_metal", 0.0)
 	assert_string_starts_with(GameState.repair_error(_wreck()), "Needs")
 	assert_false(GameState.repair_module(_wreck()))
 
@@ -113,7 +109,7 @@ func test_build_module_on_free_slot() -> void:
 	assert_true(GameState.can_afford_any_module())
 	var uid := GameState.build_module(&"hab_pod", _wreck(), &"B")
 	assert_gt(uid, 0)
-	assert_eq(GameState.inventory.count_of(&"scrap_metal"), GameState.STARTING_ITEMS[&"scrap_metal"] - 8)
+	assert_eq(GameState.count(&"scrap_metal"), GameState.STARTING_ITEMS[&"scrap_metal"] - 8)
 	assert_eq(GameState.build_module(&"hab_pod", _wreck(), &"B"), 0, "slot taken")
 	assert_eq(GameState.build_module(&"capsule", _wreck(), &"C"), 0, "not buildable")
 
@@ -127,14 +123,14 @@ func test_upgrade_effects_change_need_decay() -> void:
 	assert_almost_eq(GameState.needs.decay_per_hour[Needs.MORALE], base - 0.5, 0.001, "effect applied once")
 
 
-func test_trade_and_gain() -> void:
-	assert_true(GameState.trade({&"scrap_metal": 3}, {&"ration": 2}))
-	assert_eq(GameState.inventory.count_of(&"ration"), GameState.STARTING_ITEMS[&"ration"] + 2)
-	assert_false(GameState.trade({&"scrap_metal": 999}, {&"ration": 1}))
+func test_trade_and_give() -> void:
+	assert_true(GameState.trade({&"scrap_metal": 3}, {&"food": 2}))
+	assert_eq(GameState.count(&"food"), GameState.STARTING_ITEMS[&"food"] + 2)
+	assert_false(GameState.trade({&"scrap_metal": 999}, {&"food": 1}))
 
 
 func test_save_load_round_trip_includes_station() -> void:
-	GameState.gain({&"scrap_metal": 20})
+	GameState.give({&"scrap_metal": 20})
 	GameState.repair_module(_wreck())
 	var hab := GameState.build_module(&"hab_pod", _wreck(), &"B")
 	var path := "user://test_station_save.json"
@@ -153,3 +149,19 @@ func test_version_1_save_gets_the_story_station() -> void:
 	GameState.station.clear()
 	GameState.from_dict(data)
 	assert_eq(GameState.station.uids().size(), 2)
+
+
+func test_version_3_save_migrates_to_the_stock() -> void:
+	var data := GameState.to_dict()
+	data.version = 3
+	data.erase("stock")
+	data.inventory = {"size": GameState.INVENTORY_SLOTS, "slots": [
+		{"id": "ration", "count": 3}, {"id": "water", "count": 2}, {},
+		{"id": "scrap_metal", "count": 7}, {"id": "power_cell", "count": 1},
+	]}
+	GameState.from_dict(JSON.parse_string(JSON.stringify(data)))
+	assert_eq(GameState.stock.count(&"food"), 3, "rations became food in the stock")
+	assert_eq(GameState.stock.count(&"water"), 2)
+	assert_eq(GameState.stock.count(&"scrap_metal"), 7)
+	assert_eq(GameState.inventory.count_of(&"power_cell"), 1, "carried items stay")
+	assert_eq(GameState.inventory.count_of(&"scrap_metal"), 0, "bulk items left the inventory")

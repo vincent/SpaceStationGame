@@ -46,6 +46,7 @@ func _ready() -> void:
 	EventBus.upgrade_view_closed.connect(refresh)
 	GameState.station.module_changed.connect(func(_uid: int, _r: StringName) -> void: refresh())
 	GameState.inventory.changed.connect(refresh)
+	GameState.stock.count_changed.connect(func(_id: StringName, _n: int) -> void: refresh())
 	refresh()
 
 

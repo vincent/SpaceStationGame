@@ -1,17 +1,21 @@
 extends Node
-## Owns the simulation state (needs, inventory, station, story) and the
-## actions that change it (sleep, cook, use item, build, repair, power,
-## upgrade, encounter outcomes...). Scenes and UI call these methods instead
+## Owns the simulation state (needs, inventory, station stock, station, story)
+## and the actions that change it (sleep, eat, use item, build, repair, power,
+## upgrade, encounter outcomes...). Costs and rewards go through the wallet
+## (`count`, `has_all`, `give`, `pay`): bulk items (resources) live in
+## `stock`, the rest in `inventory`. Scenes and UI call these methods instead
 ## of poking at Needs/Inventory/StationState directly, so rules live in one
 ## place. Encounters: docs/CONTENT_PIPELINE.md.
 
 const SAVE_PATH := "user://savegame.json"
 ## 2: station modules (StationState) added. 3: story (flags, encounters).
-const SAVE_VERSION := 3
+## 4: station stock (bulk resources); rations became food.
+const SAVE_VERSION := 4
 const INVENTORY_SLOTS := 20
 
+## Bulk ids go to the station stock, the rest to the inventory.
 const STARTING_ITEMS: Dictionary[StringName, int] = {
-	&"ration": 4,
+	&"food": 4,
 	&"water": 4,
 	&"scrap_metal": 12,
 	&"power_cell": 2,
@@ -33,6 +37,8 @@ var item_db := ItemDB.new()
 var module_db := ModuleDB.new()
 var needs := Needs.new()
 var inventory: Inventory
+## Station resources (bulk items), filled by Production every game minute.
+var stock := StationStock.new()
 var station: StationState
 var activity: StringName = &"idle"
 var encounter_db := EncounterDB.new()
@@ -45,6 +51,8 @@ var current_encounter: EncounterDef
 var story_enabled := true
 
 var _encounter_queue: Array[StringName] = []
+## Production not yet counted as a whole unit (see _count_production).
+var _produced_fraction: Dictionary[StringName, float] = {}
 ## True while a new game / save is being set up: no story events.
 var _quiet := false
 
@@ -57,7 +65,7 @@ func _init() -> void:
 	station.module_changed.connect(func(_uid: int, _reason: StringName) -> void: _apply_upgrade_effects())
 	station.reset.connect(_apply_upgrade_effects)
 	encounter_db.load_dir()
-	story_context = StoryContext.new(story, inventory, station, needs)
+	story_context = StoryContext.new(story, inventory, stock, station, needs)
 	storyteller = Storyteller.new(encounter_db, story, story_context)
 
 
@@ -77,8 +85,8 @@ func new_game() -> void:
 	GameClock.reset()
 	needs.reset()
 	inventory.clear()
-	for id: StringName in STARTING_ITEMS:
-		inventory.add(id, STARTING_ITEMS[id])
+	stock.clear()
+	give(STARTING_ITEMS)
 	activity = &"idle"
 	_reset_story()
 	_new_station()
@@ -108,33 +116,67 @@ func sleep(hours: float) -> void:
 	EventBus.toast.emit("You slept %d h." % roundi(hours))
 
 
-## Recipe-like action: consumes `cost` items, takes time, applies effects.
-## Returns false (and changes nothing) if the items are missing.
+## Recipe-like action: pays `cost`, takes time, applies effects.
+## Returns false (and changes nothing) if the cost can't be paid.
 func perform(cost: Dictionary, minutes: float, effects: Dictionary, activity_name: StringName = &"idle") -> bool:
-	if not inventory.has_all(cost):
+	if not pay(cost):
 		return false
-	for id: StringName in cost:
-		inventory.remove(id, int(cost[id]))
 	spend_time(minutes, activity_name)
 	for need: StringName in effects:
 		needs.change(need, float(effects[need]))
 	return true
 
 
-## Adds items (salvage, trades...). Whatever doesn't fit is lost.
-func gain(items: Dictionary) -> void:
-	for id: StringName in items:
-		inventory.add(id, int(items[id]))
-
-
-## Swaps `give` for `get_items`. False (and nothing changes) if `give` is missing.
-func trade(give: Dictionary, get_items: Dictionary) -> bool:
-	if not inventory.has_all(give):
+## Swaps `cost` for `items`. False (and nothing changes) if `cost` is missing.
+func trade(cost: Dictionary, items: Dictionary) -> bool:
+	if not pay(cost):
 		return false
-	for id: StringName in give:
-		inventory.remove(id, int(give[id]))
-	gain(get_items)
+	give(items)
 	return true
+
+
+# --- Wallet: station stock (bulk items) + inventory --------------------------
+
+## Whole units of an item: the stock for bulk items, the inventory otherwise.
+func count(id: StringName) -> int:
+	return stock.count(id) if item_db.is_bulk(id) else inventory.count_of(id)
+
+
+func has_all(cost: Dictionary) -> bool:
+	for id: StringName in cost:
+		if count(id) < int(cost[id]):
+			return false
+	return true
+
+
+## Adds items (salvage, trades, rewards...). Inventory overflow is lost.
+func give(items: Dictionary) -> void:
+	for id: StringName in items:
+		if item_db.is_bulk(id):
+			stock.add(id, float(items[id]))
+		else:
+			inventory.add(id, int(items[id]))
+
+
+## Pays a cost. All-or-nothing: false (and nothing changes) if it's missing.
+func pay(cost: Dictionary) -> bool:
+	if not has_all(cost):
+		return false
+	for id: StringName in cost:
+		_take(id, int(cost[id]))
+	return true
+
+
+## Removes up to `amount` of one item; returns how many were taken.
+func _take(id: StringName, amount: int) -> int:
+	var n := mini(amount, count(id))
+	if n <= 0:
+		return 0
+	if item_db.is_bulk(id):
+		stock.remove(id, n)
+	else:
+		inventory.remove(id, n)
+	return n
 
 
 ## Ongoing activity while time flows normally (character routines).
@@ -164,6 +206,9 @@ func use_item(slot_index: int) -> bool:
 
 func _on_time_advanced(minutes: float) -> void:
 	needs.tick(minutes / GameClock.MINUTES_PER_HOUR, ACTIVITY_RATES.get(activity, {}))
+	var produced := Production.tick(station, stock, minutes)
+	for id: StringName in produced:
+		_count_production(id, produced[id])
 	if not _quiet:
 		for id in story.pop_due(GameClock.total_minutes):
 			fire_encounter(id)
@@ -179,7 +224,7 @@ func build_error(module_id: StringName, parent_uid: int, slot: StringName) -> St
 	var err := station.attach_error(module_id, parent_uid, slot)
 	if err != "":
 		return err
-	if not inventory.has_all(def.build_cost):
+	if not has_all(def.build_cost):
 		return "Needs %s" % format_cost(def.build_cost)
 	return ""
 
@@ -188,7 +233,7 @@ func build_module(module_id: StringName, parent_uid: int, slot: StringName) -> i
 	if build_error(module_id, parent_uid, slot) != "":
 		return 0
 	var def := module_db.get_module(module_id)
-	_pay(def.build_cost)
+	pay(def.build_cost)
 	spend_time(def.build_minutes, &"working")
 	var uid := station.add_module(module_id, parent_uid, slot, StationState.State.REPAIRED, 0.3, false)
 	EventBus.toast.emit("%s attached." % def.display_name)
@@ -202,7 +247,7 @@ func repair_error(uid: int) -> String:
 		return "No such module"
 	if station.get_record(uid).state != StationState.State.DERELICT:
 		return "Already repaired"
-	if not inventory.has_all(def.repair_cost):
+	if not has_all(def.repair_cost):
 		return "Needs %s" % format_cost(def.repair_cost)
 	return ""
 
@@ -211,7 +256,7 @@ func repair_module(uid: int) -> bool:
 	if repair_error(uid) != "":
 		return false
 	var def := station.get_def(uid)
-	_pay(def.repair_cost)
+	pay(def.repair_cost)
 	spend_time(def.repair_minutes, &"working")
 	station.repair(uid)
 	EventBus.toast.emit("%s repaired." % def.display_name)
@@ -233,7 +278,7 @@ func upgrade_error(uid: int, upgrade_id: StringName) -> String:
 	if err != "":
 		return err
 	var up := module_db.get_upgrade(upgrade_id)
-	if not inventory.has_all(up.cost):
+	if not has_all(up.cost):
 		return "Needs %s" % format_cost(up.cost)
 	return ""
 
@@ -242,7 +287,7 @@ func buy_upgrade(uid: int, upgrade_id: StringName) -> bool:
 	if upgrade_error(uid, upgrade_id) != "":
 		return false
 	var up := module_db.get_upgrade(upgrade_id)
-	_pay(up.cost)
+	pay(up.cost)
 	spend_time(up.minutes, &"working")
 	station.install(uid, upgrade_id)
 	return true
@@ -252,12 +297,12 @@ func buy_upgrade(uid: int, upgrade_id: StringName) -> bool:
 func can_afford_any_module() -> bool:
 	for id in module_db.module_ids():
 		var def := module_db.get_module(id)
-		if def.buildable and inventory.has_all(def.build_cost):
+		if def.buildable and has_all(def.build_cost):
 			return true
 	return false
 
 
-## "4 scrap metal + 1 power cell"
+## "4 scrap + 1 power cell"
 func format_cost(cost: Dictionary) -> String:
 	var parts: PackedStringArray = []
 	for id: StringName in cost:
@@ -266,9 +311,22 @@ func format_cost(cost: Dictionary) -> String:
 	return " + ".join(parts) if not parts.is_empty() else "nothing"
 
 
-func _pay(cost: Dictionary) -> void:
-	for id: StringName in cost:
-		inventory.remove(id, int(cost[id]))
+## Production: every whole unit made counts in the story counter
+## produced_<id> (conditions: count("produced_food")). The first one fires
+## the "produced" trigger (subject = resource id).
+func _count_production(id: StringName, delta: float) -> void:
+	if delta <= 0.0 or _quiet:
+		return
+	_produced_fraction[id] = _produced_fraction.get(id, 0.0) + delta
+	var units := floori(_produced_fraction[id] + StationStock.EPSILON)
+	if units <= 0:
+		return
+	_produced_fraction[id] -= units
+	var counter := StringName("produced_%s" % id)
+	var first := story.count(counter) == 0
+	story.add(counter, units)
+	if first:
+		story_event(&"produced", id)
 
 
 ## Upgrade effects like "morale_decay" shift the needs' base decay rates.
@@ -332,10 +390,9 @@ func apply_outcome(line: String) -> void:
 	var a: PackedStringArray = o.args
 	match o.verb:
 		&"give":
-			gain({StringName(a[0]): int(a[1])})
+			give({StringName(a[0]): int(a[1])})
 		&"take":
-			var id := StringName(a[0])
-			inventory.remove(id, mini(int(a[1]), inventory.count_of(id)))
+			_take(StringName(a[0]), int(a[1]))
 		&"need":
 			needs.change(StringName(a[0]), float(a[1]))
 		&"flag":
@@ -392,6 +449,7 @@ func _show_next_encounter() -> void:
 
 func _reset_story() -> void:
 	story.clear()
+	_produced_fraction.clear()
 	_encounter_queue.clear()
 	current_encounter = null
 
@@ -420,6 +478,7 @@ func to_dict() -> Dictionary:
 		"clock": GameClock.to_dict(),
 		"needs": needs.to_dict(),
 		"inventory": inventory.to_dict(),
+		"stock": stock.to_dict(),
 		"station": station.to_dict(),
 		"story": story.to_dict(),
 		"encounter": String(current_encounter.id) if current_encounter else "",
@@ -431,7 +490,11 @@ func from_dict(data: Dictionary) -> void:
 	_quiet = true
 	GameClock.from_dict(data.get("clock", {}))
 	needs.from_dict(data.get("needs", {}))
-	inventory.from_dict(data.get("inventory", {}))
+	var inv: Dictionary = data.get("inventory", {})
+	stock.from_dict(data.get("stock", {}))
+	if int(data.get("version", 1)) <= 3:
+		inv = _migrate_inventory_v3(inv)
+	inventory.from_dict(inv)
 	if data.has("station"):
 		station.from_dict(data.station)
 	else:
@@ -445,6 +508,25 @@ func from_dict(data: Dictionary) -> void:
 	EventBus.game_reset.emit()
 	if current_encounter:
 		EventBus.encounter_started.emit(current_encounter)
+
+
+## Saves up to v3 kept every item in the inventory: bulk ones move to the
+## stock, and rations became food.
+func _migrate_inventory_v3(inv: Dictionary) -> Dictionary:
+	const RENAMED := {"ration": "food"}
+	var out := inv.duplicate(true)
+	var slots: Array = out.get("slots", [])
+	for i in slots.size():
+		var s: Dictionary = slots[i]
+		if s.is_empty():
+			continue
+		var id := StringName(RENAMED.get(String(s.id), String(s.id)))
+		if item_db.is_bulk(id):
+			stock.add(id, float(s.count))
+			slots[i] = {}
+		else:
+			s.id = String(id)
+	return out
 
 
 func save_game(path: String = SAVE_PATH) -> bool:

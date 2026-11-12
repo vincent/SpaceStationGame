@@ -1,9 +1,9 @@
-# Content pipeline — upgrades & encounters
+# Content pipeline — upgrades, encounters & production
 
-How upgrades (and the parts they put on the station's models) and
-encounters (story beats) are authored as data, validated by tests and
-debugged. Part 1 is the plan and what's done; parts 2 and 3 are the
-developer guide.
+How upgrades (and the parts they put on the station's models), encounters
+(story beats) and station production (resources) are authored as data,
+validated by tests and debugged. Part 1 is the plan and what's done;
+parts 2 to 4 are the developer guide.
 
 Principles (both systems):
 
@@ -98,7 +98,7 @@ starts it: marks it seen, applies its `outcomes`, and shows it.
 | Field | Meaning |
 |---|---|
 | `id` | unique, = file name |
-| `trigger` | `start`, `hour`, `day`, `repaired`, `powered`, `upgraded`, `built`, `visitor`, `traded`, `interacted`, `scheduled` (see `EncounterDef.TRIGGERS` for the `subject` of each) |
+| `trigger` | `start`, `hour`, `day`, `repaired`, `powered`, `upgraded`, `built`, `visitor`, `traded`, `interacted`, `produced`, `scheduled` (see `EncounterDef.TRIGGERS` for the `subject` of each) |
 | `condition` | Godot expression, empty = always (below) |
 | `priority`, `weight`, `chance` | selection (see above). `chance` < 1 for random flavour |
 | `once`, `cooldown_hours` | repeatability |
@@ -119,7 +119,7 @@ variable `subject` (string) = what the trigger was about.
 
 ```
 flag("met_signal")  count("trades")  seen("intro")  hours_since("intro")
-item("scrap_metal")  has_item("scrap_metal", 5)
+item("scrap_metal")  has_item("scrap_metal", 5)  rate("food")
 has_module("hab_pod")  repaired("wreck_core")  powered("wreck_core")  has_upgrade("wreck_dish")
 power()  need("morale")  day()  hour()  chance(0.3)
 ```
@@ -171,3 +171,48 @@ listens to), and document it in `EncounterDef.TRIGGERS`.
 | `src/autoload/game_state.gd` | triggers, `story_event`, `fire_encounter`, `resolve_encounter`, `apply_outcome`, save/load |
 | `src/ui/encounter_panel.gd` | dialog/radio UI |
 | `tests/unit/test_story.gd`, `test_encounter_data.gd`, `test_storyline.gd` | tests |
+
+## 4. Production (resources)
+
+The station has a **stock** of resources (`StationStock`): bulk items
+(`ItemData.bulk = true`: scrap, water, food). They never sit in the
+inventory; every cost and reward goes through GameState's wallet
+(`count`, `has_all`, `give`, `pay`), which sends bulk ids to the stock and
+the rest (power cells...) to the inventory. So `build_cost`, upgrade
+`cost`, trader offers and `give`/`take` outcomes use the same ids as before.
+
+Modules make and use resources per game hour:
+
+- `ModuleDef.production` — e.g. agri bay `{food: 0.15, water: -0.15}`,
+  wreck core `{water: 0.3}`. Positive = output, negative = input.
+- `UpgradeDef.production` **adds** to its module's (a tier = a bigger
+  upgrade, e.g. `agri_hydroponics` `{food: 0.2, water: -0.15}` + `power_draw 0.5`).
+
+Rules (`Production`, pure, tested in `test_production.gd`): a module runs
+when it isn't derelict and is powered (or draws no power). Inputs are
+partial: efficiency = min(1, available / needed). Modules tick in uid order
+on `GameClock.time_advanced`, so sleeping and skipping time produce too.
+Statuses: running, starved ("Needs water"), unpowered, derelict, and
+locked (popover only: an upgrade not installed yet would produce it).
+
+UI: the top **status bar** (`StatusBar`) shows a chip per resource that
+has stock or a producer (amount + net rate) and a power chip; tapping one
+opens the **production popover** (`ProductionPopover`) listing producers,
+locked upgrades and consumers; tapping a row focuses the module.
+
+Story: every whole unit made adds to the counter `produced_<id>`
+(`count("produced_food")`); the first one fires the `produced` trigger
+(subject = resource id, e.g. `first_harvest`). `rate("food")` reads the
+live net rate.
+
+### Add a resource / producer (checklist)
+
+1. New resource: `data/items/<id>.tres` with `bulk = true` and a `color`
+   (the chip dot). Eatable at the kitchen: `usable`, tag `food`,
+   `use_effects`.
+2. Producer: `production` on the module `.tres` (or an upgrade's).
+   `test_module_data` / `test_upgrade_definitions_are_valid` check that
+   ids are bulk items and rates are non-zero.
+3. Try it: `tools/screenshot.sh build/p.png --build=agri_bay --power=all
+   --stock=water:5 --popover=food --story=off`, or debug panel → Items →
+   Give 5 (bulk items go to the stock).

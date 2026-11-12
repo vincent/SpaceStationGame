@@ -131,7 +131,7 @@ func test_repair_and_power_wreck() -> void:
 
 func test_building_a_module_attaches_and_links_navigation() -> void:
 	var wreck := station.find_module(&"wreck_core")
-	GameState.gain({&"scrap_metal": 20})
+	GameState.give({&"scrap_metal": 20})
 	GameState.repair_module(wreck.uid)
 	var before := camera.get_station_aabb()
 	var uid := GameState.build_module(&"hab_pod", wreck.uid, &"C")
@@ -147,7 +147,7 @@ func test_building_a_module_attaches_and_links_navigation() -> void:
 
 func test_load_rebuilds_station() -> void:
 	var wreck := station.find_module(&"wreck_core")
-	GameState.gain({&"scrap_metal": 20})
+	GameState.give({&"scrap_metal": 20})
 	GameState.repair_module(wreck.uid)
 	GameState.build_module(&"hab_pod", wreck.uid, &"B")
 	var path := "user://test_main_save.json"
@@ -249,3 +249,44 @@ func test_idle_routine_waits_while_upgrade_view_is_open() -> void:
 	view.exit()
 	routine.enabled = false
 	await wait_seconds(ExplodedView.SECONDS + 0.6)
+
+
+func test_agri_bay_shows_in_the_status_bar_and_popover() -> void:
+	var hud := get_tree().get_first_node_in_group(&"hud") as HUD
+	var bar := hud.status_bar
+	var wreck := station.find_module(&"wreck_core")
+	GameState.give({&"scrap_metal": 40, &"power_cell": 1})
+	GameState.stock.set_amount(&"water", 0.0)
+	GameState.repair_module(wreck.uid)
+	assert_true(GameState.toggle_power(wreck.uid))
+	assert_gt(GameState.build_module(&"solar_array", wreck.uid, &"C"), 0)
+	var bay := GameState.build_module(&"agri_bay", wreck.uid, &"B")
+	assert_gt(bay, 0)
+	assert_true(GameState.toggle_power(bay))
+	assert_true(bar.chips[&"food"].visible, "food chip (starting stock + a producer)")
+	assert_true(bar.chips[StatusBar.POWER].visible)
+	var food := GameState.stock.amount(&"food")
+	GameClock.advance(600)
+	assert_almost_eq(GameState.stock.amount(&"food"), food + 0.15 * 10, 0.01)
+	assert_string_contains(bar.chips[&"food"].amount_label.text, str(GameState.stock.count(&"food")))
+	assert_eq(bar.chips[&"food"].rate_label.text, "+0.15/h")
+
+	var popover := hud.production_popover
+	popover.toggle(&"food", bar.chips[&"food"])
+	assert_true(popover.visible)
+	var texts := _button_texts(popover)
+	assert_true(texts.any(func(t: String) -> bool: return t.begins_with("Agri bay · +0.15/h")), str(texts))
+	assert_true(texts.any(func(t: String) -> bool: return t.contains("Upgrade: Hydroponics")), str(texts))
+	assert_true(GameState.toggle_power(bay))  # off
+	texts = _button_texts(popover)
+	assert_true(texts.any(func(t: String) -> bool: return t.begins_with("Agri bay · Unpowered")), str(texts))
+	popover.toggle(&"food", bar.chips[&"food"])
+	assert_false(popover.visible, "the same chip closes it")
+
+
+func _button_texts(root: Node) -> Array:
+	var out := []
+	for b in root.find_children("*", "Button", true, false):
+		if not b.is_queued_for_deletion():
+			out.append((b as Button).text)
+	return out

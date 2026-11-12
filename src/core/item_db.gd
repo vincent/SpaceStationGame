@@ -41,6 +41,12 @@ func ids() -> Array[StringName]:
 	return out
 
 
+## Bulk items are station resources (StationStock), not inventory items.
+func is_bulk(id: StringName) -> bool:
+	var item := get_item(id)
+	return item != null and item.bulk
+
+
 func max_stack(id: StringName) -> int:
 	var item := get_item(id)
 	return item.max_stack if item else 1

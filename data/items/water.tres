@@ -5,10 +5,11 @@
 [resource]
 script = ExtResource("1_item")
 id = &"water"
-display_name = "Water pouch"
-description = "Recycled water. Needed for cooking."
-max_stack = 10
+display_name = "Water"
+description = "Recycled water from the wreck's big tank. Agri bays drink it."
+max_stack = 999
 color = Color(0.18, 0.89, 0.9, 1)
-usable = true
-use_effects = Dictionary[StringName, float]({&"food": 3.0, &"morale": 1.0})
-tags = PackedStringArray("food", "liquid")
+usable = false
+use_effects = Dictionary[StringName, float]({})
+tags = PackedStringArray("liquid")
+bulk = true

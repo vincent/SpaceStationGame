@@ -27,3 +27,10 @@ func test_every_item_is_valid() -> void:
 func test_starting_items_exist() -> void:
 	for id in GameState.STARTING_ITEMS:
 		assert_true(db.has(id), "starting item %s exists" % id)
+
+
+func test_station_resources_are_bulk() -> void:
+	for id: StringName in [&"scrap_metal", &"water", &"food"]:
+		assert_true(db.get_item(id).bulk, "%s is a station resource" % id)
+	assert_false(db.get_item(&"power_cell").bulk, "power cells stay carried")
+	assert_false(db.has(&"ration"), "rations became food")

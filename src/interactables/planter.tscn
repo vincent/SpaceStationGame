@@ -1,0 +1,58 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/interactables/planter.gd" id="1_script"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_pick"]
+size = Vector3(1.6, 1.2, 1.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(1.4, 0.8, 1.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_trough"]
+size = Vector3(1.4, 0.5, 1.0)
+
+[sub_resource type="SphereMesh" id="SphereMesh_leaf"]
+radius = 0.26
+height = 0.4
+radial_segments = 8
+rings = 4
+
+[sub_resource type="BoxMesh" id="BoxMesh_lamp"]
+size = Vector3(1.3, 0.06, 0.18)
+
+[node name="Planter" type="Area3D"]
+script = ExtResource("1_script")
+display_name = "Planter"
+base_color = Color(0.29, 0.25, 0.22, 1)
+accent_color = Color(0.45, 0.9, 0.35, 1)
+accent_emission = 0.6
+
+[node name="PickShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+shape = SubResource("BoxShape3D_pick")
+
+[node name="Body" type="StaticBody3D" parent="."]
+
+[node name="Shape" type="CollisionShape3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+shape = SubResource("BoxShape3D_body")
+
+[node name="Trough" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+mesh = SubResource("BoxMesh_trough")
+
+[node name="AccentLeaf" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4, 0.62, 0.05)
+mesh = SubResource("SphereMesh_leaf")
+
+[node name="AccentLeaf2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1.1, 0, 0, 0, 1.2, 0, 0, 0, 1.1, 0.05, 0.66, -0.1)
+mesh = SubResource("SphereMesh_leaf")
+
+[node name="AccentLeaf3" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.9, 0, 0, 0, 1, 0, 0, 0, 0.9, 0.45, 0.6, 0.12)
+mesh = SubResource("SphereMesh_leaf")
+
+[node name="AccentGrowLamp" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+mesh = SubResource("BoxMesh_lamp")
