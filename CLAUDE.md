@@ -16,7 +16,7 @@ story encounters are data-driven: `docs/CONTENT_PIPELINE.md`.
 | One test file / tests by name | `tools/test.sh -gselect=test_inventory` · `tools/test.sh -gunit_test_name=merge` |
 | Lint | `tools/lint.sh` (needs `pip install "gdtoolkit==4.*"`) |
 | Parse/import check only | `tools/import.sh` |
-| Screenshot (works headless via xvfb) | `tools/screenshot.sh build/shot.png [--view=station\|room] [--focus=wreck_core] [--power=all] [--upgrade=all] [--encounter=intro] [--story=off] [--stock=food:20] [--layout=demo] [--popover=food] [--build-menu] [--explode] [--time=22] [--debug-panel] [--delay=5]` (all hooks: `DebugOverlay._run_cli_commands()`) |
+| Screenshot (works headless via xvfb) | `tools/screenshot.sh build/shot.png [--view=station\|room] [--focus=wreck_core] [--power=all] [--upgrade=all] [--crew=2] [--encounter=intro] [--story=off] [--stock=food:20] [--layout=demo] [--popover=food] [--build-menu] [--explode] [--time=22] [--debug-panel] [--delay=5]` (all hooks: `DebugOverlay._run_cli_commands()`) |
 | Perf stress test (huge station + frame-time report) | `tools/stress.sh [modules=80] [seconds=10] [hooks...]` (`--layout=stress --modules=N --perf=S`; layout = `StressLayout`) |
 | Golden images (compare / re-record) | `tools/golden.sh` · `tools/golden.sh --update [scene]` (or `/update-goldens`) |
 | Run game / open editor | `tools/run.sh` · `tools/editor.sh` |
@@ -33,7 +33,8 @@ changes also take a screenshot, look at it, and run `tools/golden.sh`.
 
 ```
 src/autoload/   EventBus (signals only), GameClock (time), GameState (needs, inventory, stock + wallet, station, story, actions, save/load)
-src/core/       Pure logic & helpers: Needs, Inventory, ItemDB/ItemData, StationStock, Production, StationState, ModuleDB/ModuleDef/UpgradeDef,
+src/core/       Pure logic & helpers: Needs, Inventory, ItemDB/ItemData, StationStock, Production, StationState, StationCrew/CrewMember/CrewSchedule,
+                ModuleDB/ModuleDef/UpgradeDef,
                 EncounterDef/EncounterDB, StoryState, StoryContext, StoryOutcome, Storyteller,
                 DayCycle, Palette, Layers, ToonMaterials, StationGrid (placement/overlaps)
 src/world/      main.tscn/main.gd (taps → focus/build/walk/interact), StationBuilder (module interior from ASCII)
@@ -41,7 +42,8 @@ src/station/    Station (scene mirror of StationState), Module (hull+interior+li
                 HullMesher/MeshKit (procedural watertight hulls), ExplodedView, VisitorDirector, modules/*.tscn
 src/rendering/  CutawayController (cut box shader globals), ClockLighting
 src/camera/     DioramaCamera (fixed oblique ortho rig, zoom tiers, pan), Backdrop (starfield quad)
-src/player/     Player (CharacterBody3D + NavigationAgent3D), PlayerRoutine (idle auto-routines)
+src/player/     Walker (navmesh walking base), Player (extends Walker), PlayerRoutine (idle auto-routines)
+src/crew/       CrewDirector (spawns CrewNPCs from StationCrew, claims spots, hides them in closed modules), CrewNPC
 src/interactables/  Interactable base + Bed, Kitchen, BayWindow, SalvagePile, Console, Trader, Planter (+ .tscn each)
 src/ambient/    AmbientKit (state-driven props), ExteriorLife (traffic, debris)
 src/audio/      SfxSynth (placeholder sounds), AudioDirector
@@ -118,6 +120,11 @@ placeholder or `part_scene`). Checklist: `docs/CONTENT_PIPELINE.md`; `test_modul
 **New resource / producer:** bulk item `data/items/<id>.tres` (`bulk = true`, `color` for the
 status-bar chip); `production` (per game hour, + output / − input) on a module `.tres` or an
 upgrade (adds to the module's). Rules in `Production`; checklist in `docs/CONTENT_PIPELINE.md` §4.
+
+**Crew:** data in `GameState.station.crew` (`StationCrew`: bunks = `B` cells of repaired non-capsule
+modules, `ModuleDef.jobs`, `staff/unstaff/add`). Needs and meals tick data-side in `CrewSchedule.tick`
+(from `GameState._on_time_advanced`); `CrewNPC`s only mirror `member.activity`. Staffing multiplies
+production (`StationCrew.staffing`, up to +50%). New job module: set `jobs` on its `.tres` (needs `production`).
 
 **New encounter (story beat):** add `data/encounters/<id>.tres` (`trigger`, `condition` = Godot
 expression over `StoryContext`, `lines`, `outcomes`/`choices` = `StoryOutcome` verbs).

@@ -123,3 +123,13 @@ func test_fits() -> void:
 	assert_false(hab.fits(PackedStringArray(["visitor"])))
 	assert_false(hab.fits(PackedStringArray(["module"]), 0), "size class too small")
 	assert_true(db.get_module(&"capsule").fits(PackedStringArray(["capsule"])))
+
+
+func test_crew_data() -> void:
+	for id in db.module_ids():
+		var def := db.get_module(id)
+		assert_gte(def.jobs, 0, "%s: jobs" % id)
+		if def.jobs > 0:
+			assert_false(def.production.is_empty(), "%s: jobs only make sense on producers" % id)
+	assert_eq(db.get_module(&"hab_drum").crew_beds(), 2)
+	assert_eq(db.get_module(&"agri_bay").jobs, 2)

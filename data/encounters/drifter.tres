@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="EncounterDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/encounter_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"drifter"
+trigger = &"visitor"
+condition = "free_beds() > 0"
+chance = 0.6
+once = false
+cooldown_hours = 24.0
+channel = &"dialog"
+title = "A drifter"
+lines = PackedStringArray("Someone steps off the trader's ship with a duffel bag.", "\"Heard you've got bunks. I can work for my keep.\"")
+choices = Array[Dictionary]([{"text": "Welcome aboard (2 food)", "condition": "has_item(\"food\", 2)", "outcomes": PackedStringArray("take food 2", "recruit", "need morale 10")}, {"text": "Not now", "outcomes": PackedStringArray()}])

@@ -95,6 +95,16 @@ func _ready() -> void:
 		["Wear −", _change_wear.bind(-0.2)],
 		["Upgrade view", func() -> void: _with_focus(EventBus.upgrade_view_requested.emit)],
 	])
+	_add_row("Crew", [
+		["Recruit", _cheat_crew.bind(1)],
+		["Staff focused", func() -> void: _with_focus(func(m: Module) -> void:
+			var err := GameState.station.crew.staff(m.uid)
+			EventBus.toast.emit(err if err != "" else "Staffed"))],
+		["Fire last", func() -> void:
+			var crew := GameState.station.crew
+			if crew.size() > 0:
+				crew.remove(crew.members.back().id)],
+	])
 	_add_camera_sliders.call_deferred()
 	_add_row("Game", [
 		["Save", func() -> void: EventBus.toast.emit("Saved" if GameState.save_game() else "Save failed")],
@@ -221,6 +231,8 @@ func _run_cli_commands() -> void:
 		for _pass in 3:  # "all": later passes install upgrades whose requirements came first
 			for id in ids:
 				_cheat_upgrade(id)
+	if args.has("crew"):
+		_cheat_crew(int(args.crew) if args.crew != "" else 1)
 	if args.has("encounter"):
 		GameState.set_story_enabled(true)
 		if not GameState.fire_encounter(StringName(args.encounter), true):
@@ -321,6 +333,20 @@ func _cheat_demo_layout() -> void:
 		for slot in st.free_slots(node):
 			if st.attach_error(module_id, node, slot) == "":
 				st.add_module(module_id, node, slot, r, 0.3)
+				break
+
+
+## Recruits `count` crew (as many as there are bunks; extra bunks come from
+## repairing every habitat) and puts them to work where there are jobs.
+func _cheat_crew(count: int) -> void:
+	var st := GameState.station
+	for i in count:
+		var m := st.crew.add()
+		if m == null:
+			EventBus.toast.emit("No free bunk")
+			return
+		for uid in st.uids():
+			if st.crew.assign(m.id, uid) == "":
 				break
 
 

@@ -16,6 +16,7 @@ repair_cost = Dictionary[StringName, int]({&"scrap_metal": 3})
 power_output = 0.0
 power_draw = 1.5
 production = Dictionary[StringName, float]({&"food": 0.15, &"water": -0.15})
+jobs = 2
 slots = Dictionary[StringName, PackedStringArray]({&"A": PackedStringArray()})
 attach_slot = &"A"
 layout = "#####

@@ -9,6 +9,8 @@ signal chip_pressed(id: StringName, chip: Control)
 
 ## Chip id of the power budget (not an item).
 const POWER := &"power"
+## Chip id of the crew (members / bunks), shown once there are bunks.
+const CREW := &"crew"
 
 var chips: Dictionary[StringName, Chip] = {}
 var _shown: Dictionary[StringName, bool] = {}
@@ -72,6 +74,7 @@ func _ready() -> void:
 	add_theme_constant_override("h_separation", 8)
 	add_theme_constant_override("v_separation", 6)
 	_add_chip(POWER, Palette.NEON_CYAN)
+	_add_chip(CREW, Palette.VIOLET)
 	for item in resources():
 		_add_chip(item.id, item.color)
 	GameClock.minute_changed.connect(func(_m: int) -> void: refresh())
@@ -80,6 +83,7 @@ func _ready() -> void:
 	GameState.station.module_added.connect(func(_uid: int) -> void: refresh())
 	GameState.station.module_removed.connect(func(_uid: int) -> void: refresh())
 	GameState.station.reset.connect(refresh)
+	GameState.station.crew.changed.connect(refresh)
 	EventBus.game_reset.connect(func() -> void:
 		_shown.clear()
 		refresh())
@@ -106,6 +110,8 @@ func refresh() -> void:
 	var stock := GameState.stock
 	var rates := Production.rates(GameState.station, GameState.stock)
 	chips[POWER].set_values("Power %s/%s" % [snappedf(st.power_draw(), 0.1), snappedf(st.power_output(), 0.1)], 0.0)
+	chips[CREW].visible = st.crew.capacity() > 0 or st.crew.size() > 0
+	chips[CREW].set_values("Crew %d/%d" % [st.crew.size(), st.crew.capacity()], 0.0)
 	for item in resources():
 		var id := item.id
 		if stock.amount(id) > 0.0 or Production.has_producer(st, id):

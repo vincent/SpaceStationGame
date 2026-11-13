@@ -1,7 +1,7 @@
 class_name ProductionPopover
 extends PanelContainer
 ## Opens under a StatusBar chip: which modules produce / use that resource
-## (or power), with their rate and status. Rows that aren't running are
+## (or power, or who the crew are and where they work), with their rate and status. Rows that aren't running are
 ## dimmed and say why ("Unpowered", "Needs water", "Upgrade: Hydroponics").
 ## Tapping a row focuses the module.
 
@@ -34,6 +34,7 @@ func _ready() -> void:
 	vbox.add_child(_list)
 	GameState.station.module_changed.connect(func(_uid: int, _r: StringName) -> void: _refresh_if_open())
 	GameState.stock.count_changed.connect(func(_id: StringName, _n: int) -> void: _refresh_if_open())
+	GameState.station.crew.changed.connect(_refresh_if_open)
 	EventBus.game_reset.connect(close)
 
 
@@ -58,8 +59,18 @@ func refresh() -> void:
 	for child in _list.get_children():
 		_list.remove_child(child)
 		child.queue_free()
-	var rows := power_rows() if resource == StatusBar.POWER else resource_rows(resource)
-	if resource == StatusBar.POWER:
+	var rows: Array[Dictionary]
+	match resource:
+		StatusBar.POWER:
+			rows = power_rows()
+		StatusBar.CREW:
+			rows = crew_rows()
+		_:
+			rows = resource_rows(resource)
+	if resource == StatusBar.CREW:
+		var crew := GameState.station.crew
+		_title.text = "Crew %d · %d bunks" % [crew.size(), crew.capacity()]
+	elif resource == StatusBar.POWER:
 		var st := GameState.station
 		_title.text = "Power %s / %s" % [snappedf(st.power_draw(), 0.1), snappedf(st.power_output(), 0.1)]
 	else:
@@ -72,7 +83,8 @@ func refresh() -> void:
 			_list.add_child(UITheme.label(section, true, Palette.TEXT_DIM))
 		_list.add_child(_make_row(row))
 	if rows.is_empty():
-		_list.add_child(UITheme.label("Nothing makes or uses it yet.", true, Palette.TEXT_DIM))
+		_list.add_child(UITheme.label("No crew yet: traders bring drifters looking for a bunk."
+			if resource == StatusBar.CREW else "Nothing makes or uses it yet.", true, Palette.TEXT_DIM))
 
 
 ## Rows {section, uid, text, running} for a resource (see Production.rows_for).
@@ -100,6 +112,29 @@ static func resource_rows(id: StringName) -> Array[Dictionary]:
 			"section": "Producers" if nominal > 0.0 else "Consumers", "uid": r.uid,
 			"text": "%s · %s" % [module_name, text], "running": status == Production.Status.RUNNING,
 		})
+	return out
+
+
+## Rows for the crew chip: each member, their job (or home) and their
+## lowest need when it's low. Tapping focuses where they work.
+static func crew_rows() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var st := GameState.station
+	for m in st.crew.members:
+		var where := "Off duty"
+		var uid := m.home_uid
+		if m.has_job():
+			where = "Works at %s" % st.get_def(m.job_uid).display_name
+			uid = m.job_uid
+		var low := ""
+		for need in m.needs.names():
+			if m.needs.get_value(need) < 30.0:
+				low = " · low %s" % need
+		out.append({
+			"section": "Working" if m.has_job() else "Idle", "uid": uid, "running": m.has_job(),
+			"text": "%s · %s · %s%s" % [m.display_name, where, m.activity, low],
+		})
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.running and not b.running)
 	return out
 
 

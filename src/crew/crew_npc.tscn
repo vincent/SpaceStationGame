@@ -1,0 +1,42 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/crew/crew_npc.gd" id="1_script"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.28
+height = 1.6
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
+radius = 0.28
+height = 1.6
+
+[sub_resource type="BoxMesh" id="BoxMesh_visor"]
+size = Vector3(0.34, 0.12, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_belt"]
+size = Vector3(0.6, 0.1, 0.6)
+
+[node name="CrewNPC" type="CharacterBody3D"]
+script = ExtResource("1_script")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="Model" type="Node3D" parent="."]
+
+[node name="Body" type="MeshInstance3D" parent="Model"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+mesh = SubResource("CapsuleMesh_body")
+
+[node name="AccentVisor" type="MeshInstance3D" parent="Model"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0.24)
+mesh = SubResource("BoxMesh_visor")
+
+[node name="Belt" type="MeshInstance3D" parent="Model"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+mesh = SubResource("BoxMesh_belt")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+radius = 0.35
+height = 1.6

@@ -52,7 +52,10 @@ Status markers: `[x]` done · `[~]` in progress / partial · `[ ]` todo
 - [x] Docking port, ships attach to the station
 - [~] Traders: buy/sell/exchange goods & services (fixed swaps; selling food is the first income loop)
 - [x] Station economy (docs/PLAN_STATION_ECONOMY.md): bulk resources in a station stock, module/upgrade production (wreck water → agri bay food, hydroponics tier), status bar + production popover, `produced` trigger, save v4 migration
-- [ ] Economy, later: storage caps (silos), wear → efficiency, production-chain overview, agri bay Blender art, conversion modules, crew eating food
+- [ ] Economy, later: storage caps (silos), wear → efficiency, production-chain overview, agri bay Blender art, conversion modules
+- [x] Crew: bunks (`B` cells of repaired habitats) cap the crew, `ModuleDef.jobs` + staffing boost production up to +50%, crew eat station food at meal times (`StationCrew`, `CrewSchedule`, save v6)
+- [x] Crew NPCs walk to bunk / job / kitchen / free floor (`CrewDirector`, `CrewNPC`, `Walker` shared with the player); recruit via the `drifter` encounter, trader "Hire a hand", `recruit` outcome; module panel crew row, status-bar crew chip + popover
+- [ ] Crew, later: leave when morale stays critical, traits/skills, upgrades that add jobs, crew walking on/off visitor ships, tap a crew member
 - [ ] Station development axes: culture, economy, religion
 
 ## Modular station (custom layouts)

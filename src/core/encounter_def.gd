@@ -19,6 +19,7 @@ const TRIGGERS: Dictionary[StringName, String] = {
 	&"traded": "a trade went through",
 	&"produced": "a resource was produced for the first time (subject = resource id, e.g. food)",
 	&"interacted": "the player opened an object's menu (subject = scene name, e.g. salvage_pile)",
+	&"recruited": "a crew member joined (subject = their name)",
 	&"scheduled": "only through the `schedule` outcome",
 }
 ## dialog: modal-ish panel with choices; radio: the same panel styled as a

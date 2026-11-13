@@ -2,7 +2,8 @@ class_name ModulePanel
 extends PanelContainer
 ## Bottom-left card for the focused module in room view: state, wear and
 ## power, with Repair / Power / Upgrade actions and a way back out to the
-## station view.
+## station view. Modules with jobs get a crew row (− Crew 1/2 +); habitats
+## show their bunks.
 
 var module: Module
 
@@ -11,6 +12,10 @@ var _status: Label
 var _repair: Button
 var _power: Button
 var _upgrade: Button
+var _crew_row: HBoxContainer
+var _crew_label: Label
+var _crew_add: Button
+var _crew_remove: Button
 var _room_view := false
 
 
@@ -23,6 +28,17 @@ func _ready() -> void:
 	box.add_child(_title)
 	_status = UITheme.label("", true, Palette.TEXT_DIM)
 	box.add_child(_status)
+	_crew_row = HBoxContainer.new()
+	_crew_row.add_theme_constant_override("separation", 6)
+	box.add_child(_crew_row)
+	_crew_remove = UITheme.button("−", func() -> void: GameState.station.crew.unstaff(module.uid))
+	_crew_label = UITheme.label("", true, Palette.TEXT)
+	_crew_add = UITheme.button("+", _on_staff)
+	for b in [_crew_remove, _crew_add]:
+		b.custom_minimum_size.x = UITheme.TOUCH_SIZE
+	_crew_row.add_child(_crew_remove)
+	_crew_row.add_child(_crew_label)
+	_crew_row.add_child(_crew_add)
 	var row := HFlowContainer.new()
 	box.add_child(row)
 	_repair = UITheme.button("Repair", _on_repair)
@@ -46,6 +62,7 @@ func _ready() -> void:
 	EventBus.upgrade_view_closed.connect(refresh)
 	GameState.station.module_changed.connect(func(_uid: int, _r: StringName) -> void: refresh())
 	GameState.inventory.changed.connect(refresh)
+	GameState.station.crew.changed.connect(refresh)
 	GameState.stock.count_changed.connect(func(_id: StringName, _n: int) -> void: refresh())
 	refresh()
 
@@ -66,6 +83,16 @@ func refresh() -> void:
 	elif st.module_draw(module.uid) > 0.0:
 		power = "%s · draws %s" % ["on" if rec.powered else "off", snappedf(st.module_draw(module.uid), 0.1)]
 	_status.text = "%s · wear %d%%%s" % [state_name, roundi(rec.wear * 100.0), (" · " + power) if power else ""]
+	var crew := st.crew
+	if crew.beds(module.uid) > 0:
+		_status.text += "\nBunks %d/%d" % [crew.residents(module.uid).size(), crew.beds(module.uid)]
+	var jobs := crew.jobs(module.uid)
+	_crew_row.visible = jobs > 0
+	if jobs > 0:
+		var staffed := crew.workers(module.uid).size()
+		_crew_label.text = "Crew %d/%d · +%d%%" % [staffed, jobs, roundi((crew.staffing(module.uid) - 1.0) * 100.0)]
+		_crew_remove.disabled = staffed == 0
+		_crew_add.disabled = staffed >= jobs or crew.idle().is_empty()
 
 	var derelict: bool = rec.state == StationState.State.DERELICT
 	_repair.visible = derelict
@@ -81,6 +108,12 @@ func refresh() -> void:
 
 func _on_repair() -> void:
 	GameState.repair_module(module.uid)
+
+
+func _on_staff() -> void:
+	var err := GameState.station.crew.staff(module.uid)
+	if err != "":
+		EventBus.toast.emit(err)
 
 
 func _on_power() -> void:

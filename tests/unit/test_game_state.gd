@@ -165,3 +165,44 @@ func test_version_3_save_migrates_to_the_stock() -> void:
 	assert_eq(GameState.stock.count(&"scrap_metal"), 7)
 	assert_eq(GameState.inventory.count_of(&"power_cell"), 1, "carried items stay")
 	assert_eq(GameState.inventory.count_of(&"scrap_metal"), 0, "bulk items left the inventory")
+
+
+func test_recruit_needs_a_free_bunk() -> void:
+	GameState.apply_outcome("recruit")
+	assert_eq(GameState.station.crew.size(), 0, "the capsule bunk is the castaway's")
+
+
+func test_crew_outcome_and_save() -> void:
+	GameState.station.repair(_wreck())
+	var hab := 0
+	for uid in GameState.station.uids():
+		for slot in GameState.station.free_slots(uid):
+			for by in GameState.station.attach_options(&"hab_drum", uid, slot):
+				hab = GameState.station.add_module(&"hab_drum", uid, slot, StationState.State.REPAIRED, 0.3, false, by)
+				break
+			if hab:
+				break
+		if hab:
+			break
+	if hab == 0:
+		pass_test("no spot for a hab drum on the start station")
+		return
+	GameState.apply_outcome("recruit")
+	assert_eq(GameState.station.crew.size(), 1)
+	assert_eq(GameState.station.crew.staff(_wreck()), "", "the wreck has a job")
+	var data: Dictionary = JSON.parse_string(JSON.stringify(GameState.to_dict()))
+	assert_eq(int(data.version), GameState.SAVE_VERSION)
+	GameState.new_game()
+	assert_eq(GameState.station.crew.size(), 0)
+	GameState.from_dict(data)
+	assert_eq(GameState.station.crew.size(), 1)
+	assert_eq(GameState.station.crew.members[0].job_uid, _wreck())
+
+
+func test_version_5_save_has_no_crew() -> void:
+	var data := GameState.to_dict()
+	data.version = 5
+	data.station.erase("crew")
+	GameState.from_dict(JSON.parse_string(JSON.stringify(data)))
+	assert_eq(GameState.station.crew.size(), 0)
+	assert_eq(GameState.station.uids().size(), 2)

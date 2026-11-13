@@ -17,6 +17,7 @@ extends RefCounted
 ##   powered("wreck_core")         exists and switched on
 ##   has_upgrade("wreck_dish")     installed on any module
 ##   power()                       spare power (output - draw)
+##   crew(), free_beds()           crew members / bunks still free
 ##   need("morale")                0..100
 ##   day(), hour()                 game clock
 ##   chance(0.3)                   random roll (prefer EncounterDef.chance)
@@ -138,6 +139,14 @@ func has_upgrade(upgrade_id: String) -> bool:
 
 func power() -> float:
 	return station.power_output() - station.power_draw()
+
+
+func crew() -> int:
+	return station.crew.size()
+
+
+func free_beds() -> int:
+	return station.crew.free_beds()
 
 
 func need(name: String) -> float:

@@ -29,6 +29,8 @@ const SIZE_LABELS: Array[String] = ["", "small", "standard", "large"]
 ## Resources made (+) / used (-) per game hour while running (see Production).
 ## Ids are bulk items, e.g. {&"food": 0.15, &"water": -0.15}.
 @export var production: Dictionary[StringName, float] = {}
+## Crew work places (see StationCrew.staffing: staffed modules produce more).
+@export var jobs: int = 0
 ## Slot letter of the interior ASCII (upper case) -> what it accepts: module
 ## ids or kinds (e.g. ["module"], ["visitor"], ["capsule"]).
 @export var slots: Dictionary[StringName, PackedStringArray] = {}
@@ -51,6 +53,11 @@ const SIZE_LABELS: Array[String] = ["", "small", "standard", "large"]
 ## Size of one of this module's slots (1 = S, 2 = M, 3 = L).
 func slot_size(slot: StringName) -> int:
 	return slot_sizes.get(slot, size_class)
+
+
+## Crew beds: the `B` cells of the layout.
+func crew_beds() -> int:
+	return layout.count("B")
 
 
 ## Smallest of its slots: the smallest hatch it can attach by.

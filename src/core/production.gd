@@ -7,6 +7,8 @@ extends RefCounted
 ##
 ## A module runs when it isn't derelict and is powered (or draws no power).
 ## Inputs are partial: it runs at min(1, available / needed) efficiency.
+## Crew working there boost it (StationCrew.staffing: up to +50%), inputs
+## included.
 ## Modules work in uid order, so a producer built earlier feeds a consumer
 ## built later within the same tick.
 
@@ -45,7 +47,7 @@ static func power_status(station: StationState, uid: int) -> Status:
 
 ## Runs every module for `hours` against `amounts` (resource -> float,
 ## changed in place). Returns uid -> efficiency (0..1) of each module that
-## has production and can run.
+## has production and can run (above 1 when staffed).
 static func simulate(station: StationState, amounts: Dictionary, hours: float) -> Dictionary[int, float]:
 	var efficiency: Dictionary[int, float] = {}
 	if hours <= 0.0:
@@ -54,11 +56,12 @@ static func simulate(station: StationState, amounts: Dictionary, hours: float) -
 		var prod := base(station, uid)
 		if prod.is_empty() or power_status(station, uid) != Status.RUNNING:
 			continue
-		var eff := 1.0
+		var staff := station.crew.staffing(uid)
+		var eff := staff
 		for id: StringName in prod:
 			if prod[id] < 0.0:
 				var needed := -prod[id] * hours
-				eff = minf(eff, clampf(float(amounts.get(id, 0.0)) / needed, 0.0, 1.0))
+				eff = minf(eff, clampf(float(amounts.get(id, 0.0)) / needed, 0.0, staff))
 		for id: StringName in prod:
 			amounts[id] = maxf(0.0, float(amounts.get(id, 0.0)) + prod[id] * hours * eff)
 		efficiency[uid] = eff
@@ -104,7 +107,8 @@ static func rates(station: StationState, stock: StationStock) -> Dictionary[Stri
 
 
 ## One module: {"status": Status, "rates": {resource: live rate per hour},
-## "nominal": {resource: rate when running}, "missing": input that starves it}.
+## "nominal": {resource: rate when running unstaffed}, "missing": input that
+## starves it, "staffing": crew multiplier (1 = none)}.
 ## `eff` = `efficiencies()` when the caller already has it (one dry run per refresh).
 static func module_rates(station: StationState, stock: StationStock, uid: int, eff: Variant = null) -> Dictionary:
 	if eff == null:
@@ -112,8 +116,9 @@ static func module_rates(station: StationState, stock: StationStock, uid: int, e
 	var nominal := base(station, uid)
 	var status := power_status(station, uid)
 	var e: float = eff.get(uid, 0.0)
+	var staff := station.crew.staffing(uid)
 	var missing: StringName = &""
-	if status == Status.RUNNING and e < 0.999:
+	if status == Status.RUNNING and e < staff - 0.001:
 		status = Status.STARVED
 		for id: StringName in nominal:
 			if nominal[id] < 0.0 and stock.amount(id) < -nominal[id] * PROBE_HOURS:
@@ -122,7 +127,7 @@ static func module_rates(station: StationState, stock: StationStock, uid: int, e
 	var live: Dictionary[StringName, float] = {}
 	for id: StringName in nominal:
 		live[id] = nominal[id] * e
-	return {"status": status, "rates": live, "nominal": nominal, "missing": missing}
+	return {"status": status, "rates": live, "nominal": nominal, "missing": missing, "staffing": staff}
 
 
 ## Rows for one resource's popover: every module producing or consuming it,

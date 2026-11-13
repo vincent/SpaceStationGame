@@ -68,17 +68,9 @@ func _start(intro: bool) -> void:
 ## Waits until the navigation map (which syncs asynchronously after the
 ## per-module bakes) contains the player's position before letting them move.
 func _await_navigation() -> void:
-	player.navigation_ready = false
-	var map := get_world_3d().navigation_map
-	for i in 600:
-		await get_tree().physics_frame
-		if not is_instance_valid(player):
-			return
-		if NavigationServer3D.map_get_iteration_id(map) > 0 and \
-				NavigationServer3D.map_get_closest_point(map, player.global_position).distance_to(player.global_position) < 1.0:
-			player.navigation_ready = true
-			return
-	push_error("Navigation map never became ready: is the player spawn on a floor cell?")
+	if not await player.await_navigation():
+		if is_instance_valid(player) and player.is_inside_tree():
+			push_error("Navigation map never became ready: is the player spawn on a floor cell?")
 
 
 func respawn_player() -> void:

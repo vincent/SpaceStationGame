@@ -98,7 +98,7 @@ starts it: marks it seen, applies its `outcomes`, and shows it.
 | Field | Meaning |
 |---|---|
 | `id` | unique, = file name |
-| `trigger` | `start`, `hour`, `day`, `repaired`, `powered`, `upgraded`, `built`, `visitor`, `traded`, `interacted`, `produced`, `scheduled` (see `EncounterDef.TRIGGERS` for the `subject` of each) |
+| `trigger` | `start`, `hour`, `day`, `repaired`, `powered`, `upgraded`, `built`, `visitor`, `traded`, `interacted`, `produced`, `recruited`, `scheduled` (see `EncounterDef.TRIGGERS` for the `subject` of each) |
 | `condition` | Godot expression, empty = always (below) |
 | `priority`, `weight`, `chance` | selection (see above). `chance` < 1 for random flavour |
 | `once`, `cooldown_hours` | repeatability |
@@ -121,7 +121,7 @@ variable `subject` (string) = what the trigger was about.
 flag("met_signal")  count("trades")  seen("intro")  hours_since("intro")
 item("scrap_metal")  has_item("scrap_metal", 5)  rate("food")
 has_module("hab_pod")  repaired("wreck_core")  powered("wreck_core")  has_upgrade("wreck_dish")
-power()  need("morale")  day()  hour()  chance(0.3)
+power()  need("morale")  crew()  free_beds()  day()  hour()  chance(0.3)
 ```
 
 Example: `subject == "wreck_dish" and not flag("ignored_signal")`.
@@ -135,7 +135,7 @@ and encounter databases):
 give <item> <n>         take <item> <n>        need <need> <delta>
 flag <name>             unflag <name>          count <name> <delta>
 schedule <encounter> <hours>                   toast <text...>
-visitor                 wear <module> <delta>
+visitor                 wear <module> <delta>  recruit
 ```
 
 `schedule` + `trigger = scheduled` makes chains: a beat answered now

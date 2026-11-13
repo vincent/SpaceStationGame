@@ -14,6 +14,7 @@
 [ext_resource type="Script" path="res://src/station/visitor_director.gd" id="12_visitors"]
 [ext_resource type="Script" path="res://src/audio/audio_director.gd" id="13_audio"]
 [ext_resource type="Script" path="res://src/ambient/exterior_life.gd" id="14_exterior"]
+[ext_resource type="Script" path="res://src/crew/crew_director.gd" id="15_crew"]
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_marker"]
 top_radius = 0.45
@@ -66,6 +67,10 @@ cutaway = NodePath("../CutawayController")
 
 [node name="VisitorDirector" type="Node" parent="." node_paths=PackedStringArray("station")]
 script = ExtResource("12_visitors")
+station = NodePath("../Station")
+
+[node name="CrewDirector" type="Node3D" parent="." node_paths=PackedStringArray("station")]
+script = ExtResource("15_crew")
 station = NodePath("../Station")
 
 [node name="ExteriorLife" type="Node3D" parent="." node_paths=PackedStringArray("camera", "station")]

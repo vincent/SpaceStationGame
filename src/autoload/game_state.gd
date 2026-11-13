@@ -9,8 +9,9 @@ extends Node
 
 const SAVE_PATH := "user://savegame.json"
 ## 2: station modules (StationState) added. 3: story (flags, encounters).
-## 4: station stock (bulk resources); rations became food.
-const SAVE_VERSION := 5
+## 4: station stock (bulk resources); rations became food. 5: own_slot
+## (module orientation). 6: crew (in the station data).
+const SAVE_VERSION := 6
 const INVENTORY_SLOTS := 20
 
 ## Bulk ids go to the station stock, the rest to the inventory.
@@ -28,6 +29,7 @@ const ACTIVITY_RATES: Dictionary[StringName, Dictionary] = {
 	&"sleeping": {Needs.ENERGY: -12.5, Needs.FOOD: 2.0, Needs.MORALE: 0.0},
 	&"stargazing": {Needs.MORALE: -20.0},
 	&"cooking": {},
+	&"eating": {},
 	&"working": {Needs.ENERGY: 9.0, Needs.FOOD: 5.0, Needs.MORALE: 0.5},
 }
 ## Lowest decay per hour upgrades can bring a need down to.
@@ -64,6 +66,7 @@ func _init() -> void:
 	station = StationState.new(module_db)
 	station.module_changed.connect(func(_uid: int, _reason: StringName) -> void: _apply_upgrade_effects())
 	station.reset.connect(_apply_upgrade_effects)
+	station.crew.changed.connect(_apply_upgrade_effects)
 	encounter_db.load_dir()
 	story_context = StoryContext.new(story, inventory, stock, station, needs)
 	storyteller = Storyteller.new(encounter_db, story, story_context)
@@ -74,6 +77,7 @@ func _ready() -> void:
 	GameClock.hour_passed.connect(func(_h: int) -> void: story_event(&"hour"))
 	GameClock.day_passed.connect(func(_d: int) -> void: story_event(&"day"))
 	station.module_changed.connect(_on_module_changed_story)
+	station.crew.joined.connect(_on_crew_joined)
 	EventBus.trade_completed.connect(func() -> void: story_event(&"traded"))
 	EventBus.interaction_requested.connect(func(target: Interactable) -> void:
 		story_event(&"interacted", StringName(target.scene_file_path.get_file().get_basename())))
@@ -206,6 +210,7 @@ func use_item(slot_index: int) -> bool:
 
 func _on_time_advanced(minutes: float) -> void:
 	needs.tick(minutes / GameClock.MINUTES_PER_HOUR, ACTIVITY_RATES.get(activity, {}))
+	CrewSchedule.tick(station, stock, GameClock.total_minutes - minutes, minutes, ACTIVITY_RATES)
 	var produced := Production.tick(station, stock, minutes)
 	for id: StringName in produced:
 		_count_production(id, produced[id])
@@ -330,11 +335,15 @@ func _count_production(id: StringName, delta: float) -> void:
 		story_event(&"produced", id)
 
 
-## Upgrade effects like "morale_decay" shift the needs' base decay rates.
+## Upgrade effects like "morale_decay" shift the needs' base decay rates
+## (the castaway's and the crew's).
 func _apply_upgrade_effects() -> void:
 	for need: StringName in Needs.DEFAULT_DECAY:
 		var bonus := station.effect_total(StringName("%s_decay" % need))
-		needs.decay_per_hour[need] = maxf(MIN_DECAY, Needs.DEFAULT_DECAY[need] + bonus)
+		var rate := maxf(MIN_DECAY, Needs.DEFAULT_DECAY[need] + bonus)
+		needs.decay_per_hour[need] = rate
+		for m in station.crew.members:
+			m.needs.decay_per_hour[need] = rate
 
 
 # --- Story / encounters ------------------------------------------------------
@@ -408,6 +417,9 @@ func apply_outcome(line: String) -> void:
 			EventBus.toast.emit(a[0])
 		&"visitor":
 			EventBus.visitor_requested.emit()
+		&"recruit":
+			if station.crew.add() == null:
+				EventBus.toast.emit("No free bunk: build a habitat first.")
 		&"wear":
 			var uid := station.find_module(StringName(a[0]))
 			if uid != 0:
@@ -469,6 +481,16 @@ func _on_module_changed_story(uid: int, reason: StringName) -> void:
 				for f in up.sets_flags:
 					story.set_flag(f)
 			story_event(&"upgraded", upgrade_id)
+
+
+
+## Recruits (from any source: outcome, trader, debug) get a toast and the
+## "recruited" story trigger.
+func _on_crew_joined(member: CrewMember) -> void:
+	if _quiet:
+		return
+	EventBus.toast.emit("%s joined the crew." % member.display_name)
+	story_event(&"recruited", StringName(member.display_name))
 
 
 # --- Save / load -------------------------------------------------------------

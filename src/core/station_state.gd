@@ -8,6 +8,8 @@ extends RefCounted
 ## A record is {uid, module_id, parent, slot, own_slot, state, wear, powered,
 ## parts}. `parent` is 0 for the root module; `own_slot` is the module's own
 ## slot that meets `slot` of the parent (its orientation, see StationGrid).
+##
+## It also owns the crew (`crew`: StationCrew, beds and jobs per module).
 
 signal module_added(uid: int)
 ## `reason`: &"repaired", &"powered", &"unpowered", &"upgraded", &"wear".
@@ -29,18 +31,22 @@ var db: ModuleDB
 ## and footprints), reset whenever the structure changes (add / remove / clear / load).
 var placement_cache: Dictionary = {}
 
+var crew: StationCrew
+
 var _records: Dictionary[int, Dictionary] = {}
 var _next_uid := 1
 
 
 func _init(p_db: ModuleDB) -> void:
 	db = p_db
+	crew = StationCrew.new(self)
 
 
 func clear() -> void:
 	_records.clear()
 	placement_cache.clear()
 	_next_uid = 1
+	crew.clear()
 	reset.emit()
 
 
@@ -136,6 +142,7 @@ func remove_module(uid: int) -> void:
 	_records.erase(uid)
 	placement_cache.clear()
 	module_removed.emit(uid)
+	crew.fix()
 
 
 func has_module(uid: int) -> bool:
@@ -346,7 +353,10 @@ func to_dict() -> Dictionary:
 			"own_slot": String(r.own_slot), "state": r.state, "wear": r.wear, "powered": r.powered,
 			"parts": Array(r.parts).map(func(p: StringName) -> String: return String(p)),
 		})
-	return {"next_uid": _next_uid, "modules": modules}
+	return {
+		"next_uid": _next_uid, "modules": modules,
+		"crew": crew.to_dict(),
+	}
 
 
 func from_dict(data: Dictionary) -> void:
@@ -368,6 +378,7 @@ func from_dict(data: Dictionary) -> void:
 			"wear": float(m.get("wear", 0.2)), "powered": bool(m.get("powered", false)), "parts": parts,
 		}
 	_next_uid = maxi(int(data.get("next_uid", 1)), (uids().max() if not _records.is_empty() else 0) + 1)
+	crew.from_dict(data.get("crew", {}))  # saves before v6 have no crew
 	reset.emit()
 
 

@@ -11,13 +11,27 @@ const OFFERS: Array = [
 ]
 
 
+## A hand looking for work hops off the ship (needs a free bunk).
+const HIRE_COST: Dictionary[StringName, int] = {&"scrap_metal": 6, &"food": 2}
+
+
 func get_actions() -> Array[InteractionAction]:
 	var actions: Array[InteractionAction] = []
+	var crew := GameState.station.crew
+	actions.append(InteractionAction.new("Hire a hand (%s)" % GameState.format_cost(HIRE_COST), _hire,
+		crew.free_beds() > 0 and GameState.has_all(HIRE_COST),
+		"No free bunk" if crew.free_beds() <= 0 else "Can't afford"))
 	for offer: Array in OFFERS:
 		var cost: Dictionary = offer[1]
 		actions.append(InteractionAction.new(offer[0], _trade.bind(cost, offer[2]),
 			GameState.has_all(cost), "Can't afford"))
 	return actions
+
+
+func _hire() -> void:
+	if GameState.station.crew.free_beds() > 0 and GameState.pay(HIRE_COST):
+		GameState.station.crew.add()
+		EventBus.trade_completed.emit()
 
 
 func _trade(cost: Dictionary, get_items: Dictionary) -> void:

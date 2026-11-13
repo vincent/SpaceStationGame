@@ -14,6 +14,8 @@ extends RefCounted
 ##   toast <text...>            a toast message
 ##   visitor                    a trader ship heads for a free powered dock
 ##   wear <module> <delta>      change a module's wear (0..1)
+##   recruit                    a new crew member (random name) takes a free
+##                              bunk (toast if none: check free_beds() first)
 
 ## verb -> argument kinds ("item", "need", "name", "encounter", "module",
 ## "int", "float", "text").
@@ -28,6 +30,7 @@ const VERBS: Dictionary[StringName, Array] = {
 	&"toast": ["text"],
 	&"visitor": [],
 	&"wear": ["module", "float"],
+	&"recruit": [],
 }
 
 
