@@ -9,6 +9,8 @@ extends Area3D
 ## "powered_fx" group keep their own material; their module drives them.
 
 @export var display_name: String = "Object"
+## HUD card icon: a file name in UITheme.ICON_DIR ("bed", "planter"...).
+@export var icon: StringName = &"object"
 @export var base_color: Color = Palette.STEEL
 @export var accent_color: Color = Palette.NEON_CYAN
 @export_range(0.0, 8.0) var accent_emission: float = 2.0
@@ -55,8 +57,8 @@ func finish_routine() -> void:
 	pass
 
 
-## Override: the actions shown in the menu, rebuilt each time it opens so
-## enabled/disabled state reflects the current inventory and needs.
+## Override: the actions shown on the object's HUD card (ObjectPanel),
+## rebuilt on every refresh so enabled/disabled state follows the wallet.
 func get_actions() -> Array[InteractionAction]:
 	return []
 

@@ -30,6 +30,7 @@ Status markers: `[x]` done · `[~]` in progress / partial · `[ ]` todo
 - [x] Tap-to-move & tap-to-interact, action menus (bed, kitchen, bay window)
 - [x] Cel shading + outline shaders, starfield backdrop, wall cutaway (replaced by the diorama cutaway)
 - [x] HUD (clock, needs bars, inventory), toasts
+- [x] Mobile HUD: every action of the focused module on HUD cards (top bar, module card, one card per object type, walk-then-act), no popup menus on 3D objects
 - [x] Debug overlay + command-line dev hooks, screenshot tool
 - [x] GUT unit + integration tests, gdlint, CI (tests + Android debug APK)
 

@@ -28,6 +28,10 @@ var _anim: Tween
 func _ready() -> void:
 	player.move_started.connect(_on_move_started)
 	player.arrived.connect(_on_arrived)
+	# A HUD action on an object within reach starts no walk: still an order.
+	player.pending_changed.connect(func(t: Interactable, _a: InteractionAction) -> void:
+		if t != null and not _issuing:
+			interrupt())
 	GameClock.time_advanced.connect(_on_time_advanced)
 	EventBus.game_reset.connect(interrupt)
 
@@ -63,7 +67,8 @@ func interrupt() -> void:
 		player.model.scale = Vector3.ONE
 
 
-## True while the player is busy with UI: a HUD menu or the upgrade view.
+## True while the player is busy with UI: a floating HUD menu (not the
+## always-on cards) or the upgrade view.
 func is_ui_busy() -> bool:
 	var hud := get_tree().get_first_node_in_group(&"hud") as HUD
 	if hud and hud.is_menu_open():

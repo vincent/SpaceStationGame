@@ -4,8 +4,8 @@ extends Interactable
 
 func get_actions() -> Array[InteractionAction]:
 	return [
-		InteractionAction.new("Watch the stars (30 min)", _stargaze.bind(30.0)),
-		InteractionAction.new("Watch the stars (2 h)", _stargaze.bind(120.0)),
+		InteractionAction.new("Watch the stars", _stargaze.bind(30.0), true, "", "30 min · +morale"),
+		InteractionAction.new("Watch the stars", _stargaze.bind(120.0), true, "", "2 h · +morale"),
 	]
 
 

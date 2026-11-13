@@ -17,7 +17,7 @@ func _ready() -> void:
 
 
 func get_actions() -> Array[InteractionAction]:
-	return [InteractionAction.new("Check station status", _status)]
+	return [InteractionAction.new("Check station status", _status, true, "", "Power and modules")]
 
 
 func _status() -> void:

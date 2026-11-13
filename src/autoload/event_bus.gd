@@ -1,14 +1,14 @@
 extends Node
 ## Global signal hub. Systems that should not know about each other talk through
-## here (e.g. the player reaching an object -> the HUD opening its menu).
+## here (e.g. the player tapping an object -> the HUD flashing its card).
 ## Rule: declare signals only. Never store state in this file.
 
 @warning_ignore_start("unused_signal")
 
-## The player reached an interactable and wants its action menu.
+## The player reached an interactable to use it (story "interacted" trigger).
 signal interaction_requested(interactable: Interactable)
-## The interaction menu was closed (action chosen or cancelled).
-signal interaction_closed
+## The player tapped an object in the room (the HUD shows its card).
+signal interactable_tapped(interactable: Interactable)
 ## Short message to show the player ("Not enough food").
 signal toast(message: String)
 ## A save was loaded or a new game started; UI should refresh everything.
@@ -20,6 +20,9 @@ signal module_focus_requested(module: Module)
 signal station_view_requested
 ## The camera zoom moved: 0 = station view, 1 = room view.
 signal view_changed(t: float)
+## The camera crossed the station/room threshold (main.ROOM_VIEW_T). Starts in
+## station view. Room view shows the object cards, station view the build ghosts.
+signal room_view_changed(room: bool)
 ## The player tapped an empty slot's ghost outline in station view.
 signal ghost_slot_tapped(parent_uid: int, slot: StringName)
 ## Build menu: outline where `module_id` would go (attached by `by_slot`);

@@ -1,0 +1,255 @@
+class_name ObjectPanel
+extends ScrollContainer
+## Bottom-right stack of cards, one per object type of the focused module
+## (four planters share one "Planter" card). Each card lists the object's
+## actions as big buttons; pressing one sends the castaway to the nearest
+## such object, and the action runs on arrival (Player.interact_with).
+## The ✕ of a card folds it to its header; tapping the header unfolds it.
+## Tapping an object in the room unfolds and flashes its card.
+
+## Tallest the stack gets (px) before it scrolls; the HUD sets it from the
+## room between the top bar and the nav buttons.
+var max_height := 440.0:
+	set(value):
+		max_height = value
+		if _list:
+			_fit()
+## Cards folded by the player, by object scene path (kept across modules).
+var folded: Dictionary[String, bool] = {}
+## Cards by object scene path, in layout order.
+var cards: Dictionary[String, ObjectCard] = {}
+
+var module: Module
+var _list: VBoxContainer
+var _player: Player
+var _hidden_by_overlay := false
+## Object actions only show in room view (the castaway walks to the object).
+var _room_view := false
+var _refresh_queued := false
+
+
+## One object type: header (icon, name, fold toggle) and its action buttons.
+class ObjectCard:
+	extends PanelContainer
+
+	signal action_pressed(card: ObjectCard, action: InteractionAction)
+	signal fold_toggled(card: ObjectCard)
+
+	var key: String
+	## Every object of this type in the module.
+	var targets: Array[Interactable] = []
+	var buttons: Array[Button] = []
+	var actions: Array[InteractionAction] = []
+	var folded := false
+	var _header: HBoxContainer
+	var _title: Label
+	var _fold: Button
+	var _list: VBoxContainer
+	var _flash: Tween
+
+	func _init(p_key: String, first: Interactable) -> void:
+		key = p_key
+		name = "Card_%s" % first.name
+		add_theme_stylebox_override("panel", UITheme.card())
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 10)
+		add_child(box)
+		_header = HBoxContainer.new()
+		_header.add_theme_constant_override("separation", 10)
+		_header.mouse_filter = Control.MOUSE_FILTER_STOP
+		_header.gui_input.connect(_on_header_input)
+		box.add_child(_header)
+		_header.add_child(UITheme.icon_rect(first.icon, Palette.YELLOW))
+		_title = UITheme.label(first.display_name, false, Palette.YELLOW)
+		_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_header.add_child(_title)
+		_fold = UITheme.icon_button("", &"close", func() -> void: fold_toggled.emit(self))
+		_fold.name = "Fold"
+		_fold.flat = true
+		_fold.custom_minimum_size = Vector2(44, 44)
+		_header.add_child(_fold)
+		_list = VBoxContainer.new()
+		_list.add_theme_constant_override("separation", 8)
+		box.add_child(_list)
+
+	func set_folded(value: bool) -> void:
+		folded = value
+		_list.visible = not folded
+		_fold.icon = UITheme.icon(&"chevron_down" if folded else &"close")
+
+	## Rebuilds the action buttons from the first object's get_actions().
+	func refresh(pending: InteractionAction) -> void:
+		actions = targets[0].get_actions()
+		while buttons.size() > actions.size():
+			buttons.pop_back().queue_free()
+		while buttons.size() < actions.size():
+			var b := UITheme.action_button("", "")
+			var index := buttons.size()
+			b.pressed.connect(func() -> void: action_pressed.emit(self, actions[index]))
+			_list.add_child(b)
+			buttons.append(b)
+		for i in actions.size():
+			var a := actions[i]
+			var walking := pending != null and pending.label == a.label and pending.detail == a.detail
+			UITheme.set_action_text(buttons[i], a.label, "Walking…" if walking else a.subtitle())
+			buttons[i].disabled = not a.enabled
+
+	func flash() -> void:
+		if _flash:
+			_flash.kill()
+		modulate = Color(1.6, 1.5, 0.8)
+		_flash = create_tween()
+		_flash.tween_property(self, "modulate", Color.WHITE, 0.6)
+
+	func _on_header_input(event: InputEvent) -> void:
+		var mb := event as InputEventMouseButton
+		if mb and mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed and folded:
+			accept_event()
+			EventBus.sfx.emit(&"click")
+			fold_toggled.emit(self)
+
+
+func _ready() -> void:
+	name = "ObjectPanel"
+	horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	custom_minimum_size.x = 380
+	# Sized to its cards (up to max_height), so it never covers empty screen.
+	mouse_filter = Control.MOUSE_FILTER_PASS
+	_list = VBoxContainer.new()
+	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_list.add_theme_constant_override("separation", 10)
+	_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_list.minimum_size_changed.connect(_fit)
+	add_child(_list)
+	_player = get_tree().get_first_node_in_group(&"player") as Player
+	if _player:
+		_player.pending_changed.connect(func(_t: Interactable, _a: InteractionAction) -> void: queue_refresh())
+	EventBus.module_focused.connect(func(m: Module) -> void:
+		module = m
+		rebuild())
+	EventBus.interactable_tapped.connect(highlight)
+	EventBus.upgrade_view_requested.connect(func(_m: Module) -> void:
+		_hidden_by_overlay = true
+		_update_visibility())
+	EventBus.upgrade_view_closed.connect(func() -> void:
+		_hidden_by_overlay = false
+		rebuild())
+	EventBus.room_view_changed.connect(func(room: bool) -> void:
+		_room_view = room
+		_update_visibility())
+	EventBus.game_reset.connect(rebuild)
+	GameState.station.module_changed.connect(func(_uid: int, _r: StringName) -> void: queue_refresh())
+	GameState.station.crew.changed.connect(queue_refresh)
+	GameState.inventory.changed.connect(queue_refresh)
+	GameState.stock.count_changed.connect(func(_id: StringName, _n: int) -> void: queue_refresh())
+	GameState.needs.changed.connect(func(_n: StringName, _v: float) -> void: queue_refresh())
+	rebuild()
+
+
+## Recollects the focused module's objects (new module, layout rebuilt...).
+func rebuild() -> void:
+	for card in cards.values():
+		card.queue_free()
+	cards.clear()
+	if module != null and is_instance_valid(module):
+		for it in objects_of(module):
+			var key := it.scene_file_path if it.scene_file_path != "" else it.display_name
+			if not cards.has(key):
+				var card := ObjectCard.new(key, it)
+				card.action_pressed.connect(_on_action_pressed)
+				card.fold_toggled.connect(_on_fold_toggled)
+				_list.add_child(card)
+				cards[key] = card
+			cards[key].targets.append(it)
+	for card: ObjectCard in cards.values():
+		card.set_folded(folded.get(card.key, false))
+	refresh()
+
+
+## Interactables inside `m` (its furniture), in scene order.
+static func objects_of(m: Module) -> Array[Interactable]:
+	var out: Array[Interactable] = []
+	for node in m.find_children("*", "Area3D", true, false):
+		if node is Interactable:
+			out.append(node)
+	return out
+
+
+## Batches the many change signals into one refresh per frame.
+func queue_refresh() -> void:
+	if not _refresh_queued:
+		_refresh_queued = true
+		refresh.call_deferred()
+
+
+func refresh() -> void:
+	_refresh_queued = false
+	var pending := _player.pending_action() if _player else null
+	for key in cards.keys():
+		var card := cards[key]
+		card.targets = card.targets.filter(func(t: Interactable) -> bool: return is_instance_valid(t))
+		if card.targets.is_empty():
+			cards.erase(key)
+			card.queue_free()
+			continue
+		card.refresh(pending)
+	_update_visibility()
+
+
+## Card of `target`'s type, or null.
+func card_of(target: Interactable) -> ObjectCard:
+	for card: ObjectCard in cards.values():
+		if card.targets.has(target):
+			return card
+	return null
+
+
+## Unfolds and flashes the card of a tapped object.
+func highlight(target: Interactable) -> void:
+	var card := card_of(target)
+	if card == null:
+		return
+	folded.erase(card.key)
+	card.set_folded(false)
+	card.flash()
+	ensure_control_visible.call_deferred(card)
+
+
+## The castaway walks to the nearest object of the card's type and acts there.
+func press(card: ObjectCard, action: InteractionAction) -> void:
+	var index := card.actions.find(action)
+	if _player == null or index < 0 or not action.enabled:
+		return
+	var best: Interactable = null
+	var best_d := INF
+	for t in card.targets:
+		var d := t.get_approach_position().distance_to(_player.global_position)
+		if d < best_d:
+			best = t
+			best_d = d
+	# The same action, but bound to the object the castaway will use.
+	var own := best.get_actions()
+	_player.interact_with(best, own[index] if index < own.size() else action)
+
+
+func _on_action_pressed(card: ObjectCard, action: InteractionAction) -> void:
+	press(card, action)
+
+
+func _on_fold_toggled(card: ObjectCard) -> void:
+	var value := not card.folded
+	if value:
+		folded[card.key] = true
+	else:
+		folded.erase(card.key)
+	card.set_folded(value)
+
+
+func _fit() -> void:
+	custom_minimum_size.y = minf(_list.get_combined_minimum_size().y, max_height)
+
+
+func _update_visibility() -> void:
+	visible = _room_view and not _hidden_by_overlay and not cards.is_empty()

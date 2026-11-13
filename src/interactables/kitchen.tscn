@@ -22,6 +22,7 @@ script = ExtResource("1_script")
 routine_tag = &"eat"
 routine_minutes = 30.0
 display_name = "Improvised kitchen"
+icon = &"kitchen"
 base_color = Color(0.16, 0.17, 0.19, 1)
 accent_color = Color(1, 0.55, 0.18, 1)
 accent_emission = 2.5

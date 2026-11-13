@@ -7,10 +7,15 @@ const TEND_MORALE := 4.0
 
 
 func get_actions() -> Array[InteractionAction]:
-	return [InteractionAction.new("Tend the plants (30 min) · %s" % crop_report(), _tend)]
+	return [InteractionAction.new("Tend the plants", _tend, true, "",
+		"%s · 30 min" % _capitalized(crop_report()))]
 
 
-## "food +0.15/h", "unpowered", "needs water"... for the bay holding this planter.
+static func _capitalized(text: String) -> String:
+	return text.left(1).to_upper() + text.substr(1)
+
+
+## "food +0.15/h", "needs power", "needs water"... for the bay holding this planter.
 func crop_report() -> String:
 	var module := _module()
 	if module == null or not GameState.station.has_module(module.uid):
@@ -20,7 +25,7 @@ func crop_report() -> String:
 		Production.Status.DERELICT:
 			return "derelict"
 		Production.Status.UNPOWERED:
-			return "unpowered"
+			return "needs power"
 		Production.Status.STARVED:
 			return "needs %s" % GameState.item_db.get_item(info.missing).display_name.to_lower() \
 				if info.missing != &"" else "starved"

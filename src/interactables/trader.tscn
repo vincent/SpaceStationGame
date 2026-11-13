@@ -22,6 +22,7 @@ size = Vector3(0.7, 0.5, 0.5)
 [node name="Trader" type="Area3D"]
 script = ExtResource("1_script")
 display_name = "Trader"
+icon = &"trader"
 base_color = Color(0.42, 0.18, 0.75, 1)
 accent_color = Color(1, 0.18, 0.59, 1)
 accent_emission = 3.0

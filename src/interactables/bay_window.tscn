@@ -19,6 +19,7 @@ script = ExtResource("1_script")
 routine_tag = &"stargaze"
 routine_minutes = 45.0
 display_name = "Bay window"
+icon = &"window"
 base_color = Color(0.16, 0.17, 0.19, 1)
 accent_color = Color(0.18, 0.89, 0.9, 1)
 accent_emission = 3.0

@@ -20,6 +20,7 @@ size = Vector2(0.86, 0.38)
 [node name="Console" type="Area3D"]
 script = ExtResource("1_script")
 display_name = "Console"
+icon = &"console"
 base_color = Color(0.2, 0.21, 0.26, 1)
 accent_color = Color(0.18, 0.89, 0.9, 1)
 accent_emission = 0.0

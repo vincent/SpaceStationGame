@@ -25,6 +25,7 @@ script = ExtResource("1_script")
 routine_tag = &"work"
 routine_minutes = 60.0
 display_name = "Salvage pile"
+icon = &"salvage"
 base_color = Color(0.36, 0.3, 0.27, 1)
 accent_color = Color(1, 0.55, 0.18, 1)
 accent_emission = 0.0

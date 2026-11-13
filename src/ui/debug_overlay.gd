@@ -1,7 +1,7 @@
 class_name DebugOverlay
 extends CanvasLayer
 ## Developer cheats, only in debug builds (editor runs and debug APKs).
-## Toggle with F3 or the "DBG" button. Add new tools with `_add_row()`.
+## Toggle with F3 or the bug button of the HUD's top bar. Add new tools with `_add_row()`.
 
 var _panel: PanelContainer
 var _content: VBoxContainer
@@ -15,20 +15,15 @@ func _ready() -> void:
 	if not OS.is_debug_build():
 		queue_free()
 		return
+	add_to_group(&"debug_overlay")
 	var root := Control.new()
 	root.theme = UITheme.get_theme()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
-	var toggle := UITheme.button("DBG", toggle_panel)
-	toggle.custom_minimum_size = Vector2(64, 44)
-	toggle.position = Vector2(16, 80)  # under the clock (the status bar owns the top centre)
-	toggle.modulate.a = 0.6
-	root.add_child(toggle)
-
 	_panel = PanelContainer.new()
-	_panel.position = Vector2(16, 132)
+	_panel.position = Vector2(16, 100)  # under the HUD's top bar
 	_panel.hide()
 	root.add_child(_panel)
 	var scroll := ScrollContainer.new()
@@ -215,6 +210,7 @@ func _run_cli_commands() -> void:
 				push_warning("--stock: '%s' is not <bulk item>:<amount>" % entry)
 	if args.get("layout", "") == "demo":
 		_cheat_demo_layout()
+		await get_tree().process_frame  # the Station mirror attaches them
 	elif args.get("layout", "") == "stress":
 		await _cheat_stress_layout(int(args.get("modules", "80")))
 	if args.has("build"):

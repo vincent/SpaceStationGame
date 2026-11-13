@@ -47,8 +47,9 @@ src/crew/       CrewDirector (spawns CrewNPCs from StationCrew, claims spots, hi
 src/interactables/  Interactable base + Bed, Kitchen, BayWindow, SalvagePile, Console, Trader, Planter (+ .tscn each)
 src/ambient/    AmbientKit (state-driven props), ExteriorLife (traffic, debris)
 src/audio/      SfxSynth (placeholder sounds), AudioDirector
-src/ui/         HUD, StatusBar, ProductionPopover, ModulePanel, BuildMenu, UpgradeOverlay, InteractionMenu, EncounterPanel, InventoryPanel/Slot,
-                DebugOverlay, UITheme
+src/ui/         HUD (TopBar = clock + StatusBar + needs + debug button; ModulePanel bottom-left; ObjectPanel = one card per object
+                type of the focused module, bottom-right), ProductionPopover, BuildMenu, UpgradeOverlay, EncounterPanel,
+                InventoryPanel/Slot, DebugOverlay, UITheme (icons: assets/ui/icons/*.svg via UITheme.icon())
 src/tools/      Blender import post-processing (module_import.gd + ModuleImportRules)
 data/items/, data/modules/, data/upgrades/, data/encounters/   One .tres per item / module type / upgrade / story beat
 assets/shaders/ toon (furniture/characters), toon_cut + cutaway.gdshaderinc (structure), outline, ghost, light_card,
@@ -82,7 +83,9 @@ Rules of thumb:
 ## How-tos
 
 **New station object:** create `src/interactables/<name>.gd` extending `Interactable`
-and override `get_actions()`; make a `.tscn` (Area3D root on layer 3 with a
+and override `get_actions()` (`InteractionAction` = `label` + `detail` line, `hint` when disabled; they
+show as buttons on the object's HUD card, and the castaway walks there before acting); make a `.tscn` (set
+`icon` = a file name in `assets/ui/icons/`) (Area3D root on layer 3 with a
 `PickShape`, optional `Body` StaticBody3D, meshes; meshes named `Accent*` get
 the glowing accent color); map a layout character to it in
 `StationBuilder.FURNITURE_SCENES`; put the character in the layout; add a test.
@@ -131,7 +134,7 @@ expression over `StoryContext`, `lines`, `outcomes`/`choices` = `StoryOutcome` v
 Reference + checklist: `docs/CONTENT_PIPELINE.md`; `test_encounter_data.gd` validates it.
 Rules stay in `GameState` (`story_event`, `apply_outcome`); new trigger = `GameState.story_event(&"x", subject)`.
 
-**Debug tools:** in debug builds press F3 or tap "DBG" (time speed/skip, needs,
+**Debug tools:** in debug builds press F3 or tap the bug button of the top bar (time speed/skip, needs,
 give items, cutaway on/off, magenta back faces, repair/power/wear of the focused module,
 summon a visitor, camera pitch/yaw/size sliders, save/load). New cheats: `_add_row()` in
 `debug_overlay.gd`. Command-line hooks are parsed in `DebugOverlay._run_cli_commands()`.
@@ -160,6 +163,9 @@ summon a visitor, camera pitch/yaw/size sliders, save/load). New cheats: `_add_r
   encounters off. Tests that need a quiet game call `GameState.set_story_enabled(false)`.
 - Typed-dictionary `.tres` syntax: `Dictionary[StringName, float]({&"food": 15.0})`.
 - Input: mouse events are emulated from touch. Station view: tap module = focus, tap ghost
-  slot = build menu, drag = pan. Room view: tap floor = walk, tap object = actions, tap
-  another module = focus it. No pinch/wheel zoom: the "Station view" button goes back out. Inventory: drag-and-drop,
+  slot = build menu, drag = pan. Room view: tap floor = walk, tap object = walk to it +
+  flash its HUD card, tap another module = focus it. All module/object actions are HUD buttons.
+  Module card: both views; object cards: room view only; build ghosts: station view only
+  (`EventBus.room_view_changed`, threshold `main.ROOM_VIEW_T`).
+  No pinch/wheel zoom: the "Station"/"Room" button switches views. Inventory: drag-and-drop,
   double-tap/right-click = use.

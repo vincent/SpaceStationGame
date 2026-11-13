@@ -5,7 +5,8 @@ extends Node3D
 ## Touch mapping:
 ##   station view (zoomed out): tap module = focus/zoom in · tap ghost slot =
 ##     build menu · drag = pan
-##   room view (zoomed in): tap floor = walk · tap object = its actions ·
+##   room view (zoomed in): tap floor = walk · tap object = walk to it and
+##     show its HUD card ·
 ##     tap another module = focus it · "Station view" button = back out
 
 ## A press that moves further than this (px) is a drag, not a tap.
@@ -24,6 +25,7 @@ var skip_intro := false
 var _press_position := Vector2.INF
 var _last_input_msec := 0
 var _follow_timer := 0.0
+var _room_view := false
 
 @onready var station: Station = $Station
 @onready var player: Player = $Player
@@ -39,7 +41,7 @@ func _ready() -> void:
 	tap_marker.material_override = ToonMaterials.get_material(Palette.YELLOW, 3.0, false)
 	tap_marker.hide()
 	station.layout_changed.connect(_on_layout_changed)
-	camera.zoom_changed.connect(func(t: float) -> void: EventBus.view_changed.emit(t))
+	camera.zoom_changed.connect(_on_zoom_changed)
 	EventBus.game_reset.connect(_on_game_reset)
 	EventBus.module_focus_requested.connect(focus_module)
 	EventBus.station_view_requested.connect(show_station_view)
@@ -90,6 +92,14 @@ func show_station_view() -> void:
 
 func is_room_view() -> bool:
 	return camera.t >= ROOM_VIEW_T
+
+
+func _on_zoom_changed(t: float) -> void:
+	EventBus.view_changed.emit(t)
+	var room := t >= ROOM_VIEW_T
+	if room != _room_view:
+		_room_view = room
+		EventBus.room_view_changed.emit(room)
 
 
 func _set_focused(module: Module) -> void:
@@ -160,6 +170,7 @@ func handle_tap(screen_position: Vector2) -> void:
 		return
 	if target:
 		player.interact_with(target)
+		EventBus.interactable_tapped.emit(target)
 		_show_marker(target.get_approach_position())
 	else:
 		player.move_to(hit.position)

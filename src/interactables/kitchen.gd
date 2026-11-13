@@ -19,8 +19,9 @@ func get_actions() -> Array[InteractionAction]:
 	var actions: Array[InteractionAction] = []
 	for item in meal_items():
 		var gain := roundi(item.use_effects.get(Needs.FOOD, 0.0))
-		actions.append(InteractionAction.new("Eat (+%d food) · %d left" % [gain, GameState.count(item.id)],
-			_eat.bind(item), GameState.count(item.id) >= 1, "No %s in stock" % item.display_name.to_lower()))
+		actions.append(InteractionAction.new("Eat %s" % item.display_name.to_lower(),
+			_eat.bind(item), GameState.count(item.id) >= 1, "No %s in stock" % item.display_name.to_lower(),
+			"+%d food · %d left" % [gain, GameState.count(item.id)]))
 	return actions
 
 

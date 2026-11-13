@@ -89,7 +89,7 @@ func test_path_from_capsule_to_every_wreck_room() -> void:
 		assert_true(_has_path(player.global_position, target), "path to wreck room at %s" % cell)
 
 
-func test_player_walks_to_bed_and_requests_menu() -> void:
+func test_player_walks_to_bed_and_uses_it() -> void:
 	watch_signals(EventBus)
 	var bed := _find_interactable("bed")
 	player.interact_with(bed)
@@ -341,7 +341,7 @@ func test_agri_bay_shows_in_the_status_bar_and_popover() -> void:
 	GameClock.advance(600)
 	assert_almost_eq(GameState.stock.amount(&"food"), food + 0.15 * 10, 0.01)
 	assert_string_contains(bar.chips[&"food"].amount_label.text, str(GameState.stock.count(&"food")))
-	assert_eq(bar.chips[&"food"].rate_label.text, "+0.15/h")
+	assert_almost_eq(bar.chips[&"food"].rate, 0.15, 0.001)
 
 	var popover := hud.production_popover
 	popover.toggle(&"food", bar.chips[&"food"])
@@ -362,3 +362,119 @@ func _button_texts(root: Node) -> Array:
 		if not b.is_queued_for_deletion():
 			out.append((b as Button).text)
 	return out
+
+
+func _hud() -> HUD:
+	return get_tree().get_first_node_in_group(&"hud") as HUD
+
+
+func _card_titles(panel: ObjectPanel) -> Array:
+	return panel.cards.values().map(func(c: ObjectPanel.ObjectCard) -> String: return c.targets[0].display_name)
+
+
+func test_object_cards_follow_the_focused_module() -> void:
+	var panel := _hud().object_panel
+	await wait_frames(2)
+	assert_eq(main.focused, station.find_module(&"capsule"))
+	assert_eq_deep(_card_titles(panel), ["Improvised bed", "Improvised kitchen"])
+	assert_true(panel.visible)
+	main.focus_module(station.find_module(&"wreck_core"), true)
+	await wait_frames(2)
+	var titles := _card_titles(panel)
+	for name: String in ["Console", "Salvage pile", "Bay window"]:
+		assert_has(titles, name)
+
+
+func test_object_card_merges_objects_of_one_type() -> void:
+	var wreck := station.find_module(&"wreck_core")
+	GameState.give({&"scrap_metal": 40, &"power_cell": 1})
+	GameState.repair_module(wreck.uid)
+	var bay := GameState.build_module(&"agri_bay", wreck.uid, &"B")
+	assert_gt(bay, 0)
+	main.focus_module(station.get_module(bay), true)
+	await wait_frames(2)
+	var panel := _hud().object_panel
+	assert_eq(panel.cards.size(), 1, "four planters, one card")
+	var card: ObjectPanel.ObjectCard = panel.cards.values()[0]
+	assert_eq(card.targets.size(), 4)
+	assert_eq(card.actions[0].label, "Tend the plants")
+	assert_string_contains(card.actions[0].subtitle(), "Needs power")
+
+
+func test_card_action_walks_then_acts() -> void:
+	var panel := _hud().object_panel
+	await wait_frames(2)
+	var card := panel.card_of(_find_interactable("bed"))
+	var sleep: InteractionAction = card.actions.filter(
+		func(a: InteractionAction) -> bool: return a.label == "Sleep 1 h")[0]
+	var start := GameClock.total_minutes
+	watch_signals(EventBus)
+	panel.press(card, sleep)
+	assert_eq(player.pending_action().label, "Sleep 1 h")
+	await wait_frames(2)
+	assert_true(card.buttons.any(func(b: Button) -> bool:
+		return (b.get_node("Lines").get_child(1) as Label).text == "Walking…"), "button says walking")
+	await wait_until(func() -> bool: return GameClock.total_minutes >= start + 60.0, 15.0)
+	assert_almost_eq(GameClock.total_minutes, start + 60.0, 1.0, "slept 1 h on arrival")
+	assert_signal_emitted(EventBus, "interaction_requested")
+	assert_null(player.pending_action())
+
+
+func test_tapping_an_object_flashes_its_card() -> void:
+	var panel := _hud().object_panel
+	await wait_frames(2)
+	var bed := _find_interactable("bed")
+	var card := panel.card_of(bed)
+	card.fold_toggled.emit(card)
+	assert_true(card.folded)
+	await wait_until(func() -> bool: return camera.t > 0.99, 2.0)
+	watch_signals(EventBus)
+	main.handle_tap(camera.camera.unproject_position(bed.global_position + Vector3(0, 0.5, 0)))
+	assert_signal_emitted_with_parameters(EventBus, "interactable_tapped", [bed])
+	assert_false(card.folded, "the tapped object's card unfolds")
+
+
+func test_module_card_in_both_views_and_folds() -> void:
+	var hud := _hud()
+	var panel := hud.module_panel
+	await wait_frames(2)
+	assert_true(panel.visible)
+	assert_eq(hud.view_button.text, "Station")
+	hud.view_button.pressed.emit()
+	await wait_until(func() -> bool: return not camera.is_tweening(), 3.0)
+	assert_almost_eq(camera.t, 0.0, 0.01, "zoomed out")
+	assert_true(panel.visible, "module card stays in station view")
+	assert_eq(hud.view_button.text, "Room")
+	panel.toggle_collapsed()
+	assert_true(panel.collapsed)
+	assert_false(panel._body.visible)
+	panel.toggle_collapsed()
+	hud.view_button.pressed.emit()
+	await wait_until(func() -> bool: return not camera.is_tweening(), 3.0)
+	assert_almost_eq(camera.t, 1.0, 0.01, "back in the room")
+
+
+func test_object_cards_only_in_room_view() -> void:
+	var panel := _hud().object_panel
+	await wait_frames(2)
+	assert_true(main.is_room_view())
+	assert_true(panel.visible, "room view shows the object cards")
+	main.show_station_view()
+	await wait_until(func() -> bool: return camera.t < 0.01, 3.0)
+	assert_false(panel.visible, "station view hides them")
+	main.focus_module(main.focused, true)
+	await wait_frames(2)
+	assert_true(panel.visible)
+
+
+func test_ghosts_only_in_station_view() -> void:
+	var wreck := station.find_module(&"wreck_core")
+	GameState.give({&"scrap_metal": 80, &"power_cell": 2})
+	GameState.repair_module(wreck.uid)
+	await wait_frames(2)
+	var ghosts := station.get_node("Ghosts") as Node3D
+	assert_gt(ghosts.get_child_count(), 0, "free slots get ghosts")
+	assert_false(ghosts.visible, "room view hides the ghosts")
+	main.show_station_view()
+	await wait_until(func() -> bool: return camera.t < 0.01, 3.0)
+	assert_true(ghosts.visible, "station view shows them")

@@ -4,10 +4,10 @@ extends Interactable
 
 ## [label, cost, get]
 const OFFERS: Array = [
-	["Buy 3 food for 4 scrap", {&"scrap_metal": 4}, {&"food": 3}],
-	["Buy 4 water for 2 scrap", {&"scrap_metal": 2}, {&"water": 4}],
-	["Buy a power cell for 5 scrap", {&"scrap_metal": 5}, {&"power_cell": 1}],
-	["Sell 2 food for 4 scrap", {&"food": 2}, {&"scrap_metal": 4}],
+	["Buy 3 food", {&"scrap_metal": 4}, {&"food": 3}],
+	["Buy 4 water", {&"scrap_metal": 2}, {&"water": 4}],
+	["Buy a power cell", {&"scrap_metal": 5}, {&"power_cell": 1}],
+	["Sell 2 food", {&"food": 2}, {&"scrap_metal": 4}],
 ]
 
 
@@ -18,13 +18,15 @@ const HIRE_COST: Dictionary[StringName, int] = {&"scrap_metal": 6, &"food": 2}
 func get_actions() -> Array[InteractionAction]:
 	var actions: Array[InteractionAction] = []
 	var crew := GameState.station.crew
-	actions.append(InteractionAction.new("Hire a hand (%s)" % GameState.format_cost(HIRE_COST), _hire,
+	var hire_cost := GameState.format_cost(HIRE_COST)
+	actions.append(InteractionAction.new("Hire a hand", _hire,
 		crew.free_beds() > 0 and GameState.has_all(HIRE_COST),
-		"No free bunk" if crew.free_beds() <= 0 else "Can't afford"))
+		"No free bunk" if crew.free_beds() <= 0 else "Can't afford %s" % hire_cost, hire_cost))
 	for offer: Array in OFFERS:
 		var cost: Dictionary = offer[1]
+		var price := "for %s" % GameState.format_cost(cost)
 		actions.append(InteractionAction.new(offer[0], _trade.bind(cost, offer[2]),
-			GameState.has_all(cost), "Can't afford"))
+			GameState.has_all(cost), "Can't afford: %s" % price, price))
 	return actions
 
 

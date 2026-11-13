@@ -7,7 +7,8 @@ const SLEEP_OPTIONS: Array[int] = [1, 4, 8]
 func get_actions() -> Array[InteractionAction]:
 	var actions: Array[InteractionAction] = []
 	for hours in SLEEP_OPTIONS:
-		actions.append(InteractionAction.new("Sleep %d h" % hours, GameState.sleep.bind(float(hours))))
+		actions.append(InteractionAction.new("Sleep %d h" % hours, GameState.sleep.bind(float(hours)),
+			true, "", "+energy"))
 	return actions
 
 

@@ -7,7 +7,8 @@ const SALVAGE_YIELD: Dictionary[StringName, int] = {&"scrap_metal": 2}
 
 
 func get_actions() -> Array[InteractionAction]:
-	return [InteractionAction.new("Salvage scrap (1 h)", _salvage)]
+	return [InteractionAction.new("Salvage scrap", _salvage, true, "",
+		"1 h · +%d scrap" % SALVAGE_YIELD[&"scrap_metal"])]
 
 
 func _salvage() -> void:

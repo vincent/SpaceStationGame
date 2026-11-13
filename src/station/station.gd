@@ -31,6 +31,7 @@ func _ready() -> void:
 	_preview.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_preview)
 	EventBus.build_preview.connect(show_build_preview)
+	EventBus.room_view_changed.connect(_on_room_view_changed)
 
 
 ## Starts mirroring `p_state` (usually GameState.station).
@@ -147,6 +148,12 @@ func detach(module: Module) -> void:
 
 
 # --- Ghost slots -------------------------------------------------------------
+
+## Ghosts are a station-view tool: hidden (and unpickable) in room view.
+func _on_room_view_changed(room: bool) -> void:
+	_ghosts.visible = not room
+	_ghosts.process_mode = Node.PROCESS_MODE_DISABLED if room else Node.PROCESS_MODE_INHERIT
+
 
 ## Dashed outlines on free slots that can take a module, when the player can
 ## afford at least one buildable module.

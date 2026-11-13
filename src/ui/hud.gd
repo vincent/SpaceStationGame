@@ -1,32 +1,40 @@
 class_name HUD
 extends CanvasLayer
-## In-game overlay: clock, station status bar (resources + power), needs
-## bars, inventory button, object menus, encounters, toasts.
-## Built in code so layout changes stay reviewable in diffs.
+## In-game overlay, laid out like a phone game: top bar (clock, station
+## status, needs), focused module card bottom-left, its objects' cards
+## bottom-right above the Station/Room and Inventory buttons. Every action of
+## the focused module is a HUD button; nothing needs a tap on a small 3D
+## object. Built in code so layout changes stay reviewable in diffs.
 
 const NEED_COLORS: Dictionary[StringName, Color] = {
 	Needs.FOOD: Palette.ORANGE,
 	Needs.ENERGY: Palette.NEON_CYAN,
 	Needs.MORALE: Palette.NEON_PINK,
 }
-## Room left of / right of the status bar for the clock and the needs panel.
-const STATUS_BAR_SIDE_LEFT := 200.0
-const STATUS_BAR_SIDE_RIGHT := 300.0
+const MARGIN := 16
+## Height reserved for the top bar when sizing the object cards.
+const TOP_BAR_HEIGHT := 84.0
 const CRITICAL_MESSAGES: Dictionary[StringName, String] = {
 	Needs.FOOD: "You're starving.",
 	Needs.ENERGY: "You can barely keep your eyes open.",
 	Needs.MORALE: "The silence is getting to you.",
 }
 
-var interaction_menu: InteractionMenu
+var top_bar: TopBar
+var status_bar: StatusBar
 var inventory_panel: InventoryPanel
 var module_panel: ModulePanel
+var object_panel: ObjectPanel
 var build_menu: BuildMenu
 var encounter_panel: EncounterPanel
-var status_bar: StatusBar
 var production_popover: ProductionPopover
-var _clock_label: Label
-var _bars: Dictionary[StringName, ProgressBar] = {}
+## Bottom-right: zooms out to the station (room view) or back in (station view).
+var view_button: Button
+var inventory_button: Button
+## The camera starts zoomed out; view_changed flips it.
+var _room_view := false
+var _focused: Module
+var _nav_row: HBoxContainer
 var _toast: Label
 var _toast_tween: Tween
 
@@ -45,74 +53,53 @@ func _ready() -> void:
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 16)
+		margin.add_theme_constant_override("margin_" + side, MARGIN)
 	root.add_child(margin)
 
 	var layer_root := Control.new()
 	layer_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(layer_root)
 
-	# Clock (top-left)
-	var clock_panel := PanelContainer.new()
-	_clock_label = UITheme.label("", false, Palette.YELLOW)
-	clock_panel.add_child(_clock_label)
-	layer_root.add_child(clock_panel)
+	top_bar = TopBar.new()
+	top_bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	layer_root.add_child(top_bar)
+	status_bar = top_bar.status_bar
 
-	# Station status bar (top-centre, between the clock and the needs)
-	status_bar = StatusBar.new()
-	status_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	status_bar.offset_left = STATUS_BAR_SIDE_LEFT
-	status_bar.offset_right = -STATUS_BAR_SIDE_RIGHT
-	layer_root.add_child(status_bar)
-
-	# Needs (top-right)
-	var needs_panel := PanelContainer.new()
-	needs_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	needs_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	var needs_box := VBoxContainer.new()
-	needs_panel.add_child(needs_box)
-	for need in GameState.needs.names():
-		var row := HBoxContainer.new()
-		var name_label := UITheme.label(String(need).capitalize(), true)
-		name_label.custom_minimum_size.x = 80
-		row.add_child(name_label)
-		var bar := ProgressBar.new()
-		bar.custom_minimum_size = Vector2(170, 18)
-		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		bar.show_percentage = false
-		bar.max_value = Needs.MAX
-		var fill := UITheme.box(NEED_COLORS.get(need, Palette.NEON_CYAN), Color.TRANSPARENT, 0, 4)
-		fill.set_content_margin_all(0)
-		bar.add_theme_stylebox_override("fill", fill)
-		row.add_child(bar)
-		needs_box.add_child(row)
-		_bars[need] = bar
-	layer_root.add_child(needs_panel)
-
-	# Inventory button (bottom-right)
-	inventory_panel = InventoryPanel.new()
-	inventory_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	inventory_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	inventory_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	var bag := UITheme.button("Inventory", inventory_panel.toggle)
-	bag.custom_minimum_size = Vector2(160, 64)
-	bag.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	bag.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	bag.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	layer_root.add_child(bag)
-
-	# Interaction menu (bottom-center)
-	interaction_menu = InteractionMenu.new()
-	interaction_menu.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	interaction_menu.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	interaction_menu.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	layer_root.add_child(interaction_menu)
-
-	# Focused module (bottom-left) and the build menu (centre)
+	# Focused module (bottom-left)
 	module_panel = ModulePanel.new()
 	module_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	module_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	layer_root.add_child(module_panel)
+
+	# Bottom-right column: object cards above the Station/Room + Inventory buttons
+	inventory_panel = InventoryPanel.new()
+	inventory_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	inventory_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	inventory_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	var column := VBoxContainer.new()
+	column.name = "RightColumn"
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_theme_constant_override("separation", 12)
+	column.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	column.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	column.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	layer_root.add_child(column)
+	object_panel = ObjectPanel.new()
+	column.add_child(object_panel)
+	_nav_row = HBoxContainer.new()
+	_nav_row.alignment = BoxContainer.ALIGNMENT_END
+	_nav_row.add_theme_constant_override("separation", 12)
+	column.add_child(_nav_row)
+	view_button = UITheme.icon_button("Room", &"room", _on_view_pressed)
+	view_button.name = "ViewButton"
+	inventory_button = UITheme.icon_button("Inventory", &"bag", inventory_panel.toggle)
+	inventory_button.name = "InventoryButton"
+	for b in [view_button, inventory_button]:
+		b.custom_minimum_size = Vector2(150, 64)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_nav_row.add_child(b)
+
+	# Build menu (centre)
 	build_menu = BuildMenu.new()
 	build_menu.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	build_menu.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -131,40 +118,50 @@ func _ready() -> void:
 	layer_root.add_child(production_popover)
 	status_bar.chip_pressed.connect(production_popover.toggle)
 
-	# Toast (top-center)
+	# Toast (top-center, under the top bar)
 	_toast = UITheme.label("", false, Palette.TEXT)
 	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_toast.position.y = 70
+	_toast.position.y = TOP_BAR_HEIGHT + 16
 	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast.add_theme_color_override("font_outline_color", Palette.NIGHT)
 	_toast.add_theme_constant_override("outline_size", 8)
 	_toast.modulate.a = 0.0
 	layer_root.add_child(_toast)
 
-	GameState.needs.changed.connect(_on_need_changed)
 	GameState.needs.became_critical.connect(_on_need_critical)
-	GameClock.minute_changed.connect(func(_m: int) -> void: _refresh_clock())
 	EventBus.toast.connect(show_toast)
-	EventBus.game_reset.connect(_refresh_all)
+	EventBus.module_focused.connect(func(m: Module) -> void: _focused = m)
+	EventBus.room_view_changed.connect(_on_room_view_changed)
 	EventBus.upgrade_view_requested.connect(func(_m: Module) -> void:
 		close_menus()
-		status_bar.hide())  # the upgrade overlay owns the top of the screen
-	EventBus.upgrade_view_closed.connect(status_bar.show)
-	_refresh_all()
+		top_bar.hide()  # the upgrade overlay owns the top of the screen
+		_nav_row.hide())
+	EventBus.upgrade_view_closed.connect(func() -> void:
+		top_bar.show()
+		_nav_row.show())
+	get_viewport().size_changed.connect(_fit_object_panel)
+	_fit_object_panel()
 
 
-## Closes floating menus (called when the player taps the world).
+## Closes floating menus (called when the player taps the world). The module
+## and object cards are part of the HUD and stay.
 func close_menus() -> void:
-	interaction_menu.close()
 	inventory_panel.hide()
 	build_menu.hide()
 	production_popover.close()
 
 
 func is_menu_open() -> bool:
-	return interaction_menu.visible or inventory_panel.visible or build_menu.visible \
-		or production_popover.visible
+	return inventory_panel.visible or build_menu.visible or production_popover.visible
+
+
+## Station view in room view, Room view in station view.
+func toggle_view() -> void:
+	if _room_view:
+		EventBus.station_view_requested.emit()
+	elif _focused and is_instance_valid(_focused):
+		EventBus.module_focus_requested.emit(_focused)
 
 
 func show_toast(message: String) -> void:
@@ -177,19 +174,20 @@ func show_toast(message: String) -> void:
 	_toast_tween.tween_property(_toast, "modulate:a", 0.0, 0.6)
 
 
-func _refresh_all() -> void:
-	_refresh_clock()
-	for need in _bars:
-		_bars[need].value = GameState.needs.get_value(need)
+func _on_view_pressed() -> void:
+	toggle_view()
 
 
-func _refresh_clock() -> void:
-	_clock_label.text = GameClock.format_time()
+func _on_room_view_changed(room: bool) -> void:
+	_room_view = room
+	view_button.text = "Station" if room else "Room"
+	view_button.icon = UITheme.icon(&"map" if room else &"room")
 
 
-func _on_need_changed(need: StringName, value: float) -> void:
-	if _bars.has(need):
-		_bars[need].value = value
+## The object cards may grow up to the space left under the top bar.
+func _fit_object_panel() -> void:
+	var screen := get_viewport().get_visible_rect().size
+	object_panel.max_height = maxf(160.0, screen.y - 2.0 * MARGIN - TOP_BAR_HEIGHT - 64.0 - 2.0 * 12.0)
 
 
 func _on_need_critical(need: StringName) -> void:
