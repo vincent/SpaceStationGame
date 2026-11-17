@@ -1,69 +1,69 @@
 class_name TopBar
 extends HBoxContainer
-## Full-width strip at the top of the HUD: a card with the clock, station status
-## chips (StatusBar) and the castaway's needs; in debug builds the debug button
-## sits outside the card, at the far left.
+## Top row of the HUD: floating glass pills with gaps between them, so the
+## station stays visible. Left: clock (and the debug button in debug builds);
+## centre: station status chips (StatusBar); right: the castaway's needs as
+## compact meters with their value.
+
+const HEIGHT := 52
+## A need below this reads as critical (its value turns pink).
+const LOW_NEED := 25.0
 
 var status_bar: StatusBar
 var bars: Dictionary[StringName, ProgressBar] = {}
+var _values: Dictionary[StringName, Label] = {}
 var _clock_label: Label
 
 
 func _ready() -> void:
 	name = "TopBar"
-	add_theme_constant_override("separation", 12)
-	var card := PanelContainer.new()
-	card.name = "Card"
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_child(card)
-	var sb := UITheme.card()
-	sb.content_margin_top = 8
-	sb.content_margin_bottom = 8
-	sb.content_margin_left = 20
-	sb.content_margin_right = 20
-	card.add_theme_stylebox_override("panel", sb)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
-	card.add_child(row)
+	add_theme_constant_override("separation", UITheme.SPACE_M)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	_clock_label = UITheme.label("", false, Palette.YELLOW)
-	_clock_label.custom_minimum_size.x = 170
-	_clock_label.add_theme_font_size_override("font_size", 26)
-	row.add_child(_clock_label)
+	var clock := _cluster("Clock")
+	var clock_row := clock.get_child(0) as HBoxContainer
+	if OS.is_debug_build():
+		var dbg := UITheme.ghost_button(&"bug", _toggle_debug)
+		dbg.name = "DebugButton"
+		dbg.custom_minimum_size = Vector2(40, 40)
+		clock_row.add_child(dbg)
+		(clock.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_left = 4
+	_clock_label = UITheme.title_label("")
+	_clock_label.custom_minimum_size.x = 150
+	clock_row.add_child(_clock_label)
 
 	status_bar = StatusBar.new()
 	status_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	status_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(status_bar)
+	add_child(status_bar)
 
-	var needs := HBoxContainer.new()
-	needs.add_theme_constant_override("separation", 12)
-	needs.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(needs)
+	var needs := _cluster("Needs")
+	var needs_row := needs.get_child(0) as HBoxContainer
+	needs_row.add_theme_constant_override("separation", UITheme.SPACE_L)
 	for need in GameState.needs.names():
+		var color: Color = HUD.NEED_COLORS.get(need, Palette.NEON_CYAN)
 		var col := VBoxContainer.new()
-		col.add_theme_constant_override("separation", 2)
-		col.add_child(UITheme.label(String(need).capitalize(), true, Palette.TEXT_DIM))
+		col.add_theme_constant_override("separation", 3)
+		col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var head := HBoxContainer.new()
+		var name_label := UITheme.label(String(need).capitalize(), true, Palette.TEXT_DIM)
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		head.add_child(name_label)
+		var value := UITheme.label("", true, Palette.TEXT)
+		head.add_child(value)
+		col.add_child(head)
 		var bar := ProgressBar.new()
 		bar.name = "Need_%s" % need
-		bar.custom_minimum_size = Vector2(100, 8)
+		bar.custom_minimum_size = Vector2(92, 6)
 		bar.show_percentage = false
 		bar.max_value = Needs.MAX
-		var fill := UITheme.box(HUD.NEED_COLORS.get(need, Palette.NEON_CYAN), Color.TRANSPARENT, 0, 4)
+		var fill := UITheme.box(color, Color.TRANSPARENT, 0, 3)
 		fill.set_content_margin_all(0)
 		bar.add_theme_stylebox_override("fill", fill)
 		col.add_child(bar)
-		needs.add_child(col)
+		needs_row.add_child(col)
 		bars[need] = bar
-
-	if OS.is_debug_build():
-		var dbg := UITheme.icon_button("", &"bug", _toggle_debug)
-		dbg.name = "DebugButton"
-		dbg.custom_minimum_size = Vector2(UITheme.TOUCH_SIZE, UITheme.TOUCH_SIZE)
-		dbg.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		dbg.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		add_child(dbg)
-		move_child(dbg, 0)
+		_values[need] = value
 
 	GameState.needs.changed.connect(_on_need_changed)
 	GameClock.minute_changed.connect(func(_m: int) -> void: refresh_clock())
@@ -71,10 +71,30 @@ func _ready() -> void:
 	refresh()
 
 
+## Glass pill holding an HBox, added to the row.
+func _cluster(cluster_name: String) -> PanelContainer:
+	var pill := PanelContainer.new()
+	pill.name = cluster_name
+	pill.custom_minimum_size.y = HEIGHT
+	pill.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var sb := UITheme.pill()
+	sb.content_margin_left = 18
+	sb.content_margin_right = 18
+	sb.shadow_color = UITheme.SHADOW
+	sb.shadow_size = 6
+	pill.add_theme_stylebox_override("panel", sb)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.SPACE_S)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	pill.add_child(row)
+	add_child(pill)
+	return pill
+
+
 func refresh() -> void:
 	refresh_clock()
 	for need in bars:
-		bars[need].value = GameState.needs.get_value(need)
+		_on_need_changed(need, GameState.needs.get_value(need))
 
 
 func refresh_clock() -> void:
@@ -82,8 +102,11 @@ func refresh_clock() -> void:
 
 
 func _on_need_changed(need: StringName, value: float) -> void:
-	if bars.has(need):
-		bars[need].value = value
+	if not bars.has(need):
+		return
+	bars[need].value = value
+	_values[need].text = str(roundi(value))
+	_values[need].add_theme_color_override("font_color", Palette.NEON_PINK if value < LOW_NEED else Palette.TEXT)
 
 
 func _toggle_debug() -> void:

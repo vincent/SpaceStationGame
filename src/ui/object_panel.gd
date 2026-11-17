@@ -1,11 +1,12 @@
 class_name ObjectPanel
 extends ScrollContainer
-## Bottom-right stack of cards, one per object type of the focused module
-## (four planters share one "Planter" card). Each card lists the object's
-## actions as big buttons; pressing one sends the castaway to the nearest
-## such object, and the action runs on arrival (Player.interact_with).
-## The ✕ of a card folds it to its header; tapping the header unfolds it.
-## Tapping an object in the room unfolds and flashes its card.
+## Bottom-right accordion of cards, one per object type of the focused module
+## (four planters share one "Planter" card). Only one card is open at a time;
+## the others fold to a one-line header (icon, name, chevron).
+## An open card lists the object's actions as touch rows; pressing one sends
+## the castaway to the nearest such object, and the action runs on arrival
+## (Player.interact_with). Tapping a header opens that card (or folds it when
+## it's the open one). Tapping an object in the room opens and flashes its card.
 
 ## Tallest the stack gets (px) before it scrolls; the HUD sets it from the
 ## room between the top bar and the nav buttons.
@@ -14,7 +15,9 @@ var max_height := 440.0:
 		max_height = value
 		if _list:
 			_fit()
-## Cards folded by the player, by object scene path (kept across modules).
+## Key of the card the player opened last (kept across modules), &"" = first.
+var open_key := ""
+## Cards the player folded while open, by key (an all-folded accordion stays so).
 var folded: Dictionary[String, bool] = {}
 ## Cards by object scene path, in layout order.
 var cards: Dictionary[String, ObjectCard] = {}
@@ -50,33 +53,38 @@ class ObjectCard:
 	func _init(p_key: String, first: Interactable) -> void:
 		key = p_key
 		name = "Card_%s" % first.name
-		add_theme_stylebox_override("panel", UITheme.card())
 		var box := VBoxContainer.new()
-		box.add_theme_constant_override("separation", 10)
+		box.add_theme_constant_override("separation", UITheme.SPACE_M)
 		add_child(box)
 		_header = HBoxContainer.new()
-		_header.add_theme_constant_override("separation", 10)
+		_header.add_theme_constant_override("separation", UITheme.SPACE_M)
 		_header.mouse_filter = Control.MOUSE_FILTER_STOP
 		_header.gui_input.connect(_on_header_input)
 		box.add_child(_header)
 		_header.add_child(UITheme.icon_rect(first.icon, Palette.YELLOW))
 		_title = UITheme.label(first.display_name, false, Palette.YELLOW)
 		_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_header.add_child(_title)
-		_fold = UITheme.icon_button("", &"close", func() -> void: fold_toggled.emit(self))
+		_fold = UITheme.ghost_button(&"chevron_down", func() -> void: fold_toggled.emit(self))
 		_fold.name = "Fold"
-		_fold.flat = true
-		_fold.custom_minimum_size = Vector2(44, 44)
+		_fold.custom_minimum_size = Vector2(40, 40)
 		_header.add_child(_fold)
 		_list = VBoxContainer.new()
-		_list.add_theme_constant_override("separation", 8)
+		_list.add_theme_constant_override("separation", UITheme.SPACE_S)
 		box.add_child(_list)
+		set_folded(false)
 
 	func set_folded(value: bool) -> void:
 		folded = value
 		_list.visible = not folded
-		_fold.icon = UITheme.icon(&"chevron_down" if folded else &"close")
+		_fold.icon = UITheme.icon(&"chevron_down" if folded else &"chevron_up")
+		var sb := UITheme.card(not folded)
+		if folded:  # slim header row
+			sb.content_margin_top = 6
+			sb.content_margin_bottom = 6
+		add_theme_stylebox_override("panel", sb)
 
 	## Rebuilds the action buttons from the first object's get_actions().
 	func refresh(pending: InteractionAction) -> void:
@@ -85,6 +93,7 @@ class ObjectCard:
 			buttons.pop_back().queue_free()
 		while buttons.size() < actions.size():
 			var b := UITheme.action_button("", "")
+			b.name = "Action%d" % buttons.size()
 			var index := buttons.size()
 			b.pressed.connect(func() -> void: action_pressed.emit(self, actions[index]))
 			_list.add_child(b)
@@ -104,7 +113,7 @@ class ObjectCard:
 
 	func _on_header_input(event: InputEvent) -> void:
 		var mb := event as InputEventMouseButton
-		if mb and mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed and folded:
+		if mb and mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed:
 			accept_event()
 			EventBus.sfx.emit(&"click")
 			fold_toggled.emit(self)
@@ -114,12 +123,12 @@ func _ready() -> void:
 	name = "ObjectPanel"
 	horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	custom_minimum_size.x = 380
+	custom_minimum_size.x = 340
 	# Sized to its cards (up to max_height), so it never covers empty screen.
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	_list = VBoxContainer.new()
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_list.add_theme_constant_override("separation", 10)
+	_list.add_theme_constant_override("separation", UITheme.SPACE_S)
 	_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_list.minimum_size_changed.connect(_fit)
 	add_child(_list)
@@ -163,9 +172,17 @@ func rebuild() -> void:
 				_list.add_child(card)
 				cards[key] = card
 			cards[key].targets.append(it)
-	for card: ObjectCard in cards.values():
-		card.set_folded(folded.get(card.key, false))
+	_apply_accordion()
 	refresh()
+
+
+## Opens one card (the last opened, or the first) unless the player folded it.
+func _apply_accordion() -> void:
+	if cards.is_empty():
+		return
+	var key: String = open_key if cards.has(open_key) else cards.keys()[0]
+	for card: ObjectCard in cards.values():
+		card.set_folded(card.key != key or folded.has(card.key))
 
 
 ## Interactables inside `m` (its furniture), in scene order.
@@ -211,8 +228,7 @@ func highlight(target: Interactable) -> void:
 	var card := card_of(target)
 	if card == null:
 		return
-	folded.erase(card.key)
-	card.set_folded(false)
+	_open(card)
 	card.flash()
 	ensure_control_visible.call_deferred(card)
 
@@ -239,12 +255,19 @@ func _on_action_pressed(card: ObjectCard, action: InteractionAction) -> void:
 
 
 func _on_fold_toggled(card: ObjectCard) -> void:
-	var value := not card.folded
-	if value:
-		folded[card.key] = true
+	if card.folded:
+		_open(card)
 	else:
-		folded.erase(card.key)
-	card.set_folded(value)
+		folded[card.key] = true
+		card.set_folded(true)
+
+
+## Opens `card` and folds the others (one open at a time).
+func _open(card: ObjectCard) -> void:
+	open_key = card.key
+	folded.erase(card.key)
+	for other: ObjectCard in cards.values():
+		other.set_folded(other != card)
 
 
 func _fit() -> void:

@@ -1,11 +1,15 @@
 class_name BuildMenu
 extends PanelContainer
-## Opens when a ghost slot is tapped: the modules that fit that slot, their
-## cost, a Build button and, for modules with several slots, a Rotate button
-## (which of its slots attaches; the station outlines the result).
+## Side sheet (right) that opens when a ghost slot is tapped: the modules that
+## fit that slot, one entry each (name, description, cost chips, Build and,
+## for modules with several slots, Rotate = which of its slots attaches; the
+## station outlines the result). Tapping an entry previews it. The sheet sits
+## on the right so the previewed module stays visible.
 
-## Max share of the screen height the module list takes before it scrolls.
-const MAX_LIST_HEIGHT := 0.6
+const WIDTH := 420.0
+## Space kept free above (top row) and below (dock) the sheet.
+const TOP := HUD.TOP_BAR_HEIGHT + 8.0
+const BOTTOM := 104.0
 
 var parent_uid := 0
 var slot: StringName
@@ -16,27 +20,30 @@ var _list: VBoxContainer
 ## Module id -> own slot it attaches by (the chosen rotation).
 var _orientation: Dictionary[StringName, StringName] = {}
 var _preview_id: StringName
+var _entries: Dictionary[StringName, PanelContainer] = {}
 
 
 func _ready() -> void:
+	name = "BuildMenu"
 	hide()
-	custom_minimum_size = Vector2(420, 0)
+	custom_minimum_size = Vector2(WIDTH, 0)
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	add_theme_stylebox_override("panel", UITheme.sheet())
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
+	box.add_theme_constant_override("separation", UITheme.SPACE_M)
 	add_child(box)
-	_title = UITheme.label("", false, Palette.YELLOW)
-	box.add_child(_title)
+	_title = UITheme.title_label("")
+	box.add_child(UITheme.sheet_header(_title, hide))
 	_scroll = ScrollContainer.new()
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	box.add_child(_scroll)
 	var gutter := MarginContainer.new()  # room for the scroll bar
-	gutter.add_theme_constant_override("margin_right", 14)
+	gutter.add_theme_constant_override("margin_right", 10)
 	gutter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(gutter)
 	_list = VBoxContainer.new()
-	_list.add_theme_constant_override("separation", 8)
+	_list.add_theme_constant_override("separation", UITheme.SPACE_M)
 	gutter.add_child(_list)
-	box.add_child(UITheme.button("Close", hide))
 	EventBus.ghost_slot_tapped.connect(open)
 	visibility_changed.connect(func() -> void:
 		if not visible:
@@ -51,6 +58,7 @@ func open(p_parent_uid: int, p_slot: StringName) -> void:
 		return
 	_title.text = "Build on %s" % parent_def.display_name
 	_orientation.clear()
+	_entries.clear()
 	_preview_id = &""
 	for child in _list.get_children():
 		child.queue_free()
@@ -59,41 +67,91 @@ func open(p_parent_uid: int, p_slot: StringName) -> void:
 		var options := GameState.station.attach_options(def.id, parent_uid, slot)
 		var by: StringName = options[0] if not options.is_empty() else def.attach_slot
 		_orientation[def.id] = by
-		var err := GameState.build_error(def.id, parent_uid, slot, by)
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		_list.add_child(row)
-		var b := UITheme.button("%s · %s" % [def.display_name, GameState.format_cost(def.build_cost)],
-			_build.bind(def.id))
-		b.name = "Build_%s" % def.id
-		b.disabled = err != ""
-		b.tooltip_text = err if err != "" else def.description
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(b)
-		if options.size() > 1:
-			var r := UITheme.button("Rotate", _rotate.bind(def.id))
-			r.name = "Rotate_%s" % def.id
-			row.add_child(r)
-		var desc := UITheme.label(err if options.is_empty() else def.description, true, Palette.TEXT_DIM)
-		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_list.add_child(desc)
+		var entry := _make_entry(def, options, GameState.build_error(def.id, parent_uid, slot, by))
+		_list.add_child(entry)
+		_entries[def.id] = entry
 		if _preview_id == &"" and not options.is_empty():
 			_preview(def.id)
-	show()
+	if _entries.is_empty():
+		_list.add_child(UITheme.label("Nothing fits this hatch yet.", true, Palette.TEXT_DIM))
+	UITheme.fade(self, true)
 	_fit_height.call_deferred()
 
 
-## Sizes the scroll area to the list, capped to a share of the screen.
+## One module: name (+ Rotate), description or why it can't be built, cost, Build.
+func _make_entry(def: ModuleDef, options: Array, err: String) -> PanelContainer:
+	var entry := PanelContainer.new()
+	entry.name = "Entry_%s" % def.id
+	entry.mouse_filter = Control.MOUSE_FILTER_STOP
+	entry.gui_input.connect(func(event: InputEvent) -> void:
+		var mb := event as InputEventMouseButton
+		if mb and mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed and not options.is_empty():
+			_preview(def.id))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.SPACE_S)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	entry.add_child(col)
+
+	var head := HBoxContainer.new()
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(head)
+	var title := UITheme.label(def.display_name, false, Palette.TEXT)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(title)
+	if options.size() > 1:
+		var r := UITheme.button("Rotate", _rotate.bind(def.id))
+		r.name = "Rotate_%s" % def.id
+		r.custom_minimum_size = Vector2(0, UITheme.GHOST_SIZE)
+		r.add_theme_font_size_override("font_size", UITheme.SMALL_FONT_SIZE)
+		head.add_child(r)
+
+	var desc := UITheme.label(err if err != "" and options.is_empty() else def.description, true,
+		Palette.NEON_PINK if options.is_empty() else Palette.TEXT_DIM)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(desc)
+	if err != "" and not options.is_empty() and not err.begins_with("Needs"):
+		var why := UITheme.label(err, true, Palette.NEON_PINK)
+		why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		col.add_child(why)
+
+	var foot := HBoxContainer.new()
+	foot.add_theme_constant_override("separation", UITheme.SPACE_M)
+	foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(foot)
+	var cost := UITheme.cost_chips(def.build_cost)
+	cost.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cost.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	foot.add_child(cost)
+	var b := UITheme.button("Build", _build.bind(def.id), UITheme.PRIMARY)
+	b.name = "Build_%s" % def.id
+	b.custom_minimum_size.x = 120
+	b.disabled = err != ""
+	b.tooltip_text = err if err != "" else def.description
+	foot.add_child(b)
+	_style_entry(entry, false)
+	return entry
+
+
+func _style_entry(entry: PanelContainer, selected: bool) -> void:
+	var sb := UITheme.box(UITheme.RAISED if selected else Color(Palette.DEEP_BLUE, 0.55),
+		Palette.NEON_CYAN if selected else Color(Palette.VIOLET, 0.5), 2 if selected else 1, UITheme.RADIUS_BUTTON)
+	sb.set_content_margin_all(UITheme.SPACE_M + 2)
+	entry.add_theme_stylebox_override("panel", sb)
+
+
+## Sizes the scroll area to the list, capped to the free height; docks right.
 func _fit_height() -> void:
 	await get_tree().process_frame
 	if not is_inside_tree():
 		return
-	var screen := get_viewport().get_visible_rect().size
+	var area := get_parent_area_size()
 	var content_h := _list.get_parent_control().get_combined_minimum_size().y
-	_scroll.custom_minimum_size.y = minf(content_h, screen.y * MAX_LIST_HEIGHT)
+	var chrome := get_combined_minimum_size().y - _scroll.custom_minimum_size.y
+	_scroll.custom_minimum_size.y = maxf(0.0, minf(content_h, area.y - TOP - BOTTOM - chrome))
 	_scroll.scroll_vertical = 0
 	reset_size()
-	position = ((screen - size) * 0.5).round()
+	position = Vector2(area.x - size.x, TOP).round()
 
 
 ## Next orientation of `module_id` (the next of its slots that fits).
@@ -108,6 +166,8 @@ func _rotate(module_id: StringName) -> void:
 
 func _preview(module_id: StringName) -> void:
 	_preview_id = module_id
+	for id in _entries:
+		_style_entry(_entries[id], id == module_id)
 	EventBus.build_preview.emit(module_id, parent_uid, slot, _orientation.get(module_id, &""))
 
 

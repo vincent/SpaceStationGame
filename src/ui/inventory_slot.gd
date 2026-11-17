@@ -24,7 +24,7 @@ func _init(slot_index: int) -> void:
 func _ready() -> void:
 	# PanelContainer stretches the swatch over its content area; labels are
 	# anchored inside the swatch.
-	_swatch = ColorRect.new()
+	_swatch = ColorRect.new()  # item colour tile
 	_swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_swatch)
 	_name = UITheme.label("", true, Palette.NIGHT)
@@ -64,9 +64,15 @@ func refresh() -> void:
 		_name.text = item.display_name.get_slice(" ", 0)
 		_count.text = str(slot.count) if slot.count > 1 else ""
 		tooltip_text = "%s\n%s" % [item.display_name, item.description]
-	var border := Palette.YELLOW if _selected else Palette.VIOLET
-	var style := UITheme.box(Palette.DEEP_BLUE, border, 3 if _selected else 2, 4)
-	style.set_content_margin_all(5)
+	# Selected = cyan rim; filled = raised; empty = a faint socket.
+	var style: StyleBoxFlat
+	if _selected:
+		style = UITheme.box(UITheme.RAISED, Palette.NEON_CYAN, 2, 10)
+	elif item:
+		style = UITheme.box(UITheme.RAISED, Color(Palette.VIOLET, 0.7), 1, 10)
+	else:
+		style = UITheme.box(Color(Palette.NIGHT, 0.5), Color(Palette.VIOLET, 0.3), 1, 10)
+	style.set_content_margin_all(6)
 	add_theme_stylebox_override("panel", style)
 
 

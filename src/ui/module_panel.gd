@@ -1,23 +1,28 @@
 class_name ModulePanel
 extends PanelContainer
-## Bottom-left card of the focused module, in station and room view: state,
-## wear and power, with Power / Upgrade tiles (Repair while derelict).
-## Modules with jobs get a crew row (− Crew 1/2 +); habitats show their
-## bunks. The chevron folds the card to its title.
+## Bottom-left card of the focused module, in station and room view. Header:
+## state light (pink derelict, cyan repaired, yellow upgraded), name, fold
+## chevron. Body: one status line (state, wear, power, bunks), a row of
+## compact actions (Repair while derelict, else Power / Upgrade) and, for
+## modules with jobs, an inline crew stepper (− Crew 1/2 · +25% +).
+## Folded, the card shrinks to its header (a pill).
+
+const WIDTH := 330.0
 
 var module: Module
 ## Folded to the title by the chevron (kept across modules).
 var collapsed := false
 
+var _dot: Panel
 var _title: Label
 var _fold: Button
 var _body: VBoxContainer
 var _status: Label
-var _tiles: GridContainer
+var _tiles: HBoxContainer
 var _repair: Button
 var _power: Button
 var _upgrade: Button
-var _crew_box: PanelContainer
+var _crew_box: HBoxContainer
 var _crew_label: Label
 var _crew_add: Button
 var _crew_remove: Button
@@ -26,67 +31,67 @@ var _overlay_open := false
 
 func _ready() -> void:
 	name = "ModulePanel"
-	custom_minimum_size = Vector2(360, 0)
+	custom_minimum_size = Vector2(WIDTH, 0)
+	add_theme_stylebox_override("panel", UITheme.card(true))
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
+	box.add_theme_constant_override("separation", UITheme.SPACE_M)
 	add_child(box)
 
 	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", UITheme.SPACE_M)
+	header.mouse_filter = Control.MOUSE_FILTER_STOP
+	header.gui_input.connect(_on_header_input)
 	box.add_child(header)
-	_title = UITheme.label("", false, Palette.YELLOW)
-	_title.add_theme_font_size_override("font_size", 26)
+	_dot = UITheme.dot(Palette.NEON_CYAN, 10)
+	header.add_child(_dot)
+	_title = UITheme.title_label("")
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header.add_child(_title)
-	_fold = UITheme.icon_button("", &"chevron_left", toggle_collapsed)
+	_fold = UITheme.ghost_button(&"chevron_down", toggle_collapsed)
 	_fold.name = "Fold"
-	_fold.flat = true
-	_fold.custom_minimum_size = Vector2(44, 44)
 	header.add_child(_fold)
 
 	_body = VBoxContainer.new()
-	_body.add_theme_constant_override("separation", 10)
+	_body.add_theme_constant_override("separation", UITheme.SPACE_M)
 	box.add_child(_body)
 	_status = UITheme.label("", true, Palette.TEXT_DIM)
+	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_body.add_child(_status)
 
-	_repair = UITheme.action_button("Repair", "", _on_repair)
+	_repair = UITheme.action_button("Repair", "", _on_repair, UITheme.PRIMARY)
 	_repair.name = "Repair"
 	_body.add_child(_repair)
-	_tiles = GridContainer.new()
-	_tiles.columns = 2
-	_tiles.add_theme_constant_override("h_separation", 10)
+	_tiles = HBoxContainer.new()
+	_tiles.add_theme_constant_override("separation", UITheme.SPACE_M)
 	_body.add_child(_tiles)
-	_power = UITheme.icon_button("Power", &"power_toggle", _on_power, true)
+	_power = UITheme.icon_button("Power", &"power_toggle", _on_power)
 	_power.name = "Power"
 	_upgrade = UITheme.icon_button("Upgrade", &"upgrade",
-		func() -> void: EventBus.upgrade_view_requested.emit(module), true)
+		func() -> void: EventBus.upgrade_view_requested.emit(module), false, UITheme.PRIMARY)
 	_upgrade.name = "Upgrade"
 	for b in [_power, _upgrade]:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.add_theme_font_size_override("font_size", UITheme.SMALL_FONT_SIZE + 2)
 		_tiles.add_child(b)
 
-	_crew_box = PanelContainer.new()
-	var crew_sb := UITheme.box(Color(Palette.DEEP_BLUE, 0.6), Palette.VIOLET, 2, 10)
-	crew_sb.set_content_margin_all(6)
-	_crew_box.add_theme_stylebox_override("panel", crew_sb)
+	# Inline stepper: − Crew 1/2 · +25% +
+	_crew_box = HBoxContainer.new()
+	_crew_box.name = "Crew"
+	_crew_box.add_theme_constant_override("separation", UITheme.SPACE_S)
 	_body.add_child(_crew_box)
-	var crew_row := HBoxContainer.new()
-	crew_row.add_theme_constant_override("separation", 6)
-	_crew_box.add_child(crew_row)
-	_crew_remove = UITheme.icon_button("", &"minus", func() -> void: GameState.station.crew.unstaff(module.uid))
-	_crew_remove.name = "CrewRemove"
+	_crew_box.add_child(UITheme.icon_rect(&"crew", Palette.TEXT_DIM, 22))
 	_crew_label = UITheme.label("", false, Palette.TEXT)
 	_crew_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_crew_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_crew_add = UITheme.icon_button("", &"plus", _on_staff)
+	_crew_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_crew_remove = _stepper(&"minus", func() -> void: GameState.station.crew.unstaff(module.uid))
+	_crew_remove.name = "CrewRemove"
+	_crew_add = _stepper(&"plus", _on_staff)
 	_crew_add.name = "CrewAdd"
-	for b in [_crew_remove, _crew_add]:
-		b.custom_minimum_size = Vector2(UITheme.TOUCH_SIZE, 48)
-		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	crew_row.add_child(_crew_remove)
-	crew_row.add_child(_crew_label)
-	crew_row.add_child(_crew_add)
+	_crew_box.add_child(_crew_label)
+	_crew_box.add_child(_crew_remove)
+	_crew_box.add_child(_crew_add)
 
 	EventBus.module_focused.connect(func(m: Module) -> void:
 		module = m
@@ -104,6 +109,14 @@ func _ready() -> void:
 	refresh()
 
 
+## Round outlined − / + button of the crew stepper.
+func _stepper(icon_name: StringName, callback: Callable) -> Button:
+	var b := UITheme.icon_button("", icon_name, callback)
+	b.custom_minimum_size = Vector2(UITheme.GHOST_SIZE + 4, UITheme.GHOST_SIZE)
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	return b
+
+
 func toggle_collapsed() -> void:
 	collapsed = not collapsed
 	refresh()
@@ -115,12 +128,19 @@ func refresh() -> void:
 	if not visible:
 		return
 	_body.visible = not collapsed
-	_fold.icon = UITheme.icon(&"chevron_right" if collapsed else &"chevron_left")
+	_fold.icon = UITheme.icon(&"chevron_down" if collapsed else &"chevron_up")
 	var st := GameState.station
 	var rec := st.get_record(module.uid)
 	var def := module.def
 	_title.text = def.display_name
+	var derelict: bool = rec.state == StationState.State.DERELICT
+	var upgraded: bool = rec.state == StationState.State.UPGRADED
+	_set_dot(Palette.NEON_PINK if derelict else Palette.YELLOW if upgraded else Palette.NEON_CYAN)
+	# Folded: a slim pill, no cyan selection frame.
+	custom_minimum_size.x = 0.0 if collapsed else WIDTH
+	add_theme_stylebox_override("panel", UITheme.card(not collapsed))
 	if collapsed:
+		_fit.call_deferred()
 		return
 	var state_name: String = ["Derelict", "Repaired", "Upgraded ×%d" % st.level(module.uid)][rec.state]
 	var power := ""
@@ -131,7 +151,7 @@ func refresh() -> void:
 	_status.text = "%s · wear %d%%%s" % [state_name, roundi(rec.wear * 100.0), (" · " + power) if power else ""]
 	var crew := st.crew
 	if crew.beds(module.uid) > 0:
-		_status.text += "\nBunks %d/%d" % [crew.residents(module.uid).size(), crew.beds(module.uid)]
+		_status.text += " · bunks %d/%d" % [crew.residents(module.uid).size(), crew.beds(module.uid)]
 	var jobs := crew.jobs(module.uid)
 	_crew_box.visible = jobs > 0
 	if jobs > 0:
@@ -140,7 +160,6 @@ func refresh() -> void:
 		_crew_remove.disabled = staffed == 0
 		_crew_add.disabled = staffed >= jobs or crew.idle().is_empty()
 
-	var derelict: bool = rec.state == StationState.State.DERELICT
 	_repair.visible = derelict
 	if derelict:
 		var err := GameState.repair_error(module.uid)
@@ -155,8 +174,27 @@ func refresh() -> void:
 	_upgrade.text = "Upgraded" if all_installed else "Upgrade"
 	_upgrade.disabled = all_installed
 	_tiles.visible = _power.visible or _upgrade.visible
-	# A lone tile spans the row instead of leaving a hole.
-	_tiles.columns = 2 if _power.visible and _upgrade.visible else 1
+	_fit.call_deferred()
+
+
+## Shrinks to the content, keeping the bottom-left corner in place (a plain
+## reset_size() would keep the top edge instead).
+func _fit() -> void:
+	var min_size := get_combined_minimum_size()
+	offset_top = offset_bottom - min_size.y
+	offset_right = offset_left + min_size.x
+
+
+func _set_dot(color: Color) -> void:
+	(_dot.get_theme_stylebox("panel") as StyleBoxFlat).bg_color = color
+
+
+func _on_header_input(event: InputEvent) -> void:
+	var mb := event as InputEventMouseButton
+	if mb and mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed:
+		accept_event()
+		EventBus.sfx.emit(&"click")
+		toggle_collapsed()
 
 
 func _on_repair() -> void:

@@ -434,6 +434,29 @@ func test_tapping_an_object_flashes_its_card() -> void:
 	assert_false(card.folded, "the tapped object's card unfolds")
 
 
+func _open_cards(panel: ObjectPanel) -> Array:
+	return panel.cards.values().filter(func(c: ObjectPanel.ObjectCard) -> bool: return not c.folded)
+
+
+func test_object_cards_are_an_accordion() -> void:
+	var panel := _hud().object_panel
+	main.focus_module(station.find_module(&"wreck_core"), true)
+	await wait_frames(2)
+	assert_gt(panel.cards.size(), 1)
+	assert_eq(_open_cards(panel).size(), 1, "one card open at a time")
+	var first: ObjectPanel.ObjectCard = _open_cards(panel)[0]
+	var other: ObjectPanel.ObjectCard = panel.cards.values().filter(
+		func(c: ObjectPanel.ObjectCard) -> bool: return c != first)[0]
+	other.fold_toggled.emit(other)  # tap a folded header: it opens, the others fold
+	assert_false(other.folded)
+	assert_true(first.folded)
+	assert_eq(_open_cards(panel).size(), 1)
+	other.fold_toggled.emit(other)  # tap the open one: everything folds
+	assert_eq(_open_cards(panel).size(), 0)
+	panel.highlight(first.targets[0])  # tapping an object opens its card
+	assert_eq(_open_cards(panel), [first])
+
+
 func test_module_card_in_both_views_and_folds() -> void:
 	var hud := _hud()
 	var panel := hud.module_panel

@@ -5,7 +5,10 @@ extends PanelContainer
 ## dimmed and say why ("Unpowered", "Needs water", "Upgrade: Hydroponics").
 ## Tapping a row focuses the module.
 
-const WIDTH := 380.0
+## The resource shown changed (&"" = closed); the status bar lights its chip.
+signal resource_changed(id: StringName)
+
+const WIDTH := 400.0
 const STATUS_TEXT: Dictionary[int, String] = {
 	Production.Status.UNPOWERED: "Unpowered",
 	Production.Status.DERELICT: "Derelict — repair it",
@@ -24,11 +27,15 @@ func _ready() -> void:
 	hide()
 	custom_minimum_size = Vector2(WIDTH, 0)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	var sb := UITheme.sheet()
+	sb.set_content_margin_all(UITheme.SPACE_M + 2)
+	sb.content_margin_left = UITheme.SPACE_L
+	add_theme_stylebox_override("panel", sb)
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 6)
+	vbox.add_theme_constant_override("separation", UITheme.SPACE_S)
 	add_child(vbox)
-	_title = UITheme.label("", false, Palette.YELLOW)
-	vbox.add_child(_title)
+	_title = UITheme.title_label("")
+	vbox.add_child(UITheme.sheet_header(_title, close))
 	_list = VBoxContainer.new()
 	_list.add_theme_constant_override("separation", 4)
 	vbox.add_child(_list)
@@ -46,13 +53,16 @@ func toggle(id: StringName, anchor: Control = null) -> void:
 	resource = id
 	_anchor = anchor
 	refresh()
-	show()
+	UITheme.fade(self, true)
 	_place.call_deferred()
+	resource_changed.emit(id)
 
 
 func close() -> void:
 	hide()
-	resource = &""
+	if resource != &"":
+		resource = &""
+		resource_changed.emit(&"")
 
 
 func refresh() -> void:
@@ -80,7 +90,9 @@ func refresh() -> void:
 	for row in rows:
 		if row.section != section:
 			section = row.section
-			_list.add_child(UITheme.label(section, true, Palette.TEXT_DIM))
+			var head := UITheme.label(section.to_upper(), true, Palette.TEXT_DIM)
+			head.add_theme_font_size_override("font_size", UITheme.SMALL_FONT_SIZE - 3)
+			_list.add_child(head)
 		_list.add_child(_make_row(row))
 	if rows.is_empty():
 		_list.add_child(UITheme.label("No crew yet: traders bring drifters looking for a bunk."
@@ -164,14 +176,19 @@ static func power_rows() -> Array[Dictionary]:
 	return producers + consumers
 
 
+## A tappable row: status light (mint running, pink stopped) and the text.
 func _make_row(row: Dictionary) -> Button:
-	var b := UITheme.button(row.text, _focus.bind(int(row.uid)))
+	var b := UITheme.button(row.text, _focus.bind(int(row.uid)), UITheme.LIST_ROW)
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.custom_minimum_size.y = UITheme.TOUCH_SIZE * 0.75
+	b.custom_minimum_size.y = 48
+	b.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	b.add_theme_font_size_override("font_size", UITheme.SMALL_FONT_SIZE)
+	var light := UITheme.dot(Palette.MINT if row.running else Palette.NEON_PINK, 8)
+	light.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
+	light.position.x = 14
+	b.add_child(light)
 	if not row.running:
 		b.add_theme_color_override("font_color", Palette.TEXT_DIM)
-		b.modulate.a = 0.7
 	return b
 
 

@@ -41,11 +41,17 @@ func _ready() -> void:
 	top.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	top.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	top.position.y = 12
-	_title = UITheme.label("", false, Palette.YELLOW)
+	var top_sb := UITheme.pill()
+	top_sb.content_margin_left = 24
+	top_sb.content_margin_right = 24
+	top_sb.content_margin_top = 10
+	top_sb.content_margin_bottom = 10
+	top.add_theme_stylebox_override("panel", top_sb)
+	_title = UITheme.title_label("")
 	top.add_child(_title)
 	_root.add_child(top)
 
-	var done := UITheme.button("Done", func() -> void: view.exit())
+	var done := UITheme.button("Done", func() -> void: view.exit(), UITheme.PRIMARY)
 	done.custom_minimum_size = Vector2(200, 64)
 	done.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 	done.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -86,7 +92,7 @@ func _make_card(part: ModulePart, up: UpgradeDef) -> Control:
 	card.custom_minimum_size.x = CARD_WIDTH
 	card.mouse_filter = Control.MOUSE_FILTER_STOP
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 2)
+	box.add_theme_constant_override("separation", 4)
 	card.add_child(box)
 	if up == null:  # built-in part: a one-line tag, nothing to buy
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -104,7 +110,7 @@ func _make_card(part: ModulePart, up: UpgradeDef) -> Control:
 		box.add_child(UITheme.label("Installed", true, Palette.NEON_CYAN))
 		return card
 	var err := GameState.upgrade_error(uid, up.id)
-	var b := UITheme.button("Install · %s" % GameState.format_cost(up.cost), _buy.bind(up.id))
+	var b := UITheme.button("Install · %s" % GameState.format_cost(up.cost), _buy.bind(up.id), UITheme.PRIMARY)
 	b.add_theme_font_size_override("font_size", UITheme.SMALL_FONT_SIZE)
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # long costs wrap instead of widening the card
 	b.disabled = err != ""

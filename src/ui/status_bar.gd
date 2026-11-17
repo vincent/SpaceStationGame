@@ -32,12 +32,8 @@ class Chip:
 		id = p_id
 		name = "Chip_%s" % id
 		mouse_filter = Control.MOUSE_FILTER_STOP
-		var sb := UITheme.box(Color(Palette.DEEP_BLUE, 0.85), Color.TRANSPARENT, 0, 18)
-		sb.content_margin_top = 6
-		sb.content_margin_bottom = 6
-		sb.content_margin_left = 12
-		sb.content_margin_right = 14
-		add_theme_stylebox_override("panel", sb)
+		custom_minimum_size.y = TopBar.HEIGHT
+		set_active(false)
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -45,13 +41,9 @@ class Chip:
 		if UITheme.icon(icon_name):
 			row.add_child(UITheme.icon_rect(icon_name, color, 22))
 		else:
-			var dot := Panel.new()
-			dot.custom_minimum_size = Vector2(12, 12)
-			dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			dot.add_theme_stylebox_override("panel", UITheme.box(color, Color.TRANSPARENT, 0, 6))
-			row.add_child(dot)
+			row.add_child(UITheme.dot(color, 12))
 		amount_label = UITheme.label("", false, Palette.TEXT)
+		amount_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(amount_label)
 
@@ -61,6 +53,17 @@ class Chip:
 			accept_event()
 			EventBus.sfx.emit(&"click")
 			pressed.emit()
+
+	## Cyan rim while its popover is open.
+	func set_active(active: bool) -> void:
+		var sb := UITheme.pill(UITheme.GLASS, Palette.NEON_CYAN if active else UITheme.GLASS_RIM)
+		sb.content_margin_left = 14
+		sb.content_margin_right = 16
+		sb.shadow_color = UITheme.SHADOW
+		sb.shadow_size = 6
+		if active:
+			sb.set_border_width_all(2)
+		add_theme_stylebox_override("panel", sb)
 
 	func set_values(text: String, p_rate: float) -> void:
 		amount_label.text = text
@@ -73,7 +76,7 @@ func _ready() -> void:
 	name = "StatusBar"
 	alignment = FlowContainer.ALIGNMENT_CENTER
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_theme_constant_override("h_separation", 8)
+	add_theme_constant_override("h_separation", UITheme.SPACE_S)
 	add_theme_constant_override("v_separation", 6)
 	_add_chip(POWER, Palette.NEON_CYAN, &"power")
 	_add_chip(CREW, Palette.TEXT_DIM, &"crew")
@@ -122,6 +125,12 @@ func refresh() -> void:
 		chip.visible = _shown.get(id, false)
 		if chip.visible:
 			chip.set_values(str(stock.count(id)), rates.get(id, 0.0))
+
+
+## Highlights the chip `id` (the popover's), none for &"".
+func set_active(id: StringName) -> void:
+	for key in chips:
+		chips[key].set_active(key == id)
 
 
 func _add_chip(id: StringName, color: Color, icon_name: StringName) -> void:
