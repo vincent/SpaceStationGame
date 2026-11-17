@@ -43,9 +43,9 @@ func _ready() -> void:
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text.alignment = BoxContainer.ALIGNMENT_CENTER
 	details.add_child(text)
-	_details_name = UITheme.label("", false, Palette.NEON_CYAN)
+	_details_name = UITheme.label("", false, UITheme.TEXT)
 	text.add_child(_details_name)
-	_details_text = UITheme.label("Tap an item. Double-tap to use, drag to move.", true, Palette.TEXT_DIM)
+	_details_text = UITheme.label("Tap an item. Double-tap to use, drag to move.", true, UITheme.TEXT_DIM)
 	_details_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_details_text.custom_minimum_size = Vector2(COLUMNS * InventorySlot.SIZE.x - 140, 0)
 	text.add_child(_details_text)

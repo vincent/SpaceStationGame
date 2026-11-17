@@ -34,7 +34,7 @@ func _ready() -> void:
 	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_content)
 
-	_stats = UITheme.label("", true, Palette.NEON_CYAN)
+	_stats = UITheme.label("", true, UITheme.CYAN)
 	_content.add_child(_stats)
 
 	_add_row("Time", [
@@ -58,7 +58,7 @@ func _ready() -> void:
 	_item_picker.custom_minimum_size.y = UITheme.TOUCH_SIZE
 	for id in GameState.item_db.ids():
 		_item_picker.add_item(String(id))
-	_content.add_child(UITheme.label("Items", true, Palette.TEXT_DIM))
+	_content.add_child(UITheme.label("Items", true, UITheme.TEXT_DIM))
 	var item_row := HBoxContainer.new()
 	item_row.add_child(_item_picker)
 	item_row.add_child(UITheme.button("Give 5", _give_selected))
@@ -68,7 +68,7 @@ func _ready() -> void:
 	_encounter_picker.custom_minimum_size.y = UITheme.TOUCH_SIZE
 	for id in GameState.encounter_db.ids():
 		_encounter_picker.add_item(String(id))
-	_content.add_child(UITheme.label("Story", true, Palette.TEXT_DIM))
+	_content.add_child(UITheme.label("Story", true, UITheme.TEXT_DIM))
 	var story_row := HBoxContainer.new()
 	story_row.add_child(_encounter_picker)
 	story_row.add_child(UITheme.button("Fire", _fire_selected_encounter))
@@ -137,7 +137,7 @@ func _process(_delta: float) -> void:
 
 ## Adds a labelled row of buttons. `buttons` = [[text, callable], ...]
 func _add_row(title: String, buttons: Array) -> void:
-	_content.add_child(UITheme.label(title, true, Palette.TEXT_DIM))
+	_content.add_child(UITheme.label(title, true, UITheme.TEXT_DIM))
 	var row := HFlowContainer.new()
 	for entry: Array in buttons:
 		row.add_child(UITheme.button(entry[0], entry[1]))
@@ -485,7 +485,7 @@ func _add_camera_sliders() -> void:
 		if get_tree().current_scene else null
 	if cam == null:
 		return
-	_content.add_child(UITheme.label("Camera", true, Palette.TEXT_DIM))
+	_content.add_child(UITheme.label("Camera", true, UITheme.TEXT_DIM))
 	for spec: Array in [["pitch", -80.0, -5.0, "pitch_deg"], ["yaw", -90.0, 90.0, "yaw_deg"],
 			["size (0 = auto)", 0.0, 120.0, "size_override"]]:
 		var row := HBoxContainer.new()

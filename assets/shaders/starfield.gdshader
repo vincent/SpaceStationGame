@@ -3,8 +3,8 @@
 shader_type spatial;
 render_mode unshaded, shadows_disabled, cull_disabled, fog_disabled;
 
-uniform vec4 top_color : source_color = vec4(0.043, 0.039, 0.141, 1.0);
-uniform vec4 bottom_color : source_color = vec4(0.26, 0.09, 0.42, 1.0);
+uniform vec4 top_color : source_color = vec4(0.024, 0.027, 0.051, 1.0);
+uniform vec4 bottom_color : source_color = vec4(0.067, 0.10, 0.18, 1.0);
 uniform float star_density : hint_range(0.0, 1.0) = 0.05;
 // Size in pixels of the grid cell that holds at most one star.
 uniform float cell_pixels = 6.0;

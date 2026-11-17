@@ -61,8 +61,8 @@ class ObjectCard:
 		_header.mouse_filter = Control.MOUSE_FILTER_STOP
 		_header.gui_input.connect(_on_header_input)
 		box.add_child(_header)
-		_header.add_child(UITheme.icon_rect(first.icon, Palette.YELLOW))
-		_title = UITheme.label(first.display_name, false, Palette.YELLOW)
+		_header.add_child(UITheme.icon_rect(first.icon, UITheme.CYAN))
+		_title = UITheme.title_label(first.display_name)
 		_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -80,7 +80,7 @@ class ObjectCard:
 		folded = value
 		_list.visible = not folded
 		_fold.icon = UITheme.icon(&"chevron_down" if folded else &"chevron_up")
-		var sb := UITheme.card(not folded)
+		var sb := UITheme.card(false)
 		if folded:  # slim header row
 			sb.content_margin_top = 6
 			sb.content_margin_bottom = 6
@@ -107,7 +107,7 @@ class ObjectCard:
 	func flash() -> void:
 		if _flash:
 			_flash.kill()
-		modulate = Color(1.6, 1.5, 0.8)
+		modulate = Color(1.15, 1.2, 1.25)
 		_flash = create_tween()
 		_flash.tween_property(self, "modulate", Color.WHITE, 0.6)
 

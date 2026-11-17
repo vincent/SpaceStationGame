@@ -8,9 +8,9 @@ extends CanvasLayer
 ## small 3D object. Built in code so layout changes stay reviewable in diffs.
 
 const NEED_COLORS: Dictionary[StringName, Color] = {
-	Needs.FOOD: Palette.ORANGE,
-	Needs.ENERGY: Palette.NEON_CYAN,
-	Needs.MORALE: Palette.NEON_PINK,
+	Needs.FOOD: Color("f0a35e"),
+	Needs.ENERGY: UITheme.CYAN,
+	Needs.MORALE: Color("a99be6"),
 }
 const MARGIN := 16
 ## Height reserved for the top bar when sizing the object cards.
@@ -112,7 +112,7 @@ func _ready() -> void:
 	for b: Button in [view_button, inventory_button]:
 		b.custom_minimum_size = DOCK_BUTTON
 		b.add_theme_font_size_override("font_size", UITheme.SMALL_FONT_SIZE - 1)
-		b.add_theme_color_override("icon_normal_color", Palette.TEXT)
+		b.add_theme_color_override("icon_normal_color", UITheme.TEXT)
 		b.add_theme_constant_override("h_separation", 2)
 		dock.add_child(b)
 
@@ -140,7 +140,7 @@ func _ready() -> void:
 	# Toast (top-center pill, under the top row)
 	_toast = PanelContainer.new()
 	_toast.name = "Toast"
-	var toast_sb := UITheme.pill(UITheme.GLASS, Color(Palette.YELLOW, 0.6))
+	var toast_sb := UITheme.pill(UITheme.GLASS, Color(UITheme.YELLOW, 0.6))
 	toast_sb.content_margin_left = 22
 	toast_sb.content_margin_right = 22
 	toast_sb.content_margin_top = 10
@@ -150,7 +150,7 @@ func _ready() -> void:
 	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_toast.position.y = TOP_BAR_HEIGHT + 12
-	_toast_label = UITheme.label("", false, Palette.TEXT)
+	_toast_label = UITheme.label("", false, UITheme.TEXT)
 	_toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast.add_child(_toast_label)
 	_toast.modulate.a = 0.0

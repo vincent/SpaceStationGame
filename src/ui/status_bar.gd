@@ -42,7 +42,7 @@ class Chip:
 			row.add_child(UITheme.icon_rect(icon_name, color, 22))
 		else:
 			row.add_child(UITheme.dot(color, 12))
-		amount_label = UITheme.label("", false, Palette.TEXT)
+		amount_label = UITheme.label("", false, UITheme.TEXT)
 		amount_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(amount_label)
@@ -56,7 +56,7 @@ class Chip:
 
 	## Cyan rim while its popover is open.
 	func set_active(active: bool) -> void:
-		var sb := UITheme.pill(UITheme.GLASS, Palette.NEON_CYAN if active else UITheme.GLASS_RIM)
+		var sb := UITheme.pill(UITheme.GLASS, UITheme.CYAN if active else UITheme.GLASS_RIM)
 		sb.content_margin_left = 14
 		sb.content_margin_right = 16
 		sb.shadow_color = UITheme.SHADOW
@@ -69,7 +69,7 @@ class Chip:
 		amount_label.text = text
 		rate = p_rate
 		# A draining resource reads pink; the popover tells by how much.
-		amount_label.add_theme_color_override("font_color", Palette.NEON_PINK if rate <= -0.005 else Palette.TEXT)
+		amount_label.add_theme_color_override("font_color", UITheme.DANGER if rate <= -0.005 else UITheme.TEXT)
 
 
 func _ready() -> void:
@@ -78,8 +78,8 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_theme_constant_override("h_separation", UITheme.SPACE_S)
 	add_theme_constant_override("v_separation", 6)
-	_add_chip(POWER, Palette.NEON_CYAN, &"power")
-	_add_chip(CREW, Palette.TEXT_DIM, &"crew")
+	_add_chip(POWER, UITheme.YELLOW, &"power")
+	_add_chip(CREW, UITheme.TEXT_DIM, &"crew")
 	for item in resources():
 		_add_chip(item.id, item.color, item.id)
 	GameClock.minute_changed.connect(func(_m: int) -> void: refresh())

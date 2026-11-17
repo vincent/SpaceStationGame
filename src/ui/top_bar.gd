@@ -41,15 +41,15 @@ func _ready() -> void:
 	var needs_row := needs.get_child(0) as HBoxContainer
 	needs_row.add_theme_constant_override("separation", UITheme.SPACE_L)
 	for need in GameState.needs.names():
-		var color: Color = HUD.NEED_COLORS.get(need, Palette.NEON_CYAN)
+		var color: Color = HUD.NEED_COLORS.get(need, UITheme.CYAN)
 		var col := VBoxContainer.new()
 		col.add_theme_constant_override("separation", 3)
 		col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		var head := HBoxContainer.new()
-		var name_label := UITheme.label(String(need).capitalize(), true, Palette.TEXT_DIM)
+		var name_label := UITheme.label(String(need).capitalize(), true, UITheme.TEXT_DIM)
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		head.add_child(name_label)
-		var value := UITheme.label("", true, Palette.TEXT)
+		var value := UITheme.label("", true, UITheme.TEXT)
 		head.add_child(value)
 		col.add_child(head)
 		var bar := ProgressBar.new()
@@ -106,7 +106,7 @@ func _on_need_changed(need: StringName, value: float) -> void:
 		return
 	bars[need].value = value
 	_values[need].text = str(roundi(value))
-	_values[need].add_theme_color_override("font_color", Palette.NEON_PINK if value < LOW_NEED else Palette.TEXT)
+	_values[need].add_theme_color_override("font_color", UITheme.DANGER if value < LOW_NEED else UITheme.TEXT)
 
 
 func _toggle_debug() -> void:

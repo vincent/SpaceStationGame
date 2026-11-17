@@ -14,7 +14,7 @@ const BOTTOM := 110.0
 const GAP := 8.0
 ## Columns that don't fit shrink down to this scale.
 const MIN_SCALE := 0.5
-const LINE_COLOR := Color(0.18, 0.89, 0.9, 0.9)
+const LINE_COLOR := Color(UITheme.CYAN, 0.7)
 
 var view: ExplodedView
 
@@ -51,7 +51,7 @@ func _ready() -> void:
 	top.add_child(_title)
 	_root.add_child(top)
 
-	var done := UITheme.button("Done", func() -> void: view.exit(), UITheme.PRIMARY)
+	var done := UITheme.button("Done", func() -> void: view.exit())
 	done.custom_minimum_size = Vector2(200, 64)
 	done.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 	done.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -97,17 +97,17 @@ func _make_card(part: ModulePart, up: UpgradeDef) -> Control:
 	if up == null:  # built-in part: a one-line tag, nothing to buy
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var tag := UITheme.label("%s · built in" % String(part.name).trim_prefix("part_").capitalize(),
-			true, Palette.TEXT_DIM)
+			true, UITheme.TEXT_DIM)
 		tag.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		box.add_child(tag)
 		return card
-	box.add_child(UITheme.label(up.display_name, true, Palette.YELLOW))
-	var desc := UITheme.label(up.description, true, Palette.TEXT_DIM)
+	box.add_child(UITheme.label(up.display_name, true, UITheme.TEXT))
+	var desc := UITheme.label(up.description, true, UITheme.TEXT_DIM)
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(desc)
 	var uid := view.module.uid
 	if GameState.station.is_installed(uid, up.id):
-		box.add_child(UITheme.label("Installed", true, Palette.NEON_CYAN))
+		box.add_child(UITheme.label("Installed", true, UITheme.CYAN))
 		return card
 	var err := GameState.upgrade_error(uid, up.id)
 	var b := UITheme.button("Install · %s" % GameState.format_cost(up.cost), _buy.bind(up.id), UITheme.PRIMARY)
@@ -116,7 +116,7 @@ func _make_card(part: ModulePart, up: UpgradeDef) -> Control:
 	b.disabled = err != ""
 	box.add_child(b)
 	if err != "" and not err.begins_with("Needs %s" % GameState.format_cost(up.cost)):
-		box.add_child(UITheme.label("Locked — %s" % err, true, Palette.NEON_PINK))
+		box.add_child(UITheme.label("Locked — %s" % err, true, UITheme.DANGER))
 	return card
 
 

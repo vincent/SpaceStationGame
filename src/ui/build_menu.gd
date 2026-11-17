@@ -73,7 +73,7 @@ func open(p_parent_uid: int, p_slot: StringName) -> void:
 		if _preview_id == &"" and not options.is_empty():
 			_preview(def.id)
 	if _entries.is_empty():
-		_list.add_child(UITheme.label("Nothing fits this hatch yet.", true, Palette.TEXT_DIM))
+		_list.add_child(UITheme.label("Nothing fits this hatch yet.", true, UITheme.TEXT_DIM))
 	UITheme.fade(self, true)
 	_fit_height.call_deferred()
 
@@ -95,7 +95,7 @@ func _make_entry(def: ModuleDef, options: Array, err: String) -> PanelContainer:
 	var head := HBoxContainer.new()
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(head)
-	var title := UITheme.label(def.display_name, false, Palette.TEXT)
+	var title := UITheme.label(def.display_name, false, UITheme.TEXT)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(title)
@@ -107,11 +107,11 @@ func _make_entry(def: ModuleDef, options: Array, err: String) -> PanelContainer:
 		head.add_child(r)
 
 	var desc := UITheme.label(err if err != "" and options.is_empty() else def.description, true,
-		Palette.NEON_PINK if options.is_empty() else Palette.TEXT_DIM)
+		UITheme.DANGER if options.is_empty() else UITheme.TEXT_DIM)
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(desc)
 	if err != "" and not options.is_empty() and not err.begins_with("Needs"):
-		var why := UITheme.label(err, true, Palette.NEON_PINK)
+		var why := UITheme.label(err, true, UITheme.DANGER)
 		why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		col.add_child(why)
 
@@ -134,8 +134,8 @@ func _make_entry(def: ModuleDef, options: Array, err: String) -> PanelContainer:
 
 
 func _style_entry(entry: PanelContainer, selected: bool) -> void:
-	var sb := UITheme.box(UITheme.RAISED if selected else Color(Palette.DEEP_BLUE, 0.55),
-		Palette.NEON_CYAN if selected else Color(Palette.VIOLET, 0.5), 2 if selected else 1, UITheme.RADIUS_BUTTON)
+	var sb := UITheme.box(UITheme.RAISED if selected else Color(UITheme.RAISED, 0.6),
+		UITheme.CYAN if selected else UITheme.HAIRLINE, 2 if selected else 1, UITheme.RADIUS_BUTTON)
 	sb.set_content_margin_all(UITheme.SPACE_M + 2)
 	entry.add_theme_stylebox_override("panel", sb)
 

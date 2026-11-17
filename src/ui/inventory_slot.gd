@@ -27,7 +27,7 @@ func _ready() -> void:
 	_swatch = ColorRect.new()  # item colour tile
 	_swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_swatch)
-	_name = UITheme.label("", true, Palette.NIGHT)
+	_name = UITheme.label("", true, UITheme.INK)
 	_name.add_theme_font_size_override("font_size", 13)
 	_name.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -35,11 +35,11 @@ func _ready() -> void:
 	_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_name.clip_text = true
 	_swatch.add_child(_name)
-	_count = UITheme.label("", true, Palette.TEXT)
+	_count = UITheme.label("", true, UITheme.TEXT)
 	_count.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_count.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	_count.add_theme_color_override("font_outline_color", Palette.NIGHT)
+	_count.add_theme_color_override("font_outline_color", UITheme.INK)
 	_count.add_theme_constant_override("outline_size", 6)
 	_swatch.add_child(_count)
 	refresh()
@@ -67,11 +67,11 @@ func refresh() -> void:
 	# Selected = cyan rim; filled = raised; empty = a faint socket.
 	var style: StyleBoxFlat
 	if _selected:
-		style = UITheme.box(UITheme.RAISED, Palette.NEON_CYAN, 2, 10)
+		style = UITheme.box(UITheme.RAISED, UITheme.CYAN, 2, 10)
 	elif item:
-		style = UITheme.box(UITheme.RAISED, Color(Palette.VIOLET, 0.7), 1, 10)
+		style = UITheme.box(UITheme.RAISED, UITheme.HAIRLINE, 1, 10)
 	else:
-		style = UITheme.box(Color(Palette.NIGHT, 0.5), Color(Palette.VIOLET, 0.3), 1, 10)
+		style = UITheme.box(Color(1, 1, 1, 0.03), Color.TRANSPARENT, 0, 10)
 	style.set_content_margin_all(6)
 	add_theme_stylebox_override("panel", style)
 

@@ -42,7 +42,7 @@ func _ready() -> void:
 	header.mouse_filter = Control.MOUSE_FILTER_STOP
 	header.gui_input.connect(_on_header_input)
 	box.add_child(header)
-	_dot = UITheme.dot(Palette.NEON_CYAN, 10)
+	_dot = UITheme.dot(UITheme.CYAN, 10)
 	header.add_child(_dot)
 	_title = UITheme.title_label("")
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -57,7 +57,7 @@ func _ready() -> void:
 	_body = VBoxContainer.new()
 	_body.add_theme_constant_override("separation", UITheme.SPACE_M)
 	box.add_child(_body)
-	_status = UITheme.label("", true, Palette.TEXT_DIM)
+	_status = UITheme.label("", true, UITheme.TEXT_DIM)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_body.add_child(_status)
 
@@ -81,8 +81,8 @@ func _ready() -> void:
 	_crew_box.name = "Crew"
 	_crew_box.add_theme_constant_override("separation", UITheme.SPACE_S)
 	_body.add_child(_crew_box)
-	_crew_box.add_child(UITheme.icon_rect(&"crew", Palette.TEXT_DIM, 22))
-	_crew_label = UITheme.label("", false, Palette.TEXT)
+	_crew_box.add_child(UITheme.icon_rect(&"crew", UITheme.TEXT_DIM, 22))
+	_crew_label = UITheme.label("", false, UITheme.TEXT)
 	_crew_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_crew_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_crew_remove = _stepper(&"minus", func() -> void: GameState.station.crew.unstaff(module.uid))
@@ -135,7 +135,7 @@ func refresh() -> void:
 	_title.text = def.display_name
 	var derelict: bool = rec.state == StationState.State.DERELICT
 	var upgraded: bool = rec.state == StationState.State.UPGRADED
-	_set_dot(Palette.NEON_PINK if derelict else Palette.YELLOW if upgraded else Palette.NEON_CYAN)
+	_set_dot(UITheme.DANGER if derelict else UITheme.YELLOW if upgraded else UITheme.CYAN)
 	# Folded: a slim pill, no cyan selection frame.
 	custom_minimum_size.x = 0.0 if collapsed else WIDTH
 	add_theme_stylebox_override("panel", UITheme.card(not collapsed))

@@ -1,11 +1,13 @@
 class_name UITheme
 ## Builds the game's UI Theme in code, plus the small component kit the HUD
 ## is made of. One visual language, used everywhere:
-## - glass surfaces (night blue, faint violet rim) float over the station;
-## - cyan = selected / focused, violet = something you can press,
-##   yellow = titles and highlights, pink = warnings and draining resources;
-## - three button weights: Primary (violet fill, the main action), the default
-##   secondary button (outlined) and Ghost (icon only: close, fold, steppers).
+## - dark navy glass surfaces (a faint hairline, no glow) float over the station;
+## - cyan = selected / focused / interaction feedback, muted purple = something
+##   you can press, warm yellow = resources, notifications and the main action,
+##   coral = warnings and draining resources, white = text;
+## - three button weights: Primary (yellow fill, the main action), the default
+##   secondary button (muted purple fill) and Ghost (icon only: close, fold, steppers).
+## The UI has its own colours: `Palette` is the 3D world's and stays untouched.
 ## System sans-serif font (maximum legibility), touch-sized controls.
 
 # Type scale (px at the 1280x720 base resolution).
@@ -28,11 +30,28 @@ const ICON_DIR := "res://assets/ui/icons/"
 const ICON_SIZE := 24
 
 ## Surfaces.
-const GLASS := Color(Palette.NIGHT, 0.86)
-const GLASS_RIM := Color(Palette.VIOLET, 0.55)
-const RAISED := Color(Palette.DEEP_BLUE, 0.95)
-const SHADOW := Color(0, 0, 0, 0.35)
-const SCRIM := Color(Palette.NIGHT, 0.5)
+const PANEL := Color(0.055, 0.09, 0.16, 0.88)  # dark navy glass (#0e1729)
+const PANEL_SOLID := Color(0.055, 0.09, 0.16, 0.96)  # sheets and dialogs
+const RAISED := Color("18233a")  # rows, slots
+const RAISED_HI := Color("21304d")  # hovered rows
+const HAIRLINE := Color(1, 1, 1, 0.07)  # the only default border
+const SHADOW := Color(0, 0, 0, 0.3)
+const SCRIM := Color(0.02, 0.027, 0.05, 0.55)
+const GLASS := PANEL
+const GLASS_RIM := HAIRLINE
+## Roles.
+const CYAN := Color("5fd4e3")  # selection, focus, interaction
+const PURPLE := Color("5d5590")  # buttons, secondary interactive elements
+const PURPLE_HI := Color("6c64a0")
+const PURPLE_DOWN := Color("4d467c")
+const YELLOW := Color("f4c24d")  # resources, notifications, main action
+const YELLOW_HI := Color("f8d06e")
+const YELLOW_DOWN := Color("dcab3a")
+const TEXT := Color("f1f4f9")
+const TEXT_DIM := Color("98a3ba")
+const INK := Color("111827")  # text on yellow
+const DANGER := Color("ff6f7d")
+const SUCCESS := Color("6fd9a0")
 
 ## Theme type variations (set `theme_type_variation`).
 const PRIMARY := &"PrimaryButton"
@@ -115,11 +134,18 @@ static func action_button(title: String, detail: String, callback: Callable = Ca
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(box)
 	for i in 2:
-		var l := label("", i == 1, Palette.TEXT if i == 0 else Palette.TEXT_DIM)
+		var l := label("", i == 1, TEXT if i == 0 else TEXT_DIM)
 		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(l)
 	set_action_text(b, title, detail)
+	if variant == PRIMARY:  # dark text on yellow, light again once disabled
+		b.draw.connect(func() -> void:
+			for i in 2:
+				var l := box.get_child(i) as Label
+				var c := INK if not b.disabled else TEXT if i == 0 else TEXT_DIM
+				if l.get_theme_color("font_color") != c:
+					l.add_theme_color_override("font_color", c))
 	return b
 
 
@@ -135,7 +161,7 @@ static func set_action_text(b: Button, title: String, detail: String) -> void:
 
 
 ## Icon as a fixed-size TextureRect tinted `color`.
-static func icon_rect(icon_name: StringName, color: Color = Palette.TEXT, px: int = ICON_SIZE) -> TextureRect:
+static func icon_rect(icon_name: StringName, color: Color = TEXT, px: int = ICON_SIZE) -> TextureRect:
 	var r := TextureRect.new()
 	r.texture = icon(icon_name)
 	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -159,11 +185,11 @@ static func dot(color: Color, px: int = 10) -> Panel:
 	return p
 
 
-## Floating glass surface: night blue, faint violet rim, soft shadow.
+## Floating glass surface: dark navy, faint hairline, soft shadow.
 static func glass(radius: int = RADIUS) -> StyleBoxFlat:
-	var sb := box(GLASS, GLASS_RIM, 1, radius)
+	var sb := box(PANEL, HAIRLINE, 1, radius)
 	sb.shadow_color = SHADOW
-	sb.shadow_size = 8
+	sb.shadow_size = 6
 	sb.shadow_offset = Vector2(0, 3)
 	sb.set_content_margin_all(SPACE_L - 2)
 	return sb
@@ -173,20 +199,20 @@ static func glass(radius: int = RADIUS) -> StyleBoxFlat:
 static func card(selected: bool = false) -> StyleBoxFlat:
 	var sb := glass()
 	if selected:
-		sb.border_color = Palette.NEON_CYAN
+		sb.border_color = Color(CYAN, 0.85)
 		sb.set_border_width_all(2)
 	return sb
 
 
 ## Opaque-ish glass for sheets and dialogs (nothing busy shows through).
 static func sheet() -> StyleBoxFlat:
-	var sb := card(true)
-	sb.bg_color = Color(Palette.NIGHT, 0.96)
+	var sb := glass()
+	sb.bg_color = PANEL_SOLID
 	return sb
 
 
 ## Rounded pill (chips, clusters of the top row).
-static func pill(color: Color = GLASS, border: Color = GLASS_RIM) -> StyleBoxFlat:
+static func pill(color: Color = PANEL, border: Color = HAIRLINE) -> StyleBoxFlat:
 	var sb := box(color, border, 1 if border.a > 0.0 else 0, 24)
 	sb.content_margin_left = 14
 	sb.content_margin_right = 14
@@ -195,7 +221,7 @@ static func pill(color: Color = GLASS, border: Color = GLASS_RIM) -> StyleBoxFla
 	return sb
 
 
-static func label(text: String = "", small: bool = false, color: Color = Palette.TEXT) -> Label:
+static func label(text: String = "", small: bool = false, color: Color = TEXT) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_color_override("font_color", color)
@@ -204,8 +230,8 @@ static func label(text: String = "", small: bool = false, color: Color = Palette
 	return l
 
 
-## Card / sheet title: semi-bold, yellow.
-static func title_label(text: String = "", color: Color = Palette.YELLOW) -> Label:
+## Card / sheet title: semi-bold, white.
+static func title_label(text: String = "", color: Color = TEXT) -> Label:
 	var l := label(text, false, color)
 	l.theme_type_variation = TITLE
 	return l
@@ -219,7 +245,7 @@ static func cost_chips(cost: Dictionary) -> HFlowContainer:
 	flow.add_theme_constant_override("v_separation", 4)
 	flow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if cost.is_empty():
-		flow.add_child(label("Free", true, Palette.MINT))
+		flow.add_child(label("Free", true, SUCCESS))
 		return flow
 	for id: StringName in cost:
 		var item := GameState.item_db.get_item(id)
@@ -227,7 +253,7 @@ static func cost_chips(cost: Dictionary) -> HFlowContainer:
 		var short := GameState.count(id) < n
 		var chip := PanelContainer.new()
 		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var sb := pill(Color(Palette.NIGHT, 0.6), Color(Palette.NEON_PINK, 0.8) if short else Color.TRANSPARENT)
+		var sb := pill(Color(RAISED, 0.8), Color(DANGER, 0.8) if short else Color.TRANSPARENT)
 		sb.content_margin_left = 8
 		sb.content_margin_right = 10
 		sb.content_margin_top = 2
@@ -236,14 +262,14 @@ static func cost_chips(cost: Dictionary) -> HFlowContainer:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 4)
 		chip.add_child(row)
-		var color: Color = item.color if item and item.color.a > 0.0 else Palette.TEXT_DIM
+		var color: Color = item.color if item and item.color.a > 0.0 else TEXT_DIM
 		var text := str(n)
 		if icon(id):
 			row.add_child(icon_rect(id, color, 18))
 		else:
 			row.add_child(dot(color, 8))
 			text = "%d %s" % [n, item.display_name.to_lower() if item else String(id)]
-		row.add_child(label(text, true, Palette.NEON_PINK if short else Palette.TEXT))
+		row.add_child(label(text, true, DANGER if short else TEXT))
 		chip.tooltip_text = item.display_name if item else String(id)
 		flow.add_child(chip)
 	return flow
@@ -337,64 +363,57 @@ static func _build() -> Theme:
 	theme.set_stylebox("panel", "PanelContainer", panel)
 	theme.set_stylebox("panel", "Panel", panel)
 
-	theme.set_color("font_color", "Label", Palette.TEXT)
+	theme.set_color("font_color", "Label", TEXT)
 	theme.set_type_variation(TITLE, "Label")
 	theme.set_font("font", TITLE, bold)
 	theme.set_font_size("font_size", TITLE, TITLE_FONT_SIZE)
 	theme.set_type_variation(CAPTION, "Label")
 	theme.set_font_size("font_size", CAPTION, SMALL_FONT_SIZE)
-	theme.set_color("font_color", CAPTION, Palette.TEXT_DIM)
+	theme.set_color("font_color", CAPTION, TEXT_DIM)
 
-	var disabled := _button_box(Color(Palette.ANTHRACITE, 0.6), Color.TRANSPARENT, 0)
-	var light_violet := Palette.VIOLET.lightened(0.2)
+	var disabled := _button_box(Color(1, 1, 1, 0.05), Color.TRANSPARENT, 0)
 
-	# Secondary (default): outlined, raised.
+	# Secondary (default): muted purple fill, no border.
 	_set_button_styles(theme, &"Button", [
-		_button_box(RAISED, Color(Palette.VIOLET, 0.9)),
-		_button_box(Palette.DEEP_BLUE.lightened(0.08), light_violet),
-		_button_box(Palette.VIOLET, Palette.YELLOW, 2),
+		_button_box(PURPLE, Color.TRANSPARENT, 0),
+		_button_box(PURPLE_HI, Color.TRANSPARENT, 0),
+		_button_box(PURPLE_DOWN, Color.TRANSPARENT, 0),
 		disabled,
 	])
-	theme.set_color("font_color", "Button", Palette.TEXT)
-	theme.set_color("font_hover_color", "Button", Palette.TEXT)
-	theme.set_color("font_pressed_color", "Button", Palette.TEXT)
-	theme.set_color("font_hover_pressed_color", "Button", Palette.TEXT)
-	theme.set_color("font_disabled_color", "Button", Palette.TEXT_DIM)
-	theme.set_color("icon_normal_color", "Button", Palette.TEXT)
-	theme.set_color("icon_hover_color", "Button", Palette.TEXT)
-	theme.set_color("icon_pressed_color", "Button", Palette.YELLOW)
-	theme.set_color("icon_hover_pressed_color", "Button", Palette.YELLOW)
-	theme.set_color("icon_disabled_color", "Button", Palette.TEXT_DIM)
+	_set_text_colors(theme, &"Button", TEXT, TEXT)
 	theme.set_constant("h_separation", "Button", 10)
 
-	# Primary: the main action of a card.
+	# Primary: the main action of a card (warm yellow, dark text).
 	theme.set_type_variation(PRIMARY, "Button")
 	_set_button_styles(theme, PRIMARY, [
-		_button_box(Palette.VIOLET, light_violet),
-		_button_box(light_violet, Palette.VIOLET.lightened(0.4)),
-		_button_box(light_violet, Palette.YELLOW, 2),
+		_button_box(YELLOW, Color.TRANSPARENT, 0),
+		_button_box(YELLOW_HI, Color.TRANSPARENT, 0),
+		_button_box(YELLOW_DOWN, Color.TRANSPARENT, 0),
 		disabled,
 	])
+	_set_text_colors(theme, PRIMARY, INK, INK)
 
 	# Ghost: icon only, no chrome until pressed.
 	theme.set_type_variation(GHOST, "Button")
 	var none := _button_box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 8)
 	none.set_content_margin_all(8)
-	var ghost_down := _button_box(Color(Palette.VIOLET, 0.45), Color.TRANSPARENT, 0, 8)
+	var ghost_down := _button_box(Color(CYAN, 0.18), Color.TRANSPARENT, 0, 8)
 	ghost_down.set_content_margin_all(8)
 	var ghost_off := none.duplicate() as StyleBoxFlat
 	_set_button_styles(theme, GHOST, [none, none, ghost_down, ghost_off])
-	theme.set_color("icon_normal_color", GHOST, Palette.TEXT_DIM)
-	theme.set_color("icon_hover_color", GHOST, Palette.TEXT)
-	theme.set_color("icon_disabled_color", GHOST, Color(Palette.TEXT_DIM, 0.35))
+	theme.set_color("icon_normal_color", GHOST, TEXT_DIM)
+	theme.set_color("icon_hover_color", GHOST, TEXT)
+	theme.set_color("icon_pressed_color", GHOST, CYAN)
+	theme.set_color("icon_hover_pressed_color", GHOST, CYAN)
+	theme.set_color("icon_disabled_color", GHOST, Color(TEXT_DIM, 0.35))
 
 	# Row: action lines inside a card (text drawn by the "Lines" labels).
 	theme.set_type_variation(ROW, "Button")
 	_set_button_styles(theme, ROW, [
-		_button_box(RAISED, Color(Palette.VIOLET, 0.7)),
-		_button_box(Palette.DEEP_BLUE.lightened(0.08), light_violet),
-		_button_box(Color(Palette.VIOLET, 0.85), Palette.YELLOW, 2),
-		_button_box(Color(Palette.ANTHRACITE, 0.45), Color.TRANSPARENT, 0),
+		_button_box(RAISED, HAIRLINE),
+		_button_box(RAISED_HI, Color(1, 1, 1, 0.12)),
+		_button_box(Color(CYAN, 0.16), CYAN),
+		_button_box(Color(1, 1, 1, 0.03), Color.TRANSPARENT, 0),
 	])
 
 	theme.set_type_variation(LIST_ROW, "Button")
@@ -406,18 +425,27 @@ static func _build() -> Theme:
 	_set_button_styles(theme, LIST_ROW, list_styles)
 
 	# Progress bars (needs) and thin scroll bars.
-	var bar_bg := box(Color(Palette.ANTHRACITE, 0.9), Color.TRANSPARENT, 0, 4)
+	var bar_bg := box(Color(1, 1, 1, 0.08), Color.TRANSPARENT, 0, 4)
 	bar_bg.set_content_margin_all(0)
 	theme.set_stylebox("background", "ProgressBar", bar_bg)
-	var bar_fill := box(Palette.NEON_CYAN, Color.TRANSPARENT, 0, 4)
+	var bar_fill := box(CYAN, Color.TRANSPARENT, 0, 4)
 	bar_fill.set_content_margin_all(0)
 	theme.set_stylebox("fill", "ProgressBar", bar_fill)
-	theme.set_color("font_color", "ProgressBar", Palette.TEXT)
-	var track := box(Color(Palette.NIGHT, 0.4), Color.TRANSPARENT, 0, 3)
+	theme.set_color("font_color", "ProgressBar", TEXT)
+	var track := box(Color(1, 1, 1, 0.04), Color.TRANSPARENT, 0, 3)
 	track.set_content_margin_all(3)
-	var grab := box(Color(Palette.VIOLET, 0.8), Color.TRANSPARENT, 0, 3)
+	var grab := box(Color(TEXT_DIM, 0.35), Color.TRANSPARENT, 0, 3)
 	grab.set_content_margin_all(3)
 	theme.set_stylebox("scroll", "VScrollBar", track)
 	for state in ["grabber", "grabber_highlight", "grabber_pressed"]:
 		theme.set_stylebox(state, "VScrollBar", grab)
 	return theme
+
+
+static func _set_text_colors(theme: Theme, type: StringName, text: Color, icon_color: Color) -> void:
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
+		theme.set_color(state, type, text)
+	for state in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color"]:
+		theme.set_color(state, type, icon_color)
+	theme.set_color("font_disabled_color", type, TEXT_DIM)
+	theme.set_color("icon_disabled_color", type, TEXT_DIM)

@@ -22,12 +22,12 @@ func _ready() -> void:
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", UITheme.SPACE_M + 2)
 	add_child(vbox)
-	_channel = UITheme.label("", true, Palette.NEON_CYAN)
+	_channel = UITheme.label("", true, UITheme.CYAN)
 	_channel.add_theme_font_size_override("font_size", UITheme.SMALL_FONT_SIZE - 2)
 	vbox.add_child(_channel)
 	_title = UITheme.title_label("")
 	vbox.add_child(_title)
-	_body = UITheme.label("", false, Palette.TEXT)
+	_body = UITheme.label("", false, UITheme.TEXT)
 	_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_body.custom_minimum_size.x = WIDTH - 44
 	_body.add_theme_constant_override("line_spacing", 4)

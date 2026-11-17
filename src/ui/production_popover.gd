@@ -90,13 +90,13 @@ func refresh() -> void:
 	for row in rows:
 		if row.section != section:
 			section = row.section
-			var head := UITheme.label(section.to_upper(), true, Palette.TEXT_DIM)
+			var head := UITheme.label(section.to_upper(), true, UITheme.TEXT_DIM)
 			head.add_theme_font_size_override("font_size", UITheme.SMALL_FONT_SIZE - 3)
 			_list.add_child(head)
 		_list.add_child(_make_row(row))
 	if rows.is_empty():
 		_list.add_child(UITheme.label("No crew yet: traders bring drifters looking for a bunk."
-			if resource == StatusBar.CREW else "Nothing makes or uses it yet.", true, Palette.TEXT_DIM))
+			if resource == StatusBar.CREW else "Nothing makes or uses it yet.", true, UITheme.TEXT_DIM))
 
 
 ## Rows {section, uid, text, running} for a resource (see Production.rows_for).
@@ -183,12 +183,12 @@ func _make_row(row: Dictionary) -> Button:
 	b.custom_minimum_size.y = 48
 	b.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	b.add_theme_font_size_override("font_size", UITheme.SMALL_FONT_SIZE)
-	var light := UITheme.dot(Palette.MINT if row.running else Palette.NEON_PINK, 8)
+	var light := UITheme.dot(UITheme.SUCCESS if row.running else UITheme.DANGER, 8)
 	light.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
 	light.position.x = 14
 	b.add_child(light)
 	if not row.running:
-		b.add_theme_color_override("font_color", Palette.TEXT_DIM)
+		b.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	return b
 
 
