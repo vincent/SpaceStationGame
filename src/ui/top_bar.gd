@@ -3,9 +3,9 @@ extends VBoxContainer
 ## Top of the HUD: floating glass pills with gaps between them, so the
 ## station stays visible. Left: clock (and the debug button in debug builds);
 ## centre: station status chips (StatusBar); right: the castaway's needs as
-## compact meters with their value. In portrait the chips move to a second
+## compact meters (icon, name, value) with their value. In portrait the chips move to a second
 ## row under the clock and needs.
-## Tapping the needs pill folds it to values only (a dot and a mini bar each).
+## Tapping the needs pill folds it to values only (an icon and a mini bar each).
 ## Long time skips (sleep, work) roll the clock forward visibly and show how
 ## much time passed ("+4 h").
 
@@ -25,6 +25,7 @@ var portrait := false
 var needs_compact := false
 var _values: Dictionary[StringName, Label] = {}
 var _names: Dictionary[StringName, Label] = {}
+var _icons: Dictionary[StringName, TextureRect] = {}
 var _pulses: Dictionary[StringName, Tween] = {}
 var _bar_tweens: Dictionary[StringName, Tween] = {}
 var _row: HBoxContainer
@@ -54,6 +55,7 @@ func _ready() -> void:
 		clock_row.add_child(dbg)
 		(_clock.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_left = 4
 	_clock_label = UITheme.title_label("")
+	_clock_label.add_theme_font_override("font", UITheme.font(UITheme.FONT_NUMERIC))
 	_clock_label.custom_minimum_size.x = 150
 	clock_row.add_child(_clock_label)
 	_skip_badge = UITheme.label("", true, UITheme.YELLOW)
@@ -86,13 +88,16 @@ func _ready() -> void:
 		col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var head := HBoxContainer.new()
-		head.add_theme_constant_override("separation", UITheme.SPACE_S)
+		head.add_theme_constant_override("separation", 4)
 		head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var need_icon := UITheme.icon_rect(need, color, 16)
+		head.add_child(need_icon)
+		_icons[need] = need_icon
 		var name_label := UITheme.label(String(need).capitalize(), true, UITheme.TEXT_DIM)
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		head.add_child(name_label)
-		var value := UITheme.label("", true, UITheme.TEXT)
+		var value := UITheme.number_label("", UITheme.TEXT, true)
 		value.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		head.add_child(value)
 		col.add_child(head)
@@ -207,6 +212,7 @@ func _on_need_changed(need: StringName, value: float) -> void:
 	_values[need].text = str(roundi(value))
 	var low := value < LOW_NEED
 	_values[need].add_theme_color_override("font_color", UITheme.DANGER if low else UITheme.TEXT)
+	_icons[need].modulate = UITheme.DANGER if low else HUD.NEED_COLORS.get(need, UITheme.CYAN)
 	_set_pulse(need, low)
 
 

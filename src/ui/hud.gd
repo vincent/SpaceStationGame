@@ -138,9 +138,17 @@ func _ready() -> void:
 	inventory_button.name = "InventoryButton"
 	for b: Button in [view_button, inventory_button]:
 		b.custom_minimum_size = DOCK_BUTTON
-		b.add_theme_font_size_override("font_size", UITheme.SMALL_FONT_SIZE)
-		b.add_theme_color_override("icon_normal_color", UITheme.TEXT)
+		b.add_theme_font_size_override("font_size", UITheme.SMALL_FONT_SIZE - 1)
+		b.add_theme_color_override("font_color", UITheme.TEXT)
+		b.add_theme_color_override("icon_normal_color", UITheme.CYAN if b == view_button else UITheme.TEXT)
 		b.add_theme_constant_override("h_separation", 2)
+		if b == inventory_button:  # hairline between the two
+			var divider := ColorRect.new()
+			divider.color = UITheme.HAIRLINE
+			divider.custom_minimum_size = Vector2(1, 0)
+			divider.size_flags_vertical = Control.SIZE_FILL
+			divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			dock.add_child(divider)
 		dock.add_child(b)
 	_nav_row.resized.connect(_place_dock)
 

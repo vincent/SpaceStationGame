@@ -1,7 +1,8 @@
 class_name StatusBar
 extends HFlowContainer
 ## Station status in the top bar: one chip per resource that matters (stock > 0
-## or a producer exists) showing its icon and amount, plus power and crew chips.
+## or a producer exists) showing its icon, amount and a small trend chevron
+## (mint up = filling, pink down = draining), plus power and crew chips.
 ## Net rates live in the popover.
 ## Chips appear the first time their resource matters and then stay, so the
 ## start of the game stays clean. Tapping a chip opens the ProductionPopover.
@@ -25,6 +26,7 @@ class Chip:
 
 	var id: StringName
 	var amount_label: Label
+	var trend: TextureRect
 	## Net rate per hour, kept for tests and tinting (not displayed).
 	var rate: float = 0.0
 	## Progress (0..1) towards the next whole unit, < 0 = no strip.
@@ -46,10 +48,14 @@ class Chip:
 			row.add_child(UITheme.icon_rect(icon_name, color, 22))
 		else:
 			row.add_child(UITheme.dot(color, 12))
-		amount_label = UITheme.label("", false, UITheme.TEXT)
+		amount_label = UITheme.number_label("", UITheme.TEXT)
 		amount_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(amount_label)
+		trend = UITheme.icon_rect(&"chevron_up", UITheme.SUCCESS, 14)
+		trend.name = "Trend"
+		trend.hide()
+		row.add_child(trend)
 
 	func _gui_input(event: InputEvent) -> void:
 		var mb := event as InputEventMouseButton
@@ -95,7 +101,12 @@ class Chip:
 		amount_label.text = text
 		rate = p_rate
 		# A draining resource reads pink; the popover tells by how much.
-		amount_label.add_theme_color_override("font_color", UITheme.DANGER if rate <= -0.005 else UITheme.TEXT)
+		var draining := rate <= -0.005
+		amount_label.add_theme_color_override("font_color", UITheme.DANGER if draining else UITheme.TEXT)
+		trend.visible = draining or rate >= 0.005
+		if trend.visible:
+			trend.texture = UITheme.icon(&"chevron_down" if draining else &"chevron_up")
+			trend.modulate = UITheme.DANGER if draining else UITheme.SUCCESS
 
 
 func _ready() -> void:
