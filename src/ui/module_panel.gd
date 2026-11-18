@@ -1,10 +1,11 @@
 class_name ModulePanel
 extends PanelContainer
 ## The focused module, in station and room view: the head of the ModuleSheet.
-## Header: state light (pink derelict, cyan repaired, yellow upgraded), name,
-## fold chevron. Body: one status line (state, power, bunks), a condition bar
-## (wear), a row of compact actions (Repair while derelict, else Power /
-## Upgrade) and, for modules with jobs, an inline crew stepper with a
+## Header: state light (UITheme.STATE_COLORS), name, fold chevron. Body: one
+## status line (state, power, bunks), a condition bar (wear), a row of compact
+## actions (Repair with its cost chips while derelict, else Power /
+## Upgrade; Upgrade is the yellow primary only while something can be
+## installed) and, for modules with jobs, an inline crew stepper with a
 ## staffing bar (− Crew 1/2 · +25% +). Folded, the body hides.
 ## Repairs and upgrades of this module flash the card and pulse its light.
 
@@ -34,6 +35,7 @@ var _condition_label: Label
 var _condition_row: HBoxContainer
 var _tiles: HBoxContainer
 var _repair: Button
+var _repair_hint: Label
 var _power: Button
 var _upgrade: Button
 var _crew_box: HBoxContainer
@@ -88,14 +90,17 @@ func _ready() -> void:
 	_condition = UITheme.bar(UITheme.CYAN, 8)
 	_condition.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_condition_row.add_child(_condition)
-	_condition_label = UITheme.label("", true, UITheme.TEXT)
+	_condition_label = UITheme.number_label("", UITheme.TEXT, true)
 	_condition_label.custom_minimum_size.x = 46
 	_condition_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_condition_row.add_child(_condition_label)
 
-	_repair = UITheme.action_button("Repair", "", _on_repair, UITheme.PRIMARY)
+	_repair = UITheme.cta_button("Repair", &"repair", {}, _on_repair)
 	_repair.name = "Repair"
 	_body.add_child(_repair)
+	_repair_hint = UITheme.label("", true, UITheme.TEXT_DIM)
+	_repair_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_body.add_child(_repair_hint)
 	_tiles = HBoxContainer.new()
 	_tiles.add_theme_constant_override("separation", UITheme.SPACE_M)
 	_body.add_child(_tiles)
@@ -179,8 +184,7 @@ func refresh() -> void:
 	var def := module.def
 	_title.text = def.display_name
 	var derelict: bool = rec.state == StationState.State.DERELICT
-	var upgraded: bool = rec.state == StationState.State.UPGRADED
-	_set_dot(UITheme.DANGER if derelict else UITheme.YELLOW if upgraded else UITheme.CYAN)
+	_set_dot(UITheme.STATE_COLORS[rec.state])
 	if embedded:
 		custom_minimum_size.x = 0.0
 		var flat := StyleBoxEmpty.new()
@@ -217,18 +221,27 @@ func refresh() -> void:
 		_crew_add.disabled = staffed >= jobs or crew.idle().is_empty()
 
 	_repair.visible = derelict
+	_repair_hint.visible = false
 	if derelict:
 		var err := GameState.repair_error(module.uid)
-		UITheme.set_action_text(_repair, "Repair", err if err != "" else GameState.format_cost(def.repair_cost))
+		UITheme.set_cta(_repair, "Repair", def.repair_cost)
 		_repair.disabled = err != ""
+		# Missing resources already show as pink chips; other reasons get a line.
+		_repair_hint.text = err
+		_repair_hint.visible = err != "" and not err.begins_with("Needs")
 	_power.visible = not derelict and st.module_draw(module.uid) > 0.0
 	_power.text = "Power off" if rec.powered else "Power on"
 	_power.disabled = not rec.powered and st.power_error(module.uid) != ""
+	_tint_icon(_power, UITheme.YELLOW if rec.powered else UITheme.TEXT_DIM)
 	var upgrades := GameState.module_db.upgrades_for(def.id)
 	_upgrade.visible = not derelict and not upgrades.is_empty()
 	var all_installed := upgrades.all(func(u: UpgradeDef) -> bool: return st.installed(module.uid).has(u.id))
+	var can_install := upgrades.any(func(u: UpgradeDef) -> bool:
+		return not st.installed(module.uid).has(u.id) and GameState.upgrade_error(module.uid, u.id) == "")
 	_upgrade.text = "Upgraded" if all_installed else "Upgrade"
 	_upgrade.disabled = all_installed
+	# Yellow only while there is something to buy right now.
+	_upgrade.theme_type_variation = UITheme.PRIMARY if can_install else &""
 	_tiles.visible = _power.visible or _upgrade.visible
 	_fit.call_deferred()
 
@@ -241,6 +254,11 @@ func _fit() -> void:
 	var min_size := get_combined_minimum_size()
 	offset_top = offset_bottom - min_size.y
 	offset_right = offset_left + min_size.x
+
+
+func _tint_icon(b: Button, color: Color) -> void:
+	for state in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color"]:
+		b.add_theme_color_override(state, color)
 
 
 func _set_dot(color: Color) -> void:

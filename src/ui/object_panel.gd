@@ -3,7 +3,8 @@ extends ScrollContainer
 ## Accordion of cards in the ModuleSheet, one per object type of the focused module
 ## (four planters share one "Planter" card). Only one card is open at a time;
 ## the others fold to a one-line header (icon, name, chevron).
-## An open card lists the object's actions as touch rows; pressing one sends
+## An open card lists the object's actions as touch tiles (side by side when
+## their text fits, "Sleep 1 h | 4 h | 8 h", else one per row); pressing one sends
 ## the castaway to the nearest such object, and the action runs on arrival
 ## (Player.interact_with). Tapping a header opens that card (or folds it when
 ## it's the open one). Tapping an object in the room opens and flashes its card.
@@ -53,7 +54,7 @@ class ObjectCard:
 	var _header: HBoxContainer
 	var _title: Label
 	var _fold: Button
-	var _list: VBoxContainer
+	var _list: GridContainer
 	var _flash: Tween
 
 	func _init(p_key: String, first: Interactable) -> void:
@@ -77,9 +78,12 @@ class ObjectCard:
 		_fold = UITheme.ghost_button(&"chevron_down", func() -> void: fold_toggled.emit(self))
 		_fold.name = "Fold"
 		_header.add_child(_fold)
-		_list = VBoxContainer.new()
-		_list.add_theme_constant_override("separation", UITheme.SPACE_S)
+		_list = GridContainer.new()
+		_list.columns = 1
+		_list.add_theme_constant_override("h_separation", UITheme.SPACE_S)
+		_list.add_theme_constant_override("v_separation", UITheme.SPACE_S)
 		box.add_child(_list)
+		resized.connect(_relayout)
 		set_folded(false)
 
 	func set_folded(value: bool) -> void:
@@ -87,11 +91,12 @@ class ObjectCard:
 		_list.visible = not folded
 		_fold.icon = UITheme.icon(&"chevron_down" if folded else &"chevron_up")
 		# A flat section of the sheet (the sheet is the card).
-		var sb := UITheme.box(Color(1, 1, 1, 0.035 if folded else 0.06), UITheme.HAIRLINE, 1, UITheme.RADIUS_BUTTON)
+		# Flat: a faint fill, no border (the tiles inside carry the chrome).
+		var sb := UITheme.box(Color(1, 1, 1, 0.025 if folded else 0.045), Color.TRANSPARENT, 0, UITheme.RADIUS_BUTTON)
 		sb.content_margin_left = UITheme.SPACE_M
-		sb.content_margin_right = 4
-		sb.content_margin_top = 2 if folded else 4
-		sb.content_margin_bottom = 2 if folded else UITheme.SPACE_M
+		sb.content_margin_right = 4 if folded else UITheme.SPACE_M
+		sb.content_margin_top = 0 if folded else 2
+		sb.content_margin_bottom = 0 if folded else UITheme.SPACE_M
 		add_theme_stylebox_override("panel", sb)
 
 	## Rebuilds the action buttons from the first object's get_actions().
@@ -111,6 +116,38 @@ class ObjectCard:
 			var walking := pending != null and pending.label == a.label and pending.detail == a.detail
 			UITheme.set_action_text(buttons[i], a.label, "Walking…" if walking else a.subtitle())
 			buttons[i].disabled = not a.enabled
+		_relayout()
+
+	## Tiles side by side (up to 3) when every action's text fits its share
+	## of the width and the rows come out even (4 = 2 x 2); one per row otherwise.
+	func _relayout() -> void:
+		var n := buttons.size()
+		if n == 0 or size.x <= 0.0:
+			return
+		var need := 0.0
+		for b in buttons:
+			for l: Label in b.get_node("Lines").get_children():
+				var f := l.get_theme_font("font")
+				need = maxf(need, f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+					l.get_theme_font_size("font_size")).x)
+		need += 2.0 * UITheme.SPACE_M + 4.0
+		var avail := size.x - 2.0 * UITheme.SPACE_M
+		var sep := float(UITheme.SPACE_S)
+		var cols := 1
+		for c in range(mini(n, 3), 1, -1):
+			if n % c == 0 and (avail - (c - 1) * sep) / c >= need:
+				cols = c
+				break
+		if _list.columns != cols:
+			_list.columns = cols
+		var pad := UITheme.SPACE_M if cols > 1 else UITheme.SPACE_L
+		for b in buttons:
+			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var lines := b.get_node("Lines") as Control
+			lines.offset_left = pad
+			lines.offset_right = -pad
+			for l: Label in lines.get_children():
+				l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if cols > 1 else HORIZONTAL_ALIGNMENT_LEFT
 
 	func flash() -> void:
 		if _flash:

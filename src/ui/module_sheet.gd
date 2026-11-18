@@ -120,7 +120,8 @@ func handle_back() -> bool:
 
 func _style() -> void:
 	var sb := UITheme.sheet()
-	sb.border_color = Color(UITheme.CYAN, 0.55)
+	# Selection reads from the state light and title; the rim stays quiet.
+	sb.border_color = Color(1, 1, 1, 0.1)
 	sb.set_border_width_all(1)
 	sb.content_margin_top = 4 if portrait else UITheme.SPACE_M
 	sb.content_margin_left = UITheme.SPACE_L
