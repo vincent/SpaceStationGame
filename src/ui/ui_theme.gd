@@ -7,8 +7,11 @@ class_name UITheme
 ##   coral = warnings and draining resources, white = text;
 ## - three button weights: Primary (yellow fill, the main action), the default
 ##   secondary button (muted purple fill) and Ghost (icon only: close, fold, steppers).
+## - one yellow Primary per surface at most: it is "the thing to do here";
+##   costs always show as icon chips (`cost_chips`, `cta_button`), never as text.
 ## The UI has its own colours: `Palette` is the 3D world's and stays untouched.
-## System sans-serif font (maximum legibility), touch-sized controls.
+## Fonts (assets/fonts, OFL): Nunito Sans for text, Exo 2 for titles and numbers
+## (tabular figures, so counters don't jitter); touch-sized controls.
 
 # Type scale (px at the 1280x720 base resolution).
 const TITLE_FONT_SIZE := 24
@@ -37,6 +40,15 @@ const PORTRAIT_BASE := Vector2i(720, 1280)
 const ICON_DIR := "res://assets/ui/icons/"
 const ICON_SIZE := 24
 
+## Bundled fonts (variable TTFs); a SystemFont stands in when one is missing.
+const FONT_UI_PATH := "res://assets/fonts/NunitoSans.ttf"
+const FONT_DISPLAY_PATH := "res://assets/fonts/Exo2.ttf"
+## Font roles for `font()`.
+const FONT_UI := &"ui"
+const FONT_UI_BOLD := &"ui_bold"
+const FONT_DISPLAY := &"display"
+const FONT_NUMERIC := &"numeric"
+
 ## Surfaces.
 const PANEL := Color(0.055, 0.09, 0.16, 0.88)  # dark navy glass (#0e1729)
 const PANEL_SOLID := Color(0.055, 0.09, 0.16, 0.96)  # sheets and dialogs
@@ -52,6 +64,7 @@ const CYAN := Color("5fd4e3")  # selection, focus, interaction
 const PURPLE := Color("5d5590")  # buttons, secondary interactive elements
 const PURPLE_HI := Color("6c64a0")
 const PURPLE_DOWN := Color("4d467c")
+const PURPLE_ACCENT := Color("a99be6")  # lavender: secondary icons, selected toggles
 const YELLOW := Color("f4c24d")  # resources, notifications, main action
 const YELLOW_HI := Color("f8d06e")
 const YELLOW_DOWN := Color("dcab3a")
@@ -60,6 +73,8 @@ const TEXT_DIM := Color("98a3ba")
 const INK := Color("111827")  # text on yellow
 const DANGER := Color("ff6f7d")
 const SUCCESS := Color("6fd9a0")
+## Module state lights, by StationState.State (derelict, repaired, upgraded).
+const STATE_COLORS: Array[Color] = [DANGER, CYAN, YELLOW]
 
 ## Theme type variations (set `theme_type_variation`).
 const PRIMARY := &"PrimaryButton"
@@ -69,11 +84,14 @@ const ROW := &"RowButton"
 const LIST_ROW := &"ListRowButton"
 const TITLE := &"TitleLabel"
 const CAPTION := &"CaptionLabel"
+## Numbers (amounts, values, %): display font with tabular figures.
+const NUMBER := &"NumberLabel"
 
 const FOLD_TIME := 0.15
 
 static var _theme: Theme
 static var _icons: Dictionary[StringName, Texture2D] = {}
+static var _fonts: Dictionary[StringName, Font] = {}
 
 
 ## True when the screen is taller than wide (phone held upright).
@@ -148,6 +166,40 @@ static func set_bar_color(b: ProgressBar, color: Color) -> void:
 	var fill := box(color, Color.TRANSPARENT, 0, 3)
 	fill.set_content_margin_all(0)
 	b.add_theme_stylebox_override("fill", fill)
+
+
+## Font of a role: FONT_UI, FONT_UI_BOLD, FONT_DISPLAY or FONT_NUMERIC.
+static func font(role: StringName) -> Font:
+	if not _fonts.has(role):
+		match role:
+			FONT_UI_BOLD:
+				_fonts[role] = _make_font(FONT_UI_PATH, 650)
+			FONT_DISPLAY:
+				_fonts[role] = _make_font(FONT_DISPLAY_PATH, 600)
+			FONT_NUMERIC:
+				_fonts[role] = _make_font(FONT_DISPLAY_PATH, 600, {"tnum": 1, "lnum": 1})
+			_:
+				_fonts[role] = _make_font(FONT_UI_PATH, 450)
+	return _fonts[role]
+
+
+static func _make_font(path: String, weight: int, features: Dictionary = {}) -> Font:
+	var base := load(path) as Font if ResourceLoader.exists(path) else null
+	if base == null:
+		var sys := SystemFont.new()
+		sys.font_names = PackedStringArray(["sans-serif"])
+		sys.font_weight = weight
+		return sys
+	var v := FontVariation.new()
+	v.base_font = base
+	var ts := TextServerManager.get_primary_interface()
+	v.variation_opentype = {ts.name_to_tag("wght"): weight}
+	if not features.is_empty():
+		var tags := {}
+		for f: String in features:
+			tags[ts.name_to_tag(f)] = features[f]
+		v.opentype_features = tags
+	return v
 
 
 ## Icon `name` from ICON_DIR, or null when there is none.
@@ -301,6 +353,75 @@ static func title_label(text: String = "", color: Color = TEXT) -> Label:
 	return l
 
 
+## Number in the display font with tabular figures (amounts, values, %).
+static func number_label(text: String = "", color: Color = TEXT, small: bool = false) -> Label:
+	var l := label(text, false, color)
+	l.theme_type_variation = NUMBER
+	if small:
+		l.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
+	return l
+
+
+## Call-to-action: icon and title on the left, the cost as chips on the right
+## ("🔧 Repair ······ ⚙ 6"). The one cost format of every buy / build / repair.
+## Change it later through `set_cta()`.
+static func cta_button(title: String, icon_name: StringName, cost: Dictionary,
+		callback: Callable = Callable(), variant: StringName = PRIMARY) -> Button:
+	var b := button("", callback, variant)
+	var row := HBoxContainer.new()
+	row.name = "Cta"
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = SPACE_L
+	row.offset_right = -SPACE_M
+	row.add_theme_constant_override("separation", SPACE_M)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(row)
+	var ic := icon_rect(icon_name, TEXT, 22)
+	ic.name = "Icon"
+	ic.visible = ic.texture != null
+	row.add_child(ic)
+	var l := label(title)
+	l.name = "Title"
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	l.add_theme_font_override("font", font(FONT_UI_BOLD))
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(l)
+	var holder := HBoxContainer.new()
+	holder.name = "Cost"
+	holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(holder)
+	set_cta(b, title, cost)
+	# Ink on yellow; light text on purple and once disabled.
+	b.draw.connect(func() -> void:
+		var c := INK if variant == PRIMARY and not b.disabled else TEXT if not b.disabled else TEXT_DIM
+		if l.get_theme_color("font_color") != c:
+			l.add_theme_color_override("font_color", c)
+			ic.modulate = c)
+	return b
+
+
+static func set_cta(b: Button, title: String, cost: Dictionary) -> void:
+	var row := b.get_node("Cta")
+	(row.get_node("Title") as Label).text = title
+	var holder := row.get_node("Cost") as HBoxContainer
+	# Rebuild the chips only when the cost or its affordability changed.
+	var key := ""
+	for id: StringName in cost:
+		key += "%s:%d:%s;" % [id, int(cost[id]), GameState.count(id) < int(cost[id])]
+	if holder.get_meta(&"key", "-") != key:
+		holder.set_meta(&"key", key)
+		for c in holder.get_children():
+			c.queue_free()
+		holder.visible = not cost.is_empty()
+		if not cost.is_empty():
+			holder.add_child(cost_chips(cost))
+	b.custom_minimum_size.x = row.get_combined_minimum_size().x + SPACE_L + SPACE_M
+	b.tooltip_text = title
+
+
 ## A cost as a row of small chips ("⚙ 6", "💧 2"): item icon (or colour dot
 ## and name), amount in pink when the castaway doesn't have enough.
 static func cost_chips(cost: Dictionary) -> HFlowContainer:
@@ -333,7 +454,9 @@ static func cost_chips(cost: Dictionary) -> HFlowContainer:
 		else:
 			row.add_child(dot(color, 8))
 			text = "%d %s" % [n, item.display_name.to_lower() if item else String(id)]
-		row.add_child(label(text, true, DANGER if short else TEXT))
+		var amount := number_label(text, DANGER if short else TEXT, true)
+		amount.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(amount)
 		chip.tooltip_text = item.display_name if item else String(id)
 		flow.add_child(chip)
 	return flow
@@ -415,13 +538,9 @@ static func _set_button_styles(theme: Theme, type: StringName, styles: Array[Sty
 
 static func _build() -> Theme:
 	var theme := Theme.new()
-	var font := SystemFont.new()
-	font.font_names = PackedStringArray(["sans-serif"])
-	theme.default_font = font
+	theme.default_font = font(FONT_UI)
 	theme.default_font_size = FONT_SIZE
-	var bold := SystemFont.new()
-	bold.font_names = PackedStringArray(["sans-serif"])
-	bold.font_weight = 600
+	var bold := font(FONT_DISPLAY)
 
 	var panel := glass()
 	theme.set_stylebox("panel", "PanelContainer", panel)
@@ -434,8 +553,12 @@ static func _build() -> Theme:
 	theme.set_type_variation(CAPTION, "Label")
 	theme.set_font_size("font_size", CAPTION, SMALL_FONT_SIZE)
 	theme.set_color("font_color", CAPTION, TEXT_DIM)
+	theme.set_type_variation(NUMBER, "Label")
+	theme.set_font("font", NUMBER, font(FONT_NUMERIC))
 
-	var disabled := _button_box(Color(1, 1, 1, 0.05), Color.TRANSPARENT, 0)
+	# Disabled keeps a faint outline: still reads as a button, just not now.
+	var disabled := _button_box(Color(1, 1, 1, 0.035), Color(1, 1, 1, 0.1), 1)
+	theme.set_font("font", "Button", font(FONT_UI_BOLD))
 
 	# Secondary (default): muted purple fill, no border.
 	_set_button_styles(theme, &"Button", [

@@ -12,7 +12,7 @@ extends CanvasLayer
 const NEED_COLORS: Dictionary[StringName, Color] = {
 	Needs.FOOD: Color("f0a35e"),
 	Needs.ENERGY: UITheme.CYAN,
-	Needs.MORALE: Color("a99be6"),
+	Needs.MORALE: UITheme.PURPLE_ACCENT,
 }
 const MARGIN := 16
 ## Height of the (one-row) top bar, a fallback before it is laid out.
