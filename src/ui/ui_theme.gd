@@ -417,15 +417,17 @@ static func set_cta(b: Button, title: String, cost: Dictionary) -> void:
 			c.queue_free()
 		holder.visible = not cost.is_empty()
 		if not cost.is_empty():
-			holder.add_child(cost_chips(cost))
+			holder.add_child(cost_chips(cost, true))
 	b.custom_minimum_size.x = row.get_combined_minimum_size().x + SPACE_L + SPACE_M
 	b.tooltip_text = title
 
 
 ## A cost as a row of small chips ("⚙ 6", "💧 2"): item icon (or colour dot
 ## and name), amount in pink when the castaway doesn't have enough.
-static func cost_chips(cost: Dictionary) -> HFlowContainer:
-	var flow := HFlowContainer.new()
+## `inline`: one row that never wraps (inside buttons and entry headers).
+static func cost_chips(cost: Dictionary, inline: bool = false) -> Container:
+	var flow: Container = HBoxContainer.new() if inline else HFlowContainer.new()
+	flow.add_theme_constant_override("separation", SPACE_S)
 	flow.add_theme_constant_override("h_separation", SPACE_S)
 	flow.add_theme_constant_override("v_separation", 4)
 	flow.mouse_filter = Control.MOUSE_FILTER_IGNORE
