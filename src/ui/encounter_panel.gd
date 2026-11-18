@@ -1,12 +1,13 @@
 class_name EncounterPanel
 extends PanelContainer
 ## Shows the encounter on screen (GameState.current_encounter): title,
-## lines and one button per choice ("Continue" when it has none). The
-## "radio" channel gets a transmission header. Toast encounters never get here.
+## lines and one button per choice ("Continue" when it has none; the first
+## choice is the yellow primary, the others secondary). The "radio" channel
+## gets a transmission header. The HUD sets the width and centres it. Toast encounters never get here.
 
 const WIDTH := 560.0
 
-var _channel: Label
+var _channel: HBoxContainer
 var _title: Label
 var _body: Label
 var _choices: VBoxContainer
@@ -22,15 +23,20 @@ func _ready() -> void:
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", UITheme.SPACE_M + 2)
 	add_child(vbox)
-	_channel = UITheme.label("", true, UITheme.CYAN)
-	_channel.add_theme_font_size_override("font_size", UITheme.SMALL_FONT_SIZE - 2)
+	_channel = HBoxContainer.new()
+	_channel.add_theme_constant_override("separation", UITheme.SPACE_S)
+	_channel.add_child(UITheme.icon_rect(&"radio", UITheme.CYAN, 18))
+	var channel_label := UITheme.label("INCOMING TRANSMISSION", true, UITheme.CYAN)
+	channel_label.add_theme_font_override("font", UITheme.font(UITheme.FONT_DISPLAY))
+	channel_label.add_theme_font_size_override("font_size", UITheme.MIN_FONT_SIZE)
+	_channel.add_child(channel_label)
 	vbox.add_child(_channel)
 	_title = UITheme.title_label("")
 	vbox.add_child(_title)
 	_body = UITheme.label("", false, UITheme.TEXT)
 	_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_body.custom_minimum_size.x = WIDTH - 44
-	_body.add_theme_constant_override("line_spacing", 4)
+	_body.add_theme_constant_override("line_spacing", 6)
 	vbox.add_child(_body)
 	_choices = VBoxContainer.new()
 	_choices.add_theme_constant_override("separation", UITheme.SPACE_S + 2)
@@ -43,7 +49,6 @@ func _ready() -> void:
 
 func open(enc: EncounterDef) -> void:
 	_channel.visible = enc.channel == &"radio"
-	_channel.text = "◉  INCOMING TRANSMISSION"
 	_title.text = enc.title
 	_title.visible = enc.title != ""
 	_body.text = "\n".join(enc.lines)
@@ -59,6 +64,14 @@ func open(enc: EncounterDef) -> void:
 		b.disabled = not GameState.is_choice_enabled(enc, i)
 		_choices.add_child(b)
 	show()
+
+
+## Panel width (the body wraps inside it); the HUD keeps it on screen.
+func set_width(width: float) -> void:
+	custom_minimum_size.x = width
+	if _body:
+		_body.custom_minimum_size.x = width - 44.0
+	reset_size()
 
 
 func _pick(choice: int) -> void:

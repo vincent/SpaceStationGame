@@ -1,6 +1,7 @@
 class_name InventoryPanel
 extends PanelContainer
-## RPG-style inventory grid with an item details row.
+## Inventory grid (icon tiles with counts) and a details row: the selected
+## item's name and description beside the Use button.
 
 const COLUMNS := 5
 

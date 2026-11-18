@@ -6,7 +6,9 @@ extends CanvasLayer
 ## (Station/Room, Inventory) bottom-right; portrait = the top bar on two
 ## rows, the ModuleSheet as a full-width bottom sheet and the dock floating
 ## above it. Every action of the focused module is a HUD button; nothing
-## needs a tap on a small 3D object. Back (Android / Esc) closes the topmost
+## needs a tap on a small 3D object. Modal panels (encounter, inventory)
+## live on their own layer above everything, over a scrim that dims the
+## sheet too; the dock hides while one is open. Back (Android / Esc) closes the topmost
 ## thing. Built in code so layout changes stay reviewable in diffs.
 
 const NEED_COLORS: Dictionary[StringName, Color] = {
@@ -52,6 +54,8 @@ var _focused: Module
 var _nav_row: PanelContainer
 var _layer_root: Control
 var _margin: MarginContainer
+var _modal_margin: MarginContainer
+var _modal_root: Control
 var _scrim: ColorRect
 var _toast: PanelContainer
 var _toast_label: Label
@@ -71,15 +75,24 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
-	_scrim = UITheme.scrim()
-	root.add_child(_scrim)
-
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_margin = margin
-	_apply_safe_area()
 	root.add_child(margin)
+
+	# Modal layer: scrim, then the modal panels, above the sheet and the dock.
+	_scrim = UITheme.scrim()
+	root.add_child(_scrim)
+	_modal_margin = MarginContainer.new()
+	_modal_margin.name = "ModalLayer"
+	_modal_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_modal_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_modal_margin)
+	_modal_root = Control.new()
+	_modal_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_modal_margin.add_child(_modal_root)
+	_apply_safe_area()
 
 	var layer_root := Control.new()
 	layer_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -137,14 +150,13 @@ func _ready() -> void:
 	build_menu.item_rect_changed.connect(_update_free_rect)
 	build_menu.visibility_changed.connect(_update_free_rect)
 	build_menu.visibility_changed.connect(_update_sheet_cover)
-	layer_root.add_child(inventory_panel)
+	_modal_root.add_child(inventory_panel)
 
-	# Encounter (story beat) panel, centre-top
+	# Encounter (story beat) panel, centred in the free area.
 	encounter_panel = EncounterPanel.new()
-	encounter_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	encounter_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	encounter_panel.position.y = TOP_BAR_HEIGHT + 40
-	layer_root.add_child(encounter_panel)
+	_modal_root.add_child(encounter_panel)
+	encounter_panel.resized.connect(_place_encounter)
+	encounter_panel.visibility_changed.connect(_place_encounter)
 
 	production_popover = ProductionPopover.new()
 	layer_root.add_child(production_popover)
@@ -339,7 +351,8 @@ func apply_layout(p_portrait: bool) -> void:
 	sheet.apply_layout(portrait, usable_h - top - UITheme.SPACE_M, usable_h)
 	build_menu.top_margin = top + 8.0
 	build_menu.portrait = portrait
-	encounter_panel.position.y = top + (24.0 if portrait else 40.0)
+	encounter_panel.set_width(minf(EncounterPanel.WIDTH, screen.x - 2.0 * MARGIN))
+	_place_encounter.call_deferred()
 	_place_dock.call_deferred()
 
 
@@ -360,7 +373,23 @@ func _place_dock() -> void:
 	if portrait and sheet.visible:
 		y = sheet.position.y - d.y - UITheme.SPACE_M
 	_nav_row.position = Vector2(area.x - d.x, y).round()
-	_nav_row.visible = not _overlay_open and y >= top_bar_height() + UITheme.SPACE_M
+	_nav_row.visible = not _overlay_open and not _modal_open() and y >= top_bar_height() + UITheme.SPACE_M
+
+
+func _modal_open() -> bool:
+	return (inventory_panel != null and inventory_panel.visible) \
+		or (encounter_panel != null and encounter_panel.visible)
+
+
+## Centred horizontally; vertically a little above the middle, under the top bar.
+func _place_encounter() -> void:
+	if not encounter_panel.visible or _modal_root == null:
+		return
+	encounter_panel.reset_size()
+	var area := _modal_root.size
+	var s := encounter_panel.size
+	var y := maxf(top_bar_height() + UITheme.SPACE_L, (area.y - s.y) * 0.42)
+	encounter_panel.position = Vector2((area.x - s.x) * 0.5, y).round()
 
 
 func _update_free_rect() -> void:
@@ -392,7 +421,9 @@ func _apply_safe_area() -> void:
 			insets.right = (window.x - safe.end.x) * to_ui.x
 			insets.bottom = (window.y - safe.end.y) * to_ui.y
 	for side: String in insets:
-		_margin.add_theme_constant_override("margin_" + side, MARGIN + maxi(0, roundi(insets[side])))
+		for m: MarginContainer in [_margin, _modal_margin]:
+			if m:
+				m.add_theme_constant_override("margin_" + side, MARGIN + maxi(0, roundi(insets[side])))
 
 
 ## Portrait: the build sheet takes the bottom; the module sheet fades away
@@ -405,7 +436,8 @@ func _update_sheet_cover() -> void:
 
 
 func _update_scrim() -> void:
-	UITheme.fade(_scrim, inventory_panel.visible or encounter_panel.visible)
+	UITheme.fade(_scrim, _modal_open())
+	_place_dock()
 
 
 func _on_need_critical(need: StringName) -> void:
