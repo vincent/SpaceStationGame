@@ -50,7 +50,9 @@ src/audio/      SfxSynth (placeholder sounds), AudioDirector
 src/ui/         HUD (TopBar = clock + StatusBar + needs + debug button; ModuleSheet = ModulePanel + ObjectPanel (one card per
                 object type), bottom sheet in portrait / docked left in landscape; dock; FeedbackLayer = reward pills, ring bursts),
                 ProductionPopover, BuildMenu, UpgradeOverlay, EncounterPanel, InventoryPanel/Slot, DebugOverlay,
-                UITheme (components, press squash, pulse/flash, bars; icons: assets/ui/icons/*.svg via UITheme.icon())
+                UITheme (components, press squash, pulse/flash, bars; icons: assets/ui/icons/*.svg via UITheme.icon();
+                fonts: assets/fonts Nunito Sans + Exo 2 via UITheme.font(); costs = `cost_chips`/`cta_button`, one yellow
+                primary per surface)
 src/tools/      Blender import post-processing (module_import.gd + ModuleImportRules)
 data/items/, data/modules/, data/upgrades/, data/encounters/   One .tres per item / module type / upgrade / story beat
 assets/shaders/ toon (furniture/characters), toon_cut + cutaway.gdshaderinc (structure), outline, ghost, light_card,
