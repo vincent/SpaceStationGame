@@ -19,6 +19,8 @@ const PORTRAIT_TOP := 0.5
 ## Columns that don't fit shrink down to this scale.
 const MIN_SCALE := 0.5
 const LINE_COLOR := Color(UITheme.CYAN, 0.7)
+## Built-in parts: quieter lines, they have nothing to buy.
+const LINE_COLOR_BUILT_IN := Color(UITheme.CYAN, 0.25)
 
 var view: ExplodedView
 
@@ -52,7 +54,7 @@ func _ready() -> void:
 	top_sb.content_margin_bottom = 10
 	top.add_theme_stylebox_override("panel", top_sb)
 	_title = UITheme.title_label("")
-	top.add_child(_title)
+	top.add_child(_title)  # display font via the TITLE variation
 	_root.add_child(top)
 
 	var done := UITheme.button("Done", func() -> void: view.exit())
@@ -98,14 +100,22 @@ func _make_card(part: ModulePart, up: UpgradeDef) -> Control:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	card.add_child(box)
-	if up == null:  # built-in part: a one-line tag, nothing to buy
+	if up == null:  # built-in part: a slim tag, nothing to buy
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.set_meta(&"built_in", true)
+		var sb := UITheme.glass(UITheme.RADIUS_BUTTON)
+		sb.bg_color = Color(UITheme.PANEL, 0.6)
+		sb.content_margin_top = 6
+		sb.content_margin_bottom = 6
+		card.add_theme_stylebox_override("panel", sb)
 		var tag := UITheme.label("%s · built in" % String(part.name).trim_prefix("part_").capitalize(),
 			true, UITheme.TEXT_DIM)
 		tag.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		box.add_child(tag)
 		return card
-	box.add_child(UITheme.label(up.display_name, true, UITheme.TEXT))
+	var name_label := UITheme.label(up.display_name, false, UITheme.TEXT)
+	name_label.add_theme_font_override("font", UITheme.font(UITheme.FONT_UI_BOLD))
+	box.add_child(name_label)
 	var desc := UITheme.label(up.description, true, UITheme.TEXT_DIM)
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(desc)
@@ -118,13 +128,20 @@ func _make_card(part: ModulePart, up: UpgradeDef) -> Control:
 		box.add_child(done)
 		return card
 	var err := GameState.upgrade_error(uid, up.id)
-	var b := UITheme.button("Install · %s" % GameState.format_cost(up.cost), _buy.bind(up.id), UITheme.PRIMARY)
-	b.add_theme_font_size_override("font_size", UITheme.SMALL_FONT_SIZE)
-	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # long costs wrap instead of widening the card
+	var locked := err != "" and not err.begins_with("Needs %s" % GameState.format_cost(up.cost))
+	var b := UITheme.cta_button("Install", &"lock" if locked else &"upgrade", up.cost, _buy.bind(up.id))
 	b.disabled = err != ""
 	box.add_child(b)
-	if err != "" and not err.begins_with("Needs %s" % GameState.format_cost(up.cost)):
-		box.add_child(UITheme.label("Locked — %s" % err, true, UITheme.DANGER))
+	if locked:  # waiting on another part: not an error, just "later"
+		box.modulate.a = 0.7  # dim the content, keep the panel opaque
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		row.add_child(UITheme.icon_rect(&"lock", UITheme.TEXT_DIM, 16))
+		var why := UITheme.label(err, true, UITheme.TEXT_DIM)
+		why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		why.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(why)
+		box.add_child(row)
 	return card
 
 
@@ -231,5 +248,6 @@ func _draw_lines() -> void:
 		if _portrait():  # cards under the model: leave from the card's inner top corner
 			edge = card.position + Vector2(shown.x - 24.0 if on_left else 24.0, 0.0)
 			elbow = Vector2(edge.x, lerpf(edge.y, anchor.y, 0.4))
-		_lines.draw_polyline(PackedVector2Array([edge, elbow, anchor]), LINE_COLOR, 2.0, true)
-		_lines.draw_circle(anchor, 5.0, LINE_COLOR)
+		var color := LINE_COLOR_BUILT_IN if card.has_meta(&"built_in") else LINE_COLOR
+		_lines.draw_polyline(PackedVector2Array([edge, elbow, anchor]), color, 2.0, true)
+		_lines.draw_circle(anchor, 5.0 if color == LINE_COLOR else 3.5, color)
