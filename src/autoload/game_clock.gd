@@ -66,7 +66,33 @@ func is_night() -> bool:
 
 ## "Day 3 · 07:05"
 func format_time() -> String:
-	return "Day %d · %02d:%02d" % [day(), hour(), minute()]
+	return format_minutes(total_minutes)
+
+
+## "Day 3 · 07:05" for any time (in total game minutes).
+static func format_minutes(total: float) -> String:
+	var d := floori(total / MINUTES_PER_DAY) + 1
+	var h := floori(total / MINUTES_PER_HOUR) % HOURS_PER_DAY
+	var m := floori(total) % MINUTES_PER_HOUR
+	return "Day %d · %02d:%02d" % [d, h, m]
+
+
+## Readable duration: "under 1 min", "23 min", "1 h", "1 h 20", "2 d 4 h".
+static func format_duration(minutes: float) -> String:
+	if minutes == INF or is_nan(minutes):
+		return "—"
+	var m := roundi(maxf(minutes, 0.0))
+	if m < 1:
+		return "under 1 min"
+	if m < MINUTES_PER_HOUR:
+		return "%d min" % m
+	if m < MINUTES_PER_DAY:
+		var h := m / MINUTES_PER_HOUR
+		var rest := m % MINUTES_PER_HOUR
+		return "%d h" % h if rest == 0 else "%d h %02d" % [h, rest]
+	var d := m / MINUTES_PER_DAY
+	var hours := roundi(float(m % MINUTES_PER_DAY) / MINUTES_PER_HOUR)
+	return "%d d" % d if hours == 0 else "%d d %d h" % [d, hours]
 
 
 func to_dict() -> Dictionary:

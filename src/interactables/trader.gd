@@ -37,6 +37,6 @@ func _hire() -> void:
 
 
 func _trade(cost: Dictionary, get_items: Dictionary) -> void:
-	if GameState.trade(cost, get_items):
+	if GameState.trade(cost, get_items, self):
 		EventBus.toast.emit("Pleasure doing business.")
 		EventBus.trade_completed.emit()

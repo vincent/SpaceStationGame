@@ -27,9 +27,13 @@ class Chip:
 	var amount_label: Label
 	## Net rate per hour, kept for tests and tinting (not displayed).
 	var rate: float = 0.0
+	## Progress (0..1) towards the next whole unit, < 0 = no strip.
+	var progress: float = -1.0
+	var _color: Color
 
 	func _init(p_id: StringName, color: Color, icon_name: StringName = &"") -> void:
 		id = p_id
+		_color = color
 		name = "Chip_%s" % id
 		mouse_filter = Control.MOUSE_FILTER_STOP
 		custom_minimum_size.y = TopBar.HEIGHT
@@ -64,6 +68,28 @@ class Chip:
 		if active:
 			sb.set_border_width_all(2)
 		add_theme_stylebox_override("panel", sb)
+
+	## Thin strip along the bottom of the pill: how close the next unit is.
+	func set_progress(value: float) -> void:
+		if not is_equal_approx(value, progress):
+			progress = value
+			queue_redraw()
+
+	func _draw() -> void:
+		if progress < 0.0:
+			return
+		var x0 := 16.0
+		var x1 := size.x - 16.0
+		var y := size.y - 7.0
+		draw_line(Vector2(x0, y), Vector2(x1, y), Color(1, 1, 1, 0.08), 3.0, true)
+		if progress > 0.0:
+			draw_line(Vector2(x0, y), Vector2(lerpf(x0, x1, clampf(progress, 0.0, 1.0)), y),
+				Color(_color, 0.9), 3.0, true)
+
+	## "Something arrived": the chip bounces and its amount flashes.
+	func bump() -> void:
+		UITheme.pulse(self, 1.15, 0.35)
+		UITheme.flash(amount_label, UITheme.SUCCESS, 0.6)
 
 	func set_values(text: String, p_rate: float) -> void:
 		amount_label.text = text
@@ -124,7 +150,9 @@ func refresh() -> void:
 		var chip := chips[id]
 		chip.visible = _shown.get(id, false)
 		if chip.visible:
-			chip.set_values(str(stock.count(id)), rates.get(id, 0.0))
+			var rate: float = rates.get(id, 0.0)
+			chip.set_values(str(stock.count(id)), rate)
+			chip.set_progress(stock.amount(id) - floorf(stock.amount(id) + 0.0001) if rate > 0.005 else -1.0)
 
 
 ## Highlights the chip `id` (the popover's), none for &"".

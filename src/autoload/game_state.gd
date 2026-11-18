@@ -132,10 +132,10 @@ func perform(cost: Dictionary, minutes: float, effects: Dictionary, activity_nam
 
 
 ## Swaps `cost` for `items`. False (and nothing changes) if `cost` is missing.
-func trade(cost: Dictionary, items: Dictionary) -> bool:
+func trade(cost: Dictionary, items: Dictionary, source: Node3D = null) -> bool:
 	if not pay(cost):
 		return false
-	give(items)
+	give(items, source)
 	return true
 
 
@@ -154,12 +154,15 @@ func has_all(cost: Dictionary) -> bool:
 
 
 ## Adds items (salvage, trades, rewards...). Inventory overflow is lost.
-func give(items: Dictionary) -> void:
+## `source` (optional) is only passed on to EventBus.reward for the HUD.
+func give(items: Dictionary, source: Node3D = null) -> void:
 	for id: StringName in items:
 		if item_db.is_bulk(id):
 			stock.add(id, float(items[id]))
 		else:
 			inventory.add(id, int(items[id]))
+	if not _quiet and not items.is_empty():
+		EventBus.reward.emit(items, source)
 
 
 ## Pays a cost. All-or-nothing: false (and nothing changes) if it's missing.
@@ -242,7 +245,7 @@ func build_module(module_id: StringName, parent_uid: int, slot: StringName, by_s
 	pay(def.build_cost)
 	spend_time(def.build_minutes, &"working")
 	var uid := station.add_module(module_id, parent_uid, slot, StationState.State.REPAIRED, 0.3, false, by_slot)
-	EventBus.toast.emit("%s attached." % def.display_name)
+	EventBus.notice.emit("%s attached." % def.display_name, &"success")
 	story_event(&"built", module_id)
 	return uid
 
@@ -265,7 +268,7 @@ func repair_module(uid: int) -> bool:
 	pay(def.repair_cost)
 	spend_time(def.repair_minutes, &"working")
 	station.repair(uid)
-	EventBus.toast.emit("%s repaired." % def.display_name)
+	EventBus.notice.emit("%s repaired." % def.display_name, &"success")
 	return true
 
 
@@ -296,6 +299,7 @@ func buy_upgrade(uid: int, upgrade_id: StringName) -> bool:
 	pay(up.cost)
 	spend_time(up.minutes, &"working")
 	station.install(uid, upgrade_id)
+	EventBus.notice.emit("%s installed." % up.display_name, &"success")
 	return true
 
 
@@ -328,6 +332,7 @@ func _count_production(id: StringName, delta: float) -> void:
 	if units <= 0:
 		return
 	_produced_fraction[id] -= units
+	EventBus.reward.emit({id: units}, null)
 	var counter := StringName("produced_%s" % id)
 	var first := story.count(counter) == 0
 	story.add(counter, units)

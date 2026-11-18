@@ -1,6 +1,6 @@
 class_name ObjectPanel
 extends ScrollContainer
-## Bottom-right accordion of cards, one per object type of the focused module
+## Accordion of cards in the ModuleSheet, one per object type of the focused module
 ## (four planters share one "Planter" card). Only one card is open at a time;
 ## the others fold to a one-line header (icon, name, chevron).
 ## An open card lists the object's actions as touch rows; pressing one sends
@@ -8,8 +8,8 @@ extends ScrollContainer
 ## (Player.interact_with). Tapping a header opens that card (or folds it when
 ## it's the open one). Tapping an object in the room opens and flashes its card.
 
-## Tallest the stack gets (px) before it scrolls; the HUD sets it from the
-## room between the top bar and the nav buttons.
+## Tallest the stack gets (px) before it scrolls; the ModuleSheet sets it
+## (snap state in portrait, free height in landscape).
 var max_height := 440.0:
 	set(value):
 		max_height = value
@@ -22,6 +22,12 @@ var folded: Dictionary[String, bool] = {}
 ## Cards by object scene path, in layout order.
 var cards: Dictionary[String, ObjectCard] = {}
 
+## Hidden by the sheet (folded / peeking) without changing the room-view rule.
+var suppressed := false:
+	set(value):
+		suppressed = value
+		if _list:
+			_update_visibility()
 var module: Module
 var _list: VBoxContainer
 var _player: Player
@@ -58,18 +64,18 @@ class ObjectCard:
 		add_child(box)
 		_header = HBoxContainer.new()
 		_header.add_theme_constant_override("separation", UITheme.SPACE_M)
+		_header.custom_minimum_size.y = UITheme.GHOST_SIZE
 		_header.mouse_filter = Control.MOUSE_FILTER_STOP
 		_header.gui_input.connect(_on_header_input)
 		box.add_child(_header)
 		_header.add_child(UITheme.icon_rect(first.icon, UITheme.CYAN))
-		_title = UITheme.title_label(first.display_name)
+		_title = UITheme.label(first.display_name, false, UITheme.TEXT)
 		_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_header.add_child(_title)
 		_fold = UITheme.ghost_button(&"chevron_down", func() -> void: fold_toggled.emit(self))
 		_fold.name = "Fold"
-		_fold.custom_minimum_size = Vector2(40, 40)
 		_header.add_child(_fold)
 		_list = VBoxContainer.new()
 		_list.add_theme_constant_override("separation", UITheme.SPACE_S)
@@ -80,10 +86,12 @@ class ObjectCard:
 		folded = value
 		_list.visible = not folded
 		_fold.icon = UITheme.icon(&"chevron_down" if folded else &"chevron_up")
-		var sb := UITheme.card(false)
-		if folded:  # slim header row
-			sb.content_margin_top = 6
-			sb.content_margin_bottom = 6
+		# A flat section of the sheet (the sheet is the card).
+		var sb := UITheme.box(Color(1, 1, 1, 0.035 if folded else 0.06), UITheme.HAIRLINE, 1, UITheme.RADIUS_BUTTON)
+		sb.content_margin_left = UITheme.SPACE_M
+		sb.content_margin_right = 4
+		sb.content_margin_top = 2 if folded else 4
+		sb.content_margin_bottom = 2 if folded else UITheme.SPACE_M
 		add_theme_stylebox_override("panel", sb)
 
 	## Rebuilds the action buttons from the first object's get_actions().
@@ -107,9 +115,10 @@ class ObjectCard:
 	func flash() -> void:
 		if _flash:
 			_flash.kill()
-		modulate = Color(1.15, 1.2, 1.25)
+		modulate = Color(1.15, 1.25, 1.3)
 		_flash = create_tween()
 		_flash.tween_property(self, "modulate", Color.WHITE, 0.6)
+		UITheme.pulse(self, 1.03, 0.3)
 
 	func _on_header_input(event: InputEvent) -> void:
 		var mb := event as InputEventMouseButton
@@ -123,7 +132,7 @@ func _ready() -> void:
 	name = "ObjectPanel"
 	horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	custom_minimum_size.x = 340
+	custom_minimum_size.x = 0
 	# Sized to its cards (up to max_height), so it never covers empty screen.
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	_list = VBoxContainer.new()
@@ -275,4 +284,4 @@ func _fit() -> void:
 
 
 func _update_visibility() -> void:
-	visible = _room_view and not _hidden_by_overlay and not cards.is_empty()
+	visible = _room_view and not _hidden_by_overlay and not suppressed and not cards.is_empty()

@@ -16,7 +16,7 @@ story encounters are data-driven: `docs/CONTENT_PIPELINE.md`.
 | One test file / tests by name | `tools/test.sh -gselect=test_inventory` · `tools/test.sh -gunit_test_name=merge` |
 | Lint | `tools/lint.sh` (needs `pip install "gdtoolkit==4.*"`) |
 | Parse/import check only | `tools/import.sh` |
-| Screenshot (works headless via xvfb) | `tools/screenshot.sh build/shot.png [--view=station\|room] [--focus=wreck_core] [--power=all] [--upgrade=all] [--crew=2] [--encounter=intro] [--story=off] [--stock=food:20] [--layout=demo] [--popover=food] [--build-menu] [--explode] [--time=22] [--debug-panel] [--delay=5]` (all hooks: `DebugOverlay._run_cli_commands()`) |
+| Screenshot (works headless via xvfb) | `tools/screenshot.sh build/shot.png [--resolution=720x1280] [--view=station\|room] [--focus=wreck_core] [--power=all] [--upgrade=all] [--crew=2] [--encounter=intro] [--story=off] [--stock=food:20] [--layout=demo] [--popover=food] [--build-menu] [--explode] [--time=22] [--debug-panel] [--delay=5]` (all hooks: `DebugOverlay._run_cli_commands()`) |
 | Perf stress test (huge station + frame-time report) | `tools/stress.sh [modules=80] [seconds=10] [hooks...]` (`--layout=stress --modules=N --perf=S`; layout = `StressLayout`) |
 | Golden images (compare / re-record) | `tools/golden.sh` · `tools/golden.sh --update [scene]` (or `/update-goldens`) |
 | Run game / open editor | `tools/run.sh` · `tools/editor.sh` |
@@ -47,9 +47,10 @@ src/crew/       CrewDirector (spawns CrewNPCs from StationCrew, claims spots, hi
 src/interactables/  Interactable base + Bed, Kitchen, BayWindow, SalvagePile, Console, Trader, Planter (+ .tscn each)
 src/ambient/    AmbientKit (state-driven props), ExteriorLife (traffic, debris)
 src/audio/      SfxSynth (placeholder sounds), AudioDirector
-src/ui/         HUD (TopBar = clock + StatusBar + needs + debug button; ModulePanel bottom-left; ObjectPanel = one card per object
-                type of the focused module, bottom-right), ProductionPopover, BuildMenu, UpgradeOverlay, EncounterPanel,
-                InventoryPanel/Slot, DebugOverlay, UITheme (icons: assets/ui/icons/*.svg via UITheme.icon())
+src/ui/         HUD (TopBar = clock + StatusBar + needs + debug button; ModuleSheet = ModulePanel + ObjectPanel (one card per
+                object type), bottom sheet in portrait / docked left in landscape; dock; FeedbackLayer = reward pills, ring bursts),
+                ProductionPopover, BuildMenu, UpgradeOverlay, EncounterPanel, InventoryPanel/Slot, DebugOverlay,
+                UITheme (components, press squash, pulse/flash, bars; icons: assets/ui/icons/*.svg via UITheme.icon())
 src/tools/      Blender import post-processing (module_import.gd + ModuleImportRules)
 data/items/, data/modules/, data/upgrades/, data/encounters/   One .tres per item / module type / upgrade / story beat
 assets/shaders/ toon (furniture/characters), toon_cut + cutaway.gdshaderinc (structure), outline, ghost, light_card,
@@ -156,6 +157,12 @@ summon a visitor, camera pitch/yaw/size sliders, save/load). New cheats: `_add_r
   `path_desired_distance` > that or the player won't move.
 - Sky shaders / Canvas background misbehave with the ortho camera across renderers;
   the starfield is a quad (`Backdrop`) parented to the camera.
+- **Portrait + landscape:** `HUD._fit_content_scale()` swaps the canvas base (1280x720 / 720x1280) so text keeps
+  its size; layout code reads `UITheme.is_portrait()` / `HUD.portrait` and re-lays out in `HUD.apply_layout()`.
+  The camera frames inside `EventBus.hud_insets_changed` (portrait: between top bar and sheet). Don't anchor new HUD
+  controls straight under `layer_root` before it has a size (they drift to their min size): put them in a container.
+  Items given with `GameState.give(items, source)` fly from `source` to their chip (`EventBus.reward`); use
+  `EventBus.notice.emit(msg, &"success")` for success toasts.
 - Screenshots use the Compatibility renderer (no GPU in CI/containers); the game
   itself uses the Mobile renderer, so lighting can differ slightly.
 - `build/` has a `.gdignore`; never put game assets there.

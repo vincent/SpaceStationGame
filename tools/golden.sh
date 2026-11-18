@@ -26,6 +26,7 @@ SCENES=(
   "room_view|--focus=capsule"
   "exploded|--focus=capsule --explode"
   "night|--power=all --focus=capsule --time=23"
+  "portrait_room|--focus=capsule --resolution=720x1280"
 )
 
 export LIBGL_ALWAYS_SOFTWARE=1

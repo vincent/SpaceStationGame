@@ -31,6 +31,8 @@ Status markers: `[x]` done · `[~]` in progress / partial · `[ ]` todo
 - [x] Cel shading + outline shaders, starfield backdrop, wall cutaway (replaced by the diorama cutaway)
 - [x] HUD (clock, needs bars, inventory), toasts
 - [x] Mobile HUD: every action of the focused module on HUD cards (top bar, module card, one card per object type, walk-then-act), no popup menus on 3D objects
+- [x] Portrait + landscape: canvas base swaps 1280x720 / 720x1280, two-row top bar, ModuleSheet (bottom sheet PEEK/HALF/FULL in portrait, docked left in landscape), build menu as bottom sheet, exploded-view cards under the model, camera frames inside the HUD's free area, Android back closes the topmost thing
+- [x] Feedback: reward pills fly to their chip, ring burst on repair/upgrade/build, success/warning toasts, button press squash, clock roll on time skips (+4 h), condition/staffing bars, next-unit progress strip + "Next unit in / Runs out in" timers
 - [x] Debug overlay + command-line dev hooks, screenshot tool
 - [x] GUT unit + integration tests, gdlint, CI (tests + Android debug APK)
 

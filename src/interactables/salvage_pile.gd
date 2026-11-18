@@ -13,7 +13,7 @@ func get_actions() -> Array[InteractionAction]:
 
 func _salvage() -> void:
 	GameState.spend_time(SALVAGE_MINUTES, &"working")
-	GameState.give(SALVAGE_YIELD)
+	GameState.give(SALVAGE_YIELD, self)
 	EventBus.toast.emit("+%d scrap." % SALVAGE_YIELD[&"scrap_metal"])
 
 
@@ -22,4 +22,4 @@ func perform_routine() -> StringName:
 
 
 func finish_routine() -> void:
-	GameState.give({&"scrap_metal": 1})
+	GameState.give({&"scrap_metal": 1}, self)

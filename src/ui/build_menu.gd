@@ -1,15 +1,26 @@
 class_name BuildMenu
 extends PanelContainer
-## Side sheet (right) that opens when a ghost slot is tapped: the modules that
+## Sheet that opens when a ghost slot is tapped: the modules that
 ## fit that slot, one entry each (name, description, cost chips, Build and,
 ## for modules with several slots, Rotate = which of its slots attaches; the
 ## station outlines the result). Tapping an entry previews it. The sheet sits
-## on the right so the previewed module stays visible.
+## on the right (landscape) or at the bottom, up to half of the screen
+## (portrait), so the previewed module stays visible.
 
 const WIDTH := 420.0
-## Space kept free above (top row) and below (dock) the sheet.
-const TOP := HUD.TOP_BAR_HEIGHT + 8.0
+## Space kept free below the side sheet (dock), landscape.
 const BOTTOM := 104.0
+## Portrait: the bottom sheet takes at most this share of the screen.
+const PORTRAIT_FRACTION := 0.5
+
+## Space kept free above the sheet (top bar); set by the HUD.
+var top_margin := HUD.TOP_BAR_HEIGHT + 8.0
+## Bottom sheet instead of a side sheet; set by the HUD.
+var portrait := false:
+	set(value):
+		portrait = value
+		if visible:
+			_fit_height()
 
 var parent_uid := 0
 var slot: StringName
@@ -146,12 +157,17 @@ func _fit_height() -> void:
 	if not is_inside_tree():
 		return
 	var area := get_parent_area_size()
+	custom_minimum_size.x = area.x if portrait else minf(WIDTH, area.x)
 	var content_h := _list.get_parent_control().get_combined_minimum_size().y
 	var chrome := get_combined_minimum_size().y - _scroll.custom_minimum_size.y
-	_scroll.custom_minimum_size.y = maxf(0.0, minf(content_h, area.y - TOP - BOTTOM - chrome))
+	var room := area.y * PORTRAIT_FRACTION if portrait else area.y - top_margin - BOTTOM
+	_scroll.custom_minimum_size.y = maxf(0.0, minf(content_h, room - chrome))
 	_scroll.scroll_vertical = 0
 	reset_size()
-	position = Vector2(area.x - size.x, TOP).round()
+	if portrait:
+		position = Vector2(0.0, area.y - size.y).round()
+	else:
+		position = Vector2(area.x - size.x, top_margin).round()
 
 
 ## Next orientation of `module_id` (the next of its slots that fits).

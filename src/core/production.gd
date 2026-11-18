@@ -157,6 +157,18 @@ static func rows_for(station: StationState, stock: StationStock, resource: Strin
 	return producers + locked + consumers
 
 
+## Game minutes until the stock of a resource changes by a whole unit at
+## `rate` per hour: the next unit when rate > 0, running out (stock reaches
+## 0) when rate < 0. INF when nothing changes (or nothing is left to drain).
+static func eta_minutes(amount: float, rate: float) -> float:
+	if rate > 0.0:
+		var frac := amount - floorf(amount + 0.0001)
+		return maxf(0.0, (1.0 - frac) / rate * 60.0)
+	if rate < 0.0 and amount > 0.0:
+		return amount / -rate * 60.0
+	return INF
+
+
 ## True if some module (running or not) produces `resource`.
 static func has_producer(station: StationState, resource: StringName) -> bool:
 	for uid in station.uids():

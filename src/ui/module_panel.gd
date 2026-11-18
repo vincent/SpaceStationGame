@@ -1,29 +1,44 @@
 class_name ModulePanel
 extends PanelContainer
-## Bottom-left card of the focused module, in station and room view. Header:
-## state light (pink derelict, cyan repaired, yellow upgraded), name, fold
-## chevron. Body: one status line (state, wear, power, bunks), a row of
-## compact actions (Repair while derelict, else Power / Upgrade) and, for
-## modules with jobs, an inline crew stepper (− Crew 1/2 · +25% +).
-## Folded, the card shrinks to its header (a pill).
+## The focused module, in station and room view: the head of the ModuleSheet.
+## Header: state light (pink derelict, cyan repaired, yellow upgraded), name,
+## fold chevron. Body: one status line (state, power, bunks), a condition bar
+## (wear), a row of compact actions (Repair while derelict, else Power /
+## Upgrade) and, for modules with jobs, an inline crew stepper with a
+## staffing bar (− Crew 1/2 · +25% +). Folded, the body hides.
+## Repairs and upgrades of this module flash the card and pulse its light.
+
+## The header or the chevron was tapped while hosted by a sheet (the sheet
+## decides: fold in landscape, snap the sheet in portrait).
+signal fold_requested
 
 const WIDTH := 330.0
 
 var module: Module
 ## Folded to the title by the chevron (kept across modules).
 var collapsed := false
+## Hosted by the ModuleSheet: no card chrome, no own sizing.
+var embedded := false:
+	set(value):
+		embedded = value
+		if is_node_ready():
+			refresh()
 
 var _dot: Panel
 var _title: Label
 var _fold: Button
 var _body: VBoxContainer
 var _status: Label
+var _condition: ProgressBar
+var _condition_label: Label
+var _condition_row: HBoxContainer
 var _tiles: HBoxContainer
 var _repair: Button
 var _power: Button
 var _upgrade: Button
 var _crew_box: HBoxContainer
 var _crew_label: Label
+var _crew_bar: ProgressBar
 var _crew_add: Button
 var _crew_remove: Button
 var _overlay_open := false
@@ -38,11 +53,13 @@ func _ready() -> void:
 	add_child(box)
 
 	var header := HBoxContainer.new()
+	header.name = "Header"
 	header.add_theme_constant_override("separation", UITheme.SPACE_M)
+	header.custom_minimum_size.y = UITheme.GHOST_SIZE
 	header.mouse_filter = Control.MOUSE_FILTER_STOP
 	header.gui_input.connect(_on_header_input)
 	box.add_child(header)
-	_dot = UITheme.dot(UITheme.CYAN, 10)
+	_dot = UITheme.dot(UITheme.CYAN, 12)
 	header.add_child(_dot)
 	_title = UITheme.title_label("")
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -50,7 +67,7 @@ func _ready() -> void:
 	_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header.add_child(_title)
-	_fold = UITheme.ghost_button(&"chevron_down", toggle_collapsed)
+	_fold = UITheme.ghost_button(&"chevron_down", _on_fold)
 	_fold.name = "Fold"
 	header.add_child(_fold)
 
@@ -60,6 +77,21 @@ func _ready() -> void:
 	_status = UITheme.label("", true, UITheme.TEXT_DIM)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_body.add_child(_status)
+
+	# Condition: 100 % = like new, the bar goes from pink (worn) to cyan.
+	_condition_row = HBoxContainer.new()
+	_condition_row.name = "Condition"
+	_condition_row.add_theme_constant_override("separation", UITheme.SPACE_M)
+	_body.add_child(_condition_row)
+	var cond_name := UITheme.label("Condition", true, UITheme.TEXT_DIM)
+	_condition_row.add_child(cond_name)
+	_condition = UITheme.bar(UITheme.CYAN, 8)
+	_condition.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_condition_row.add_child(_condition)
+	_condition_label = UITheme.label("", true, UITheme.TEXT)
+	_condition_label.custom_minimum_size.x = 46
+	_condition_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_condition_row.add_child(_condition_label)
 
 	_repair = UITheme.action_button("Repair", "", _on_repair, UITheme.PRIMARY)
 	_repair.name = "Repair"
@@ -76,20 +108,27 @@ func _ready() -> void:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_tiles.add_child(b)
 
-	# Inline stepper: − Crew 1/2 · +25% +
+	# Inline stepper: − Crew 1/2 · +25% +, with a staffing bar under the text.
 	_crew_box = HBoxContainer.new()
 	_crew_box.name = "Crew"
 	_crew_box.add_theme_constant_override("separation", UITheme.SPACE_S)
 	_body.add_child(_crew_box)
 	_crew_box.add_child(UITheme.icon_rect(&"crew", UITheme.TEXT_DIM, 22))
+	var crew_col := VBoxContainer.new()
+	crew_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	crew_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	crew_col.add_theme_constant_override("separation", 4)
+	_crew_box.add_child(crew_col)
 	_crew_label = UITheme.label("", false, UITheme.TEXT)
-	_crew_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_crew_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	crew_col.add_child(_crew_label)
+	_crew_bar = UITheme.bar(UITheme.YELLOW, 5)
+	_crew_bar.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	crew_col.add_child(_crew_bar)
 	_crew_remove = _stepper(&"minus", func() -> void: GameState.station.crew.unstaff(module.uid))
 	_crew_remove.name = "CrewRemove"
 	_crew_add = _stepper(&"plus", _on_staff)
 	_crew_add.name = "CrewAdd"
-	_crew_box.add_child(_crew_label)
 	_crew_box.add_child(_crew_remove)
 	_crew_box.add_child(_crew_add)
 
@@ -102,7 +141,7 @@ func _ready() -> void:
 	EventBus.upgrade_view_closed.connect(func() -> void:
 		_overlay_open = false
 		refresh())
-	GameState.station.module_changed.connect(func(_uid: int, _r: StringName) -> void: refresh())
+	GameState.station.module_changed.connect(_on_module_changed)
 	GameState.inventory.changed.connect(refresh)
 	GameState.station.crew.changed.connect(refresh)
 	GameState.stock.count_changed.connect(func(_id: StringName, _n: int) -> void: refresh())
@@ -122,13 +161,19 @@ func toggle_collapsed() -> void:
 	refresh()
 
 
+## Chevron direction, set by the sheet in portrait (up = it can grow).
+func set_fold_icon(can_grow: bool) -> void:
+	_fold.icon = UITheme.icon(&"chevron_up" if can_grow else &"chevron_down")
+
+
 func refresh() -> void:
 	visible = not _overlay_open and module != null and is_instance_valid(module) and module.uid != 0 \
 		and GameState.station.has_module(module.uid)
 	if not visible:
 		return
 	_body.visible = not collapsed
-	_fold.icon = UITheme.icon(&"chevron_down" if collapsed else &"chevron_up")
+	if not embedded:
+		_fold.icon = UITheme.icon(&"chevron_down" if collapsed else &"chevron_up")
 	var st := GameState.station
 	var rec := st.get_record(module.uid)
 	var def := module.def
@@ -136,9 +181,14 @@ func refresh() -> void:
 	var derelict: bool = rec.state == StationState.State.DERELICT
 	var upgraded: bool = rec.state == StationState.State.UPGRADED
 	_set_dot(UITheme.DANGER if derelict else UITheme.YELLOW if upgraded else UITheme.CYAN)
-	# Folded: a slim pill, no cyan selection frame.
-	custom_minimum_size.x = 0.0 if collapsed else WIDTH
-	add_theme_stylebox_override("panel", UITheme.card(not collapsed))
+	if embedded:
+		custom_minimum_size.x = 0.0
+		var flat := StyleBoxEmpty.new()
+		add_theme_stylebox_override("panel", flat)
+	else:
+		# Folded: a slim pill, no cyan selection frame.
+		custom_minimum_size.x = 0.0 if collapsed else WIDTH
+		add_theme_stylebox_override("panel", UITheme.card(not collapsed))
 	if collapsed:
 		_fit.call_deferred()
 		return
@@ -148,15 +198,21 @@ func refresh() -> void:
 		power = "makes %s power" % snappedf(st.module_output(module.uid), 0.1)
 	elif st.module_draw(module.uid) > 0.0:
 		power = "draws %s" % snappedf(st.module_draw(module.uid), 0.1)
-	_status.text = "%s · wear %d%%%s" % [state_name, roundi(rec.wear * 100.0), (" · " + power) if power else ""]
+	_status.text = "%s%s" % [state_name, (" · " + power) if power else ""]
 	var crew := st.crew
 	if crew.beds(module.uid) > 0:
 		_status.text += " · bunks %d/%d" % [crew.residents(module.uid).size(), crew.beds(module.uid)]
+	var condition := clampf(1.0 - float(rec.wear), 0.0, 1.0)
+	_condition.value = condition
+	UITheme.set_bar_color(_condition, UITheme.DANGER.lerp(UITheme.CYAN, smoothstep(0.2, 0.8, condition)))
+	_condition_label.text = "%d%%" % roundi(condition * 100.0)
 	var jobs := crew.jobs(module.uid)
 	_crew_box.visible = jobs > 0
 	if jobs > 0:
 		var staffed := crew.workers(module.uid).size()
 		_crew_label.text = "Crew %d/%d · +%d%%" % [staffed, jobs, roundi((crew.staffing(module.uid) - 1.0) * 100.0)]
+		_crew_bar.max_value = jobs
+		_crew_bar.value = staffed
 		_crew_remove.disabled = staffed == 0
 		_crew_add.disabled = staffed >= jobs or crew.idle().is_empty()
 
@@ -178,8 +234,10 @@ func refresh() -> void:
 
 
 ## Shrinks to the content, keeping the bottom-left corner in place (a plain
-## reset_size() would keep the top edge instead).
+## reset_size() would keep the top edge instead). The sheet sizes itself.
 func _fit() -> void:
+	if embedded:
+		return
 	var min_size := get_combined_minimum_size()
 	offset_top = offset_bottom - min_size.y
 	offset_right = offset_left + min_size.x
@@ -194,7 +252,24 @@ func _on_header_input(event: InputEvent) -> void:
 	if mb and mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed:
 		accept_event()
 		EventBus.sfx.emit(&"click")
+		_on_fold()
+
+
+func _on_fold() -> void:
+	if embedded:
+		fold_requested.emit()
+	else:
 		toggle_collapsed()
+
+
+## Success feedback for this module: the card flashes mint, the light pulses.
+func _on_module_changed(uid: int, reason: StringName) -> void:
+	refresh()
+	if module == null or not is_instance_valid(module) or uid != module.uid or not visible:
+		return
+	if reason in [&"repaired", &"upgraded", &"powered"]:
+		UITheme.flash(self, UITheme.SUCCESS if reason != &"powered" else UITheme.YELLOW)
+		UITheme.pulse(_dot, 1.8, 0.5)
 
 
 func _on_repair() -> void:

@@ -111,3 +111,11 @@ func test_rows_for_a_resource() -> void:
 	assert_lt(water[-1].nominal, 0.0)
 	assert_true(Production.has_producer(station, &"food"))
 	assert_false(Production.has_producer(station, &"scrap_metal"))
+
+
+func test_eta_minutes() -> void:
+	assert_almost_eq(Production.eta_minutes(4.5, 1.0), 30.0, 0.01, "half a unit left at 1/h")
+	assert_almost_eq(Production.eta_minutes(4.0, 2.0), 30.0, 0.01, "a whole unit at 2/h")
+	assert_almost_eq(Production.eta_minutes(3.0, -1.5), 120.0, 0.01, "3 units drain in 2 h")
+	assert_eq(Production.eta_minutes(0.0, -1.0), INF, "nothing left to drain")
+	assert_eq(Production.eta_minutes(5.0, 0.0), INF)

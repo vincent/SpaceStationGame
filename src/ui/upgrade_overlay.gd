@@ -2,7 +2,9 @@ class_name UpgradeOverlay
 extends CanvasLayer
 ## Labels of the exploded view, drawn like a technical diagram: one card per
 ## part (name, state, cost, install button) linked to the part by an ink
-## leader line. Owned by ExplodedView.
+## leader line. Owned by ExplodedView. Landscape: two columns beside the
+## model; portrait: two columns under it (the HUD frames the model in the
+## top half, see HUD._update_free_rect).
 
 ## Card width range; the actual width follows the screen (26 % of it).
 const CARD_WIDTH := 300.0
@@ -12,6 +14,8 @@ const MARGIN := 20.0
 const TOP := 150.0
 const BOTTOM := 110.0
 const GAP := 8.0
+## Portrait: the cards start at this share of the screen height.
+const PORTRAIT_TOP := 0.5
 ## Columns that don't fit shrink down to this scale.
 const MIN_SCALE := 0.5
 const LINE_COLOR := Color(UITheme.CYAN, 0.7)
@@ -107,7 +111,11 @@ func _make_card(part: ModulePart, up: UpgradeDef) -> Control:
 	box.add_child(desc)
 	var uid := view.module.uid
 	if GameState.station.is_installed(uid, up.id):
-		box.add_child(UITheme.label("Installed", true, UITheme.CYAN))
+		var done := HBoxContainer.new()
+		done.add_theme_constant_override("separation", 4)
+		done.add_child(UITheme.icon_rect(&"check", UITheme.SUCCESS, 18))
+		done.add_child(UITheme.label("Installed", true, UITheme.SUCCESS))
+		box.add_child(done)
 		return card
 	var err := GameState.upgrade_error(uid, up.id)
 	var b := UITheme.button("Install · %s" % GameState.format_cost(up.cost), _buy.bind(up.id), UITheme.PRIMARY)
@@ -123,6 +131,11 @@ func _make_card(part: ModulePart, up: UpgradeDef) -> Control:
 func _buy(upgrade_id: StringName) -> void:
 	if view.buy(upgrade_id):
 		_rebuild_cards()
+		# The freshly installed card flashes mint.
+		var up := GameState.module_db.get_upgrade(upgrade_id)
+		for part: ModulePart in _cards:
+			if up and StringName(part.name) == up.part_node:
+				UITheme.flash(_cards[part], UITheme.SUCCESS, 0.9)
 
 
 func _process(_delta: float) -> void:
@@ -133,6 +146,8 @@ func _process(_delta: float) -> void:
 		return
 	var screen := _root.size
 	var width := clampf(screen.x * 0.26, MIN_CARD_WIDTH, CARD_WIDTH)
+	if _portrait():
+		width = (screen.x - 3.0 * MARGIN) * 0.5
 	var left: Array[ModulePart] = []
 	var right: Array[ModulePart] = []
 	for part: ModulePart in _cards:
@@ -184,15 +199,20 @@ func _stack(parts: Array[ModulePart], right_side: bool, width: float, cam: Camer
 	var total := 0.0
 	for part in parts:
 		total += _cards[part].size.y + GAP
-	var avail := maxf(screen.y - TOP - BOTTOM, 1.0)
+	var top := screen.y * PORTRAIT_TOP if _portrait() else TOP
+	var avail := maxf(screen.y - top - BOTTOM, 1.0)
 	var s := clampf(avail / total, MIN_SCALE, 1.0) if total > 0.0 else 1.0
-	var y := TOP
+	var y := top
 	for part in parts:
 		var card := _cards[part]
 		card.scale = Vector2(s, s)
 		var w := maxf(card.size.x, width) * s
 		card.position = Vector2(screen.x - w - MARGIN if right_side else MARGIN, y)
 		y += (card.size.y + GAP) * s
+
+
+func _portrait() -> bool:
+	return _root.size.y > _root.size.x
 
 
 func _draw_lines() -> void:
@@ -208,5 +228,8 @@ func _draw_lines() -> void:
 		var shown := card.size * card.scale
 		var edge := card.position + Vector2(shown.x if on_left else 0.0, minf(28.0, shown.y * 0.5))
 		var elbow := Vector2(lerpf(edge.x, anchor.x, 0.35), edge.y)
+		if _portrait():  # cards under the model: leave from the card's inner top corner
+			edge = card.position + Vector2(shown.x - 24.0 if on_left else 24.0, 0.0)
+			elbow = Vector2(edge.x, lerpf(edge.y, anchor.y, 0.4))
 		_lines.draw_polyline(PackedVector2Array([edge, elbow, anchor]), LINE_COLOR, 2.0, true)
 		_lines.draw_circle(anchor, 5.0, LINE_COLOR)

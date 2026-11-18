@@ -24,6 +24,14 @@ const RADIUS_BUTTON := 12
 const TOUCH_SIZE := 56
 ## Icon-only buttons inside a row (still a comfortable thumb target).
 const GHOST_SIZE := 48
+## Smallest text anywhere (px at the base resolution).
+const MIN_FONT_SIZE := 14
+## Width of the module sheet when docked (landscape).
+const SHEET_WIDTH := 420
+## Base canvas size per orientation (`content_scale_size`): portrait keeps
+## the same text size as landscape instead of shrinking everything.
+const LANDSCAPE_BASE := Vector2i(1280, 720)
+const PORTRAIT_BASE := Vector2i(720, 1280)
 
 ## Line icons (white, tinted by the caller) in this folder, by file name.
 const ICON_DIR := "res://assets/ui/icons/"
@@ -68,6 +76,12 @@ static var _theme: Theme
 static var _icons: Dictionary[StringName, Texture2D] = {}
 
 
+## True when the screen is taller than wide (phone held upright).
+static func is_portrait(vp: Viewport) -> bool:
+	var size := vp.get_visible_rect().size
+	return size.y > size.x
+
+
 static func get_theme() -> Theme:
 	if _theme == null:
 		_theme = _build()
@@ -83,7 +97,57 @@ static func button(text: String, callback: Callable = Callable(), variant: Strin
 	if callback.is_valid():
 		b.pressed.connect(callback)
 	b.pressed.connect(func() -> void: EventBus.sfx.emit(&"click"))
+	# Press feedback: a small squash while held, a spring back on release.
+	b.button_down.connect(func() -> void: _squash(b, 0.95, 0.06))
+	b.button_up.connect(func() -> void: _squash(b, 1.0, 0.14))
 	return b
+
+
+static func _squash(c: Control, to: float, seconds: float) -> void:
+	if not c.is_inside_tree():
+		return
+	c.pivot_offset = c.size * 0.5
+	var tw := c.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(c, "scale", Vector2(to, to), seconds)
+
+
+## Quick scale bounce (1 → `amount` → 1): "this just changed".
+static func pulse(c: Control, amount: float = 1.15, seconds: float = 0.35) -> void:
+	if not c.is_inside_tree():
+		return
+	c.pivot_offset = c.size * 0.5
+	var tw := c.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(c, "scale", Vector2(amount, amount), seconds * 0.35)
+	tw.tween_property(c, "scale", Vector2.ONE, seconds * 0.65)
+
+
+## Tints `c` towards `color` and fades back (success / attention flash).
+static func flash(c: CanvasItem, color: Color = SUCCESS, seconds: float = 0.7) -> void:
+	if not c.is_inside_tree():
+		return
+	c.modulate = Color.WHITE.lerp(color, 0.55) * 1.25
+	c.modulate.a = 1.0
+	var tw := c.create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(c, "modulate", Color.WHITE, seconds)
+
+
+## Slim rounded bar (wear, staffing, timers): `color` fill on a faint track.
+static func bar(color: Color, height: int = 6, max_value: float = 1.0) -> ProgressBar:
+	var b := ProgressBar.new()
+	b.show_percentage = false
+	b.max_value = max_value
+	b.step = 0.0
+	b.custom_minimum_size.y = height
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	set_bar_color(b, color)
+	return b
+
+
+static func set_bar_color(b: ProgressBar, color: Color) -> void:
+	var fill := box(color, Color.TRANSPARENT, 0, 3)
+	fill.set_content_margin_all(0)
+	b.add_theme_stylebox_override("fill", fill)
 
 
 ## Icon `name` from ICON_DIR, or null when there is none.

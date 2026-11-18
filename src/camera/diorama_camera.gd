@@ -7,6 +7,9 @@ extends Node3D
 ##   t = 1  room view:    the focused module fits the frame
 ## Drag pans (clamped to the station); only focus_on() changes the zoom (no
 ## pinch/wheel: tapping a module zooms in, the "Station view" button out).
+## Both tiers frame inside the screen area the HUD leaves free
+## (EventBus.hud_insets_changed: in portrait, between the top bar and the
+## bottom sheet); the framing eases there when the sheet moves.
 
 signal zoom_changed(t: float)
 signal focus_changed(target: Node3D)
@@ -39,6 +42,10 @@ var size_override := 0.0
 ## False while a screen holds the camera (exploded view).
 var input_enabled := true
 
+## Screen area (UI px) the room view frames into; empty = the whole screen.
+var free_rect := Rect2()
+
+var _free_target := Rect2()
 var _station_aabb := AABB(Vector3(-10, -1, -10), Vector3(20, 4, 20))
 var _focus_aabb := AABB(Vector3(-4, -1, -4), Vector3(8, 4, 8))
 var _tween: Tween
@@ -57,6 +64,15 @@ func _ready() -> void:
 	camera.position = Vector3(0, 0, distance)
 	_apply_rotation()
 	_update_camera()
+	EventBus.hud_insets_changed.connect(set_free_rect)
+
+
+## Frames the room tier inside `rect` (UI px). Eases there unless `instant`.
+func set_free_rect(rect: Rect2, instant: bool = false) -> void:
+	_free_target = rect
+	if instant:
+		free_rect = rect
+		_update_camera()
 
 
 func set_station_aabb(aabb: AABB) -> void:
@@ -108,11 +124,42 @@ func get_view_size() -> float:
 
 ## Ortho size for zoom position `zoom_t` (geometric blend between tiers).
 func size_at(zoom_t: float) -> float:
-	var aspect := _aspect()
-	var s0 := fit(_station_aabb, global_basis, aspect, station_margin).size as float
-	var s1 := fit(_focus_aabb, global_basis, aspect, room_margin).size as float
+	var s0 := _fit_size(_station_aabb, station_margin)
+	var s1 := _fit_size(_focus_aabb, room_margin)
 	s1 = minf(s1, s0)
 	return s0 * pow(s1 / s0, clampf(zoom_t, 0.0, 1.0))
+
+
+## Ortho size that fits `aabb` in the free area (the screen by default).
+func _fit_size(aabb: AABB, margin: float) -> float:
+	var view := _view_size()
+	var free := _free_view()
+	return fit(aabb, global_basis, free.size.x / maxf(free.size.y, 1.0), margin).size \
+		* view.y / maxf(free.size.y, 1.0)
+
+
+func _view_size() -> Vector2:
+	if not is_inside_tree():
+		return Vector2(16, 9)
+	return get_viewport().get_visible_rect().size
+
+
+func _free_view() -> Rect2:
+	var view := _view_size()
+	if not free_rect.has_area():
+		return Rect2(Vector2.ZERO, view)
+	return free_rect
+
+
+## World offset of the look-at point so the target sits in the middle of the
+## free area instead of the screen (at ortho size `size`).
+func _free_offset(size: float) -> Vector3:
+	var view := _view_size()
+	var d := _free_view().get_center() - view * 0.5
+	if d.is_zero_approx():
+		return Vector3.ZERO
+	var world_per_px := size / maxf(view.y, 1.0)
+	return (-global_basis.x * d.x + global_basis.y * d.y) * world_per_px
 
 
 ## Zoom position giving ortho size `size` (inverse of size_at()).
@@ -190,13 +237,22 @@ func _update_camera() -> void:
 	var look := c0.lerp(c1, t) + pan
 	look = clamp_to_aabb(look, _station_aabb, global_basis, pan_margin)
 	pan = look - c0.lerp(c1, t)
-	global_position = look
 	camera.size = size_override if size_override > 0.0 else size_at(t)
+	global_position = look + _free_offset(camera.size)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if not free_rect.is_equal_approx(_free_target):
+		var k := 1.0 - exp(-10.0 * delta)
+		if not free_rect.has_area():
+			free_rect = Rect2(Vector2.ZERO, _view_size())
+		var target := _free_target if _free_target.has_area() else Rect2(Vector2.ZERO, _view_size())
+		free_rect = Rect2(free_rect.position.lerp(target.position, k), free_rect.size.lerp(target.size, k))
+		if free_rect.position.distance_to(target.position) < 0.5 and free_rect.size.distance_to(target.size) < 0.5:
+			free_rect = _free_target
+		_update_camera()
 	# Keeps framing right when the window is resized / rotated.
-	if Engine.get_process_frames() % 30 == 0:
+	elif Engine.get_process_frames() % 30 == 0:
 		_update_camera()
 
 

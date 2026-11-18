@@ -75,3 +75,13 @@ func test_save_round_trip() -> void:
 	var other: Node = autofree(GameClockScript.new())
 	other.from_dict(clock.to_dict())
 	assert_eq(other.total_minutes, clock.total_minutes)
+
+
+func test_format_duration() -> void:
+	assert_eq(GameClockScript.format_duration(0.2), "under 1 min")
+	assert_eq(GameClockScript.format_duration(23.4), "23 min")
+	assert_eq(GameClockScript.format_duration(60.0), "1 h")
+	assert_eq(GameClockScript.format_duration(80.0), "1 h 20")
+	assert_eq(GameClockScript.format_duration(24 * 60.0), "1 d")
+	assert_eq(GameClockScript.format_duration(52 * 60.0), "2 d 4 h")
+	assert_eq(GameClockScript.format_duration(INF), "—")

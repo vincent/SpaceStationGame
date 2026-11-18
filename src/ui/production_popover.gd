@@ -3,7 +3,8 @@ extends PanelContainer
 ## Opens under a StatusBar chip: which modules produce / use that resource
 ## (or power, or who the crew are and where they work), with their rate and status. Rows that aren't running are
 ## dimmed and say why ("Unpowered", "Needs water", "Upgrade: Hydroponics").
-## Tapping a row focuses the module.
+## Tapping a row focuses the module. Under the title, a timer: when the next
+## unit arrives ("Next unit in 23 min") or when the stock runs out.
 
 ## The resource shown changed (&"" = closed); the status bar lights its chip.
 signal resource_changed(id: StringName)
@@ -18,6 +19,8 @@ const STATUS_TEXT: Dictionary[int, String] = {
 var resource: StringName = &""
 
 var _title: Label
+var _eta_row: HBoxContainer
+var _eta: Label
 var _list: VBoxContainer
 var _anchor: Control
 
@@ -36,6 +39,16 @@ func _ready() -> void:
 	add_child(vbox)
 	_title = UITheme.title_label("")
 	vbox.add_child(UITheme.sheet_header(_title, close))
+	_eta_row = HBoxContainer.new()
+	_eta_row.name = "Timer"
+	_eta_row.add_theme_constant_override("separation", UITheme.SPACE_S)
+	vbox.add_child(_eta_row)
+	_eta_row.add_child(UITheme.icon_rect(&"clock", UITheme.YELLOW, 20))
+	_eta = UITheme.label("", false, UITheme.TEXT)
+	_eta_row.add_child(_eta)
+	GameClock.minute_changed.connect(func(_m: int) -> void:
+		if visible:
+			refresh_timer())
 	_list = VBoxContainer.new()
 	_list.add_theme_constant_override("separation", 4)
 	vbox.add_child(_list)
@@ -52,6 +65,7 @@ func toggle(id: StringName, anchor: Control = null) -> void:
 		return
 	resource = id
 	_anchor = anchor
+	custom_minimum_size.x = minf(WIDTH, get_viewport_rect().size.x - 16.0)
 	refresh()
 	UITheme.fade(self, true)
 	_place.call_deferred()
@@ -91,12 +105,35 @@ func refresh() -> void:
 		if row.section != section:
 			section = row.section
 			var head := UITheme.label(section.to_upper(), true, UITheme.TEXT_DIM)
-			head.add_theme_font_size_override("font_size", UITheme.SMALL_FONT_SIZE - 3)
+			head.add_theme_font_size_override("font_size", UITheme.MIN_FONT_SIZE)
 			_list.add_child(head)
 		_list.add_child(_make_row(row))
+	refresh_timer()
 	if rows.is_empty():
 		_list.add_child(UITheme.label("No crew yet: traders bring drifters looking for a bunk."
 			if resource == StatusBar.CREW else "Nothing makes or uses it yet.", true, UITheme.TEXT_DIM))
+
+
+## The timer line of a resource: "Next unit in 23 min", "Runs out in 5 h",
+## or "" (power, crew, nothing changing).
+static func timer_text(id: StringName) -> String:
+	if id == StatusBar.POWER or id == StatusBar.CREW or id == &"":
+		return ""
+	var rate: float = Production.rates(GameState.station, GameState.stock).get(id, 0.0)
+	var amount := GameState.stock.amount(id)
+	var eta := Production.eta_minutes(amount, rate)
+	if eta == INF or absf(rate) < 0.005:
+		return ""
+	if rate > 0.0:
+		return "Next unit in %s" % GameClock.format_duration(eta)
+	return "Runs out in %s" % GameClock.format_duration(eta)
+
+
+func refresh_timer() -> void:
+	var text := timer_text(resource)
+	_eta_row.visible = text != ""
+	_eta.text = text
+	_eta.add_theme_color_override("font_color", UITheme.DANGER if text.begins_with("Runs") else UITheme.TEXT)
 
 
 ## Rows {section, uid, text, running} for a resource (see Production.rows_for).

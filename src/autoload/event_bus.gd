@@ -11,6 +11,15 @@ signal interaction_requested(interactable: Interactable)
 signal interactable_tapped(interactable: Interactable)
 ## Short message to show the player ("Not enough food").
 signal toast(message: String)
+## Like `toast`, with a style: &"info", &"success" (something got done) or
+## &"warning".
+signal notice(message: String, kind: StringName)
+## Items arrived (salvage, trade, production, rewards). `source` is the object
+## or module they came from when known (the HUD flies them from there).
+signal reward(items: Dictionary, source: Node3D)
+## The HUD's opaque panels moved: `free_rect` is the screen area (UI pixels)
+## still showing the world. The camera frames the focused room inside it.
+signal hud_insets_changed(free_rect: Rect2)
 ## A save was loaded or a new game started; UI should refresh everything.
 signal game_reset
 ## A module got the camera's focus (room view target).
