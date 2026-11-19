@@ -30,8 +30,8 @@ script = ExtResource("1_main")
 
 [node name="KeyLight" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.81915, 0.46985, -0.32899, 0, 0.57358, 0.81915, 0.57358, -0.67101, 0.46985, 0, 12, 0)
-light_color = Color(0.72, 0.82, 1, 1)
-light_energy = 0.75
+light_color = Color(1, 0.965, 0.918, 1)
+light_energy = 0.1
 shadow_enabled = true
 
 [node name="Station" type="Node3D" parent="."]

@@ -41,6 +41,9 @@ LIGHT_Z = 2.1
 DOOR = {1: (1.0, 2.0), 2: (1.6, 2.4), 3: (3.4, 2.4)}
 # collar colour per hatch size: you can read a slot's size from the art
 COLLAR = {1: "cyan", 2: "neon", 3: "violet"}
+# canopy style: opaque walls up to here, glass above. == CutawayController.CUT_HEIGHT,
+# so the cutaway removes exactly the glass and the walls stay.
+GLASS_Z = 1.15
 WALKABLE = ".PLDBKSCTG" + "abcdefghijklmnopqrstuvwxyz"
 LETTERS = "abcdefghijklmnopqrstuvwxyz"
 
@@ -173,6 +176,160 @@ class Module:
         faces = core.rounded_band(mb, x0, x1, y0, y1, z0, z1, radii, grow=grow)
         core.paint(mb, faces, C[color], mask(0.3, 0, 1))
         return faces
+
+    # ------------------------------------------------------------ canopy style
+    def canopy_tube(self, x0, x1, y1, z1=3.4, kb=0.45, kt=1.3, nose=(1.0, 1.0),
+                    squeeze=(0.72, 0.85), ribs=(), thick=WALL, strut=0.2, glow=0.0,
+                    glass="canopy", frame=True):
+        """Glass-canopy tube centred on y = 0 (half width `y1`): octagonal section,
+        ivory below GLASS_Z, glass above (cut away in room view), chamfered noses
+        beyond x0..x1, a gold stripe along the wall top and a white strut frame
+        (`frame`: never cut, always visible). Ribs at x0, x1 and `ribs`.
+        Returns the hull piece index."""
+        y0, z0 = -y1, KEEL
+        stations = sorted({x0, x1, *ribs})
+
+        def body(mb):
+            faces = core.chamfer_hull(mb, x0, x1, y0, y1, z0, z1, kb, kt, GLASS_Z, nose,
+                                      squeeze, stations)
+            for f in faces:
+                if abs(f.normal.x) > 0.95 or f.calc_center_median().z < GLASS_Z:
+                    core.paint(mb, [f], C["ivory"], mask(0.2))
+                else:
+                    core.paint(mb, [f], C[glass], mask(0.02, glow, 0 if glass == "canopy" else 1))
+        hull = self.piece(body, thick=thick)
+
+        def stripe(mb):
+            lo, hi = GLASS_Z - 0.34, GLASS_Z - 0.1
+            for sy in (1, -1):
+                box(mb, (x0, sy * (y1 - 0.05), lo), (x1, sy * (y1 + 0.06), hi), C["trim_gold"], mask(0.3))
+                for xa, n in ((x0, -nose[0]), (x1, nose[1])):
+                    if n:
+                        a = Vector((xa, sy * (y1 + 0.03), (lo + hi) / 2))
+                        py, pz = core.nose_point((sy * y1, (lo + hi) / 2), z0, squeeze)
+                        core.beam(mb, a, (xa + n, py + sy * 0.03, pz), hi - lo, C["trim_gold"], mask(0.3))
+        self.piece(stripe, massing=False, name="_stripe")
+
+        def struts(mb):
+            prof = core.chamfer_profile(y0, y1, z0, z1, kb, kt, GLASS_Z, grow=strut / 2)[3:9]
+            col, msk = C["strut"], mask(0.15)
+
+            def chain(x, pts):
+                for p, q in zip(pts, pts[1:]):
+                    core.beam(mb, (x, *p), (x, *q), strut, col, msk)
+            for py, pz in prof:                                   # rails
+                core.beam(mb, (x0, py, pz), (x1, py, pz), strut, col, msk)
+            for x in stations:                                    # ribs
+                chain(x, prof)
+            for xa, n in ((x0, -nose[0]), (x1, nose[1])):       # noses
+                if not n:
+                    continue
+                small = [core.nose_point(p, z0, squeeze) for p in prof]
+                for p, q in zip(prof, small):
+                    core.beam(mb, (xa, *p), (xa + n, *q), strut, col, msk)
+                chain(xa + n, small)
+        if frame:
+            self.frame(struts)
+        return hull
+
+    def canopy_polygon(self, pts, z1=3.6, kb=0.45, kt=1.2, roof=None, thick=WALL,
+                       strut=0.2, spokes=False):
+        """Glass-canopy room over a plan polygon (CCW, Blender XY): ivory walls below
+        GLASS_Z, glass above, gold band, white strut frame along every step. `roof` =
+        [(inset, z), ...] above the wall top (default: one chamfer of `kt` up to z1;
+        give several rings for a dome). `spokes`: struts from the top ring to the
+        centre. Returns the hull piece index."""
+        z0 = KEEL
+        upper = roof or [(kt, z1)]
+        wall_top = z1 - kt if roof is None else roof[0][1] - 0.9
+        steps = [(kb, z0), (0.0, z0 + kb), (0.0, GLASS_Z), (0.0, wall_top)] + list(upper)
+
+        def body(mb):
+            faces = core.polygon_hull(mb, pts, steps)
+            for f in faces:
+                if f.calc_center_median().z < GLASS_Z:
+                    core.paint(mb, [f], C["ivory"], mask(0.2))
+                else:
+                    core.paint(mb, [f], C["canopy"], mask(0.02))
+        hull = self.piece(body, thick=thick)
+
+        def band(mb):
+            faces = core.polygon_band(mb, pts, GLASS_Z - 0.34, GLASS_Z - 0.1)
+            core.paint(mb, faces, C["trim_gold"], mask(0.3))
+        self.piece(band, massing=False, name="_band")
+
+        def frame(mb):
+            col, msk = C["strut"], mask(0.15)
+            rings = [[Vector((x, y, z)) for x, y in core.offset_polygon(pts, inset - strut / 2)]
+                     for inset, z in steps[2:]]
+            for ring in rings:
+                for i in range(len(ring)):
+                    core.beam(mb, ring[i - 1], ring[i], strut, col, msk)
+            for a, b in zip(rings, rings[1:]):
+                for p, q in zip(a, b):
+                    core.beam(mb, p, q, strut, col, msk)
+            if spokes:
+                top = rings[-1]
+                c = sum(top, Vector()) / len(top)
+                for p in top:
+                    core.beam(mb, p, c, strut, col, msk)
+        self.frame(frame)
+        return hull
+
+    def portholes(self, xs, y1, z=0.5, r=0.34, sides=(1, -1)):
+        """Octagonal amber portholes on the side walls (y = +-y1) of a canopy tube,
+        navy rims; they glow when powered (G mask)."""
+        def build(mb):
+            for sy in sides:
+                out = Vector((0, sy, 0))
+                for x in xs:
+                    at = Vector((x, sy * (y1 - 0.02), z))
+                    core.prism_ring(mb, at, out, r + 0.1, r - 0.02, 0.1, C["navy"], mask(0.3))
+                    mb.cyl(r, 0.08, at + out * 0.03, (90, 0, 0), C["amber"], mask(0.0, 1.0), seg=8)
+        self.piece(build, massing=False, name="_portholes")
+
+    def porthole_at(self, spots, r=0.34):
+        """Octagonal amber portholes at [(position, outward normal)] (glow when powered)."""
+        def build(mb):
+            for at, out in spots:
+                at, out = Vector(at), Vector(out).normalized()
+                core.prism_ring(mb, at - out * 0.02, out, r + 0.1, r - 0.02, 0.1, C["navy"], mask(0.3))
+                mb.cyl(r, 0.08, at + out * 0.02, out.to_track_quat("Z", "Y").to_euler(), C["amber"],
+                       mask(0.0, 1.0), seg=8)
+        self.piece(build, massing=False, name="_portholes")
+
+    def frame(self, build):
+        """Exterior structure that is never cut and always visible (canopy struts)."""
+        mb = MB()
+        build(mb)
+        return mb.to_object("frame", self.coll, self.mats)
+
+    def port(self, letter, pieces, face, depth=0.4, plate=2.1):
+        """Canopy-style docking port: an octagonal bulkhead plate on the hull face,
+        a navy tube stub and a band coloured by hatch size, then the doorway
+        (hole through `pieces` + the port, slot marker beyond the stub). `face` =
+        hull surface beyond the room boundary at the door."""
+        letter = letter.upper()
+        cs = self.cells(letter.lower())
+        if not cs:
+            self.errors.append("slot %s: no '%s' in the layout" % (letter, letter.lower()))
+            return
+        size = self.sizes.get(letter, 2)
+        ox, oz = self.outward(*cs[0])
+        out = Vector((ox, -oz, 0))
+        centre = sum((self.cell(c, r) for c, r in cs), Vector()) / len(cs)
+        w, h = DOOR[size]
+        r_in = math.hypot(w / 2, h / 2) / math.cos(math.pi / 8) + 0.08  # door fits inside
+        at = centre - out * (CELL / 2) + out * face + Vector((0, 0, h / 2))
+
+        def build(mb):
+            core.prism_ring(mb, at - out * 0.05, out, max(plate, r_in + 0.4), r_in, 0.2, C["ivory"], mask(0.2))
+            core.prism_ring(mb, at, out, r_in + 0.2, r_in, depth, C["navy"], mask(0.3))
+            core.prism_ring(mb, at + out * (depth * 0.55), out, r_in + 0.3, r_in, depth * 0.3,
+                            C[COLLAR[size]], mask(0.3))
+        p = self.piece(build, massing=False, name="_port")
+        pieces = list(pieces) if isinstance(pieces, (list, tuple)) else [pieces]
+        self.doorway(letter, pieces + [p], face=face + depth, collar=False, size=size)
 
     def hole(self, piece, mn, mx):
         """Cut a box out of a hull piece (windows, open hatches)."""
@@ -540,4 +697,4 @@ class Module:
 
 
 __all__ = ["Module", "box", "MB", "C", "mask", "HULL", "INT", "EMI", "CELL", "WALL", "KEEL", "HEADROOM",
-           "DOOR", "Matrix", "Vector", "core"]
+           "DOOR", "GLASS_Z", "Matrix", "Vector", "core"]

@@ -501,3 +501,27 @@ func test_ghosts_only_in_station_view() -> void:
 	main.show_station_view()
 	await wait_until(func() -> bool: return camera.t < 0.01, 3.0)
 	assert_true(ghosts.visible, "station view shows them")
+
+
+## Regression: the lab's furniture blocks once split it in two (B unreachable from A).
+func test_walk_through_the_lab_into_storage() -> void:
+	var st := GameState.station
+	var wreck := station.find_module(&"wreck_core")
+	GameState.give({&"scrap_metal": 200})
+	GameState.repair_module(wreck.uid)
+	var hub := GameState.build_module(&"hub_x", GameState.build_module(&"corridor", wreck.uid, &"B"), &"B")
+	assert_gt(hub, 0)
+	var lab := 0
+	for slot in st.free_slots(hub):
+		if st.attach_error(&"lab", hub, slot) == "":
+			lab = GameState.build_module(&"lab", hub, slot)
+			break
+	assert_gt(lab, 0, "a lab fits on the cross hub")
+	var storage := GameState.build_module(&"storage", lab, &"B")
+	assert_gt(storage, 0, "storage on the lab's far hatch")
+	await wait_seconds(0.8)  # arrival animations + navigation map sync
+	var lab_module := station.get_module(lab)
+	var storage_module := station.get_module(storage)
+	var start := lab_module.interior.to_global(lab_module.interior.cell_to_world(Vector2i(1, 2)))
+	var end := storage_module.interior.to_global(storage_module.interior.cell_to_world(Vector2i(2, 2)))
+	assert_true(_has_path(start, end), "walk from the lab's A end into the storage module")

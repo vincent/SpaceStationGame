@@ -519,6 +519,7 @@ func _build_lights() -> void:
 		light.light_color = light_color
 		light.omni_range = CELL * 3.4
 		light.light_energy = LIGHT_ENERGY
+		light.light_cull_mask &= ~Layers.RENDER_EXTERIOR
 		light.add_to_group(&"interior_light")
 		root.add_child(light)
 		var card := MeshInstance3D.new()
@@ -645,8 +646,9 @@ func _build_parts() -> void:
 
 
 ## Imported art besides hull and parts: greebles (structure, cut by the
-## cutaway, hidden in station view) and prop_* (interior: never cut, hidden
-## while the hull is closed). `cut_box` only defines the cut region.
+## cutaway, hidden in station view), prop_* (interior: never cut, hidden
+## while the hull is closed) and frame* (canopy struts: never cut, always
+## visible). `cut_box` only defines the cut region.
 func _style_art() -> void:
 	_art_greebles.clear()
 	_cut_box = get_node_or_null(^"cut_box") as MeshInstance3D
@@ -661,6 +663,7 @@ func _style_art() -> void:
 			continue
 		var child_name := String(child.name)
 		var is_prop := child_name.begins_with("prop_")
+		var is_frame := child_name.begins_with("frame")
 		if is_prop:
 			child.add_to_group(&"interior_prop")
 		elif child_name.begins_with("greebles"):
@@ -672,8 +675,10 @@ func _style_art() -> void:
 			var mesh := node as MeshInstance3D
 			if not mesh.visible:  # "-nav" sources are hidden by the import script
 				continue
-			mesh.material_override = prop_mat if is_prop else cut_mat
-			if not is_prop:
+			mesh.material_override = prop_mat if is_prop or is_frame else cut_mat
+			if is_frame:
+				mesh.layers = Layers.RENDER_EXTERIOR
+			if not (is_prop or is_frame):
 				_cut_geometry.append(mesh)
 
 

@@ -168,7 +168,7 @@ func _add_floor(cells: Array[Vector3], collision_only: Array[Vector3] = []) -> v
 		return
 	var tile := BoxMesh.new()
 	tile.size = Vector3(CELL - 0.06, FLOOR_THICKNESS, CELL - 0.06)
-	tile.material = ToonMaterials.get_material(Palette.STEEL, 0.0, false)
+	tile.material = ToonMaterials.get_material(Palette.FLOOR, 0.0, false)
 
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D

@@ -3,6 +3,7 @@
 *.translation
 export_credentials.cfg
 *.tmp
+__pycache__
 
 # Local tooling
 .godot-bin/

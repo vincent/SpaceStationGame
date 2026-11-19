@@ -217,17 +217,19 @@ func _show_marker(pos: Vector3) -> void:
 	tween.tween_callback(tap_marker.hide).set_delay(0.15)
 
 
-## Global darkness: low ambient and a cold key light, so unpowered modules
-## read as near-black silhouettes with a rim; interior lights do the rest.
+## Soft, neutral scene light (the canopy-style mockups): a warm-white key
+## light and a bright grey-blue ambient, so every face reads in three tones
+## (top light, sides mid, shadow side still light); interior lights add warmth.
 func _setup_environment() -> void:
 	var env := Environment.new()
 	# The starfield itself is drawn by the camera's Backdrop node.
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Palette.NIGHT
+	env.background_color = Palette.SPACE
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Palette.DEEP_BLUE.lerp(Palette.VIOLET, 0.35)
-	env.ambient_light_energy = 0.55
+	env.ambient_light_color = Palette.AMBIENT
+	env.ambient_light_energy = 1.7
 	env.glow_enabled = true
 	env.glow_intensity = 0.6
 	env.glow_bloom = 0.0
 	$WorldEnvironment.environment = env
+

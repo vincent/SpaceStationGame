@@ -133,3 +133,32 @@ func test_crew_data() -> void:
 			assert_false(def.production.is_empty(), "%s: jobs only make sense on producers" % id)
 	assert_eq(db.get_module(&"hab_drum").crew_beds(), 2)
 	assert_eq(db.get_module(&"agri_bay").jobs, 2)
+
+
+## Furniture (B, K, C, S, T, G) and "#" cells block the navmesh: every doorway must
+## still reach every other one over free floor, or the castaway can't walk through.
+func test_every_doorway_reaches_the_others() -> void:
+	var free := StationBuilder.FREE_FLOOR + StationBuilder.SLOT_LETTERS
+	for id in db.module_ids():
+		var grid := StationBuilder.parse(db.get_module(id).layout)
+		var doors: Array[Vector2i] = []
+		for r in grid.size():
+			for c in grid[r].length():
+				if StationBuilder.SLOT_LETTERS.contains(grid[r][c]):
+					doors.append(Vector2i(c, r))
+		if doors.size() < 2:
+			continue
+		var seen: Dictionary[Vector2i, bool] = {doors[0]: true}
+		var todo: Array[Vector2i] = [doors[0]]
+		while not todo.is_empty():
+			var cell: Vector2i = todo.pop_back()
+			for d: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+				var n := cell + d
+				if seen.has(n) or n.y < 0 or n.y >= grid.size() or n.x < 0 or n.x >= grid[n.y].length():
+					continue
+				if free.contains(grid[n.y][n.x]):
+					seen[n] = true
+					todo.append(n)
+		for door in doors:
+			assert_true(seen.has(door), "%s: doorway '%s' reachable from '%s'" % [
+				id, grid[door.y][door.x], grid[doors[0].y][doors[0].x]])

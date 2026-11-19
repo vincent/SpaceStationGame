@@ -8,5 +8,9 @@ const INTERACTABLE := 1 << 2   # Area3D pick shapes of station objects
 const WALLS := 1 << 3          # walls: block movement, ignored by tap raycasts
 const MODULE_PICK := 1 << 4    # Area3D boxes of whole modules / ghost slots (station view taps)
 
+## Render layers (VisualInstance3D.layers, not physics).
+## Exterior frames (canopy struts): lit by the sun only, never by interior lights.
+const RENDER_EXTERIOR := 1 << 1
+
 ## What a tap on the screen can hit.
 const TAP_MASK := WORLD | INTERACTABLE

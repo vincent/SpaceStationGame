@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="ModuleDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/module_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"power_deck"
+display_name = "Power deck"
+description = "Battery pods, a caged reactor core and two solar wings. Power for a growing station."
+scene_path = "res://src/station/modules/power_deck.tscn"
+kind = &"module"
+size_class = 2
+buildable = true
+build_cost = Dictionary[StringName, int]({&"scrap_metal": 16})
+build_minutes = 240.0
+repair_cost = Dictionary[StringName, int]({&"scrap_metal": 2})
+power_output = 4.0
+power_draw = 0.0
+slots = Dictionary[StringName, PackedStringArray]({&"A": PackedStringArray("module")})
+attach_slot = &"A"
+layout = "##########
+#.##.##.C#
+a........#
+a........#
+#.##.##..#
+##########"
+slot_frames = Dictionary[StringName, Vector3]({&"A": Vector3(-9.55, -0.0, -90.0)})
+massing = Array[Rect2]([Rect2(-9.0, -4.3, 18.0, 8.6), Rect2(-6.5, -10.5, 13.0, 6.325)])
+slot_sizes = Dictionary[StringName, int]({})

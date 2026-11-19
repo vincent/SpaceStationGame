@@ -37,6 +37,40 @@ Hatch collars are colour-coded on the art: S cyan, M yellow, L violet.
 | 9 | `promenade` | Promenade (DS9, B5 Zocalo) | Ø12 × 25 m | L-P | 1 L-P, 2 M-P | | Economy and culture: stalls, bar, shrine | Wide drum, long panoramic window band, neon shop signs | todo |
 | 10 | `gravity_ring` | Gravity Ring (Space Station V, Stanford torus) | Ø70 m ring, 4 spokes | L-P (hub) | 1 L-P (axis) | 2 on the hub | Late habitat: gravity, health & morale | Slowly turning wheel on spokes, lit windows round the rim | todo (budget > 15k?) |
 
+### Canopy style (experiment, branch `module-style-canopy`)
+
+Glass-roofed modules from the mockups (`~/Downloads/images`, numbers below): ivory walls up
+to 1.15 m (= the cut height), a glass canopy on a white strut frame (`frame`: never cut,
+always visible), gold stripe, navy accents, octagonal ports and amber portholes. The
+cutaway removes the glass; walls and frame stay. Kit: `Module.canopy_tube` (faceted tube),
+`canopy_polygon` (any plan polygon, roof chamfer or dome rings), `port`, `portholes` /
+`porthole_at`. Furniture blocks stand on interior `#` cells (blocked, no floor tile) with a
+deck plate prop. Gameplay values copy the nearest existing role; their own mechanics
+(storage, workshop, lab, mess, plaza) are not designed yet.
+
+Station view of the whole set: `tools/screenshot.sh build/c.png --layout=demo --build=hub_oct,greenhouse,dorm,hub_dome,storage,workshop,lab,cargo,commons,mess,refinery,briefing,plaza,power_deck --view=station --focus=hub_oct --power=all --story=off`
+
+| id | Module (mockup) | Shell | Size (m) | Attach | Offers | Mount | Role (data) | Tris |
+|---|---|---|---|---|---|---|---|---|
+| `greenhouse` | Greenhouse (489) | tube | 18 × 8.6 | M-P | 1 M-P | lamp_rack | food +0.15 / water −0.15, 2 jobs | 1.6k |
+| `dorm` | Dormitory (491) | tube | 18 × 8.6 | M-P | 1 M-P | antenna | 6 bunks (crew beds), console | 2.8k |
+| `cargo` | Cargo hold (502) | tube, dead end | 18 × 8.6 | M-P | — | crane | decorative storage | 2.8k |
+| `storage` | Storage module (494–496 tubes) | tube | 18 × 8.6 | M-P | 1 M-P | crane | decorative storage | 1.7k |
+| `workshop` | Workshop (497) | tube | 18 × 8.6 | M-P | 1 M-P | crane | benches, console | 2.4k |
+| `lab` | Lab (498) | tube | 18 × 8.6 | M-P | 1 M-P | dish | holo table, analysers, console | 1.9k |
+| `commons` | Commons (490) | tube + opaque dome | 18 × 8.6 | M-P | 1 M-P | lantern | lounge | 2.0k |
+| `power_deck` | Power deck (493) | low opaque tube, wings | 18 × 8.6 (+ wings) | M-P | — | wing | power +4.0, console | 1.8k |
+| `hub_oct` | Octagon hub (492) | octagon | 9.2 × 9.2 | M-P | 3 M-P | beacon | junction, console | 2.4k |
+| `hub_dome` | Dome hub (494–496 core) | octagon + glass dome | 9.2 × 9.2 | M-P | 2 M-P | lantern | junction, console | 2.5k |
+| `briefing` | Briefing room (500) | square, pyramid roof | 8.6 × 8.6 | M-P | 2 M-P | mast | seat rows, console | 1.8k |
+| `refinery` | Refinery (501) | hexagon | 9.2 × 10.6 | M-P | 1 M-P | chimney | water +0.2, 1 job, console | 1.3k |
+| `mess` | Mess hall (499) | wedge (cut triangle) | 10.6 × 10.6 | M-P | 2 M-P | vent | galley (K), tables | 1.9k |
+| `plaza` | Plaza (504) | five-armed star | 16.5 × 17.4 | M-P | — | spire | pool, servers, bar | 2.2k |
+
+Deviations from the mockups: ports only on flats facing ±X / ±Y (the triangle and hexagon get
+two or three of them, not one per side); the plaza's arms meet at sharp inner corners; the
+tall octagonal columns of the mockups are neighbours, not modelled.
+
 Early, cheaper procedural modules stay: `hab_pod`, `agri_bay`, `solar_array`.
 
 ## Deferred mechanics

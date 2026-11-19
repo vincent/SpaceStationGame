@@ -302,12 +302,15 @@ func _cli_view(main: Node, module_id: String, view: String) -> void:
 ## Attaches a module on the first free slot that takes it (no cost, no time).
 func _cheat_build(module_id: StringName) -> void:
 	var st := GameState.station
+	var reasons: PackedStringArray = []
 	for uid in st.uids():
 		for slot in st.free_slots(uid):
-			if st.attach_error(module_id, uid, slot) == "":
+			var error := st.attach_error(module_id, uid, slot)
+			if error == "":
 				st.add_module(module_id, uid, slot, StationState.State.REPAIRED, 0.3, false)
 				return
-	push_warning("--build: no free slot for '%s'" % module_id)
+			reasons.append("%s.%s: %s" % [st.get_def(uid).id, slot, error])
+	push_warning("--build: no free slot for '%s' (%s)" % [module_id, "; ".join(reasons)])
 
 
 ## A branched station for screenshots: wreck B -> corridor -> cross hub,

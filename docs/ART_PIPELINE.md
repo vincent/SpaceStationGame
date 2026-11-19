@@ -97,6 +97,18 @@ briefs: [MODULE_CATALOG.md](MODULE_CATALOG.md).
   floor (Blender z 0). `piece()` closed solids (merged into one `hull`), `doorway()` (hole
   + size-coloured collar + `slot_X` from the layout letter), `light`, `mount`, `part`,
   `prop`, `greeble`, `pipe`, `cut_box`.
+- **Canopy style** (glass-roofed modules, `art/modules/greenhouse.py`): `canopy_tube()`
+  = faceted octagonal tube (`core.chamfer_hull`), ivory below `GLASS_Z` (1.15 m = the cut
+  height) and glass above, chamfered noses, gold stripe, and a `frame` of struts; `port()`
+  = octagonal docking collar (navy stub, band coloured by hatch size) + the doorway.
+  `canopy_polygon(pts, roof=...)` = the same look over any plan polygon (`core.regular_polygon`,
+  or a hand-made outline: wedge, star), roof as one chamfer or several dome rings.
+  The cutaway removes the glass; walls and frame stay. Keep the wall top (where the
+  roof starts sloping) above the 2.4 m door, or the door hole cuts the roof. Furniture
+  that should block walking goes on interior `#` cells (no floor tile: add a deck plate);
+  keep a path of side-by-side free cells between every pair of doorways (cells touching
+  only at a corner don't connect; `test_every_doorway_reaches_the_others` checks it).
+  Stacked solids must overlap, never touch face to face (the room check counts surfaces).
 - **Checks** (any failure = non-zero exit): watertight hull, triangle budget, palette
   colours only, every layout letter has a doorway, slot yaw a multiple of 90° and
   outside the footprint, the nav door point (1.15 m inside) on a walkable cell, and
@@ -144,6 +156,7 @@ Set `res://src/tools/module_import.gd` as the glTF's **Import Script**
 | `cut_box` | cut region | A box mesh (hidden in game). When present, the cutaway opens only this box (its X/Z extent and top; the bottom is always floor + 1.15 m) instead of the whole module: e.g. one room of a big wreck. |
 | `greebles*` | detail group | A node holding greeble meshes (cut material); hidden in station view like the procedural `Detail`. |
 | `prop_<name>` | interior prop | Never cut, drawn only while the module is open (group `interior_prop`). Keep props out of furniture cells and doorways. |
+| `frame*` | exterior frame | Never cut, always visible (not hidden in station view): the canopy struts of glass-roofed modules (`Module.canopy_tube`), which stay when the cutaway removes the glass. |
 
 Everything else is treated as structure (cut material).
 

@@ -37,6 +37,9 @@ PAL = {
     "gold": "#C9A227", "solar": "#24356E", "leaf": "#4FA65A", "leaf_dk": "#2E6B3E",
     "fabric": "#DCD3BE", "fabric_dk": "#B9AE96", "hot": "#E2552D", "glass_lt": "#3A5A8C",
     "colony": "#9A8FC0", "colony_dk": "#5E5585", "white": "#F4F1EA", "mint": "#5EF2A0",
+    # canopy style (glass-roofed modules, docs/MODULE_CATALOG.md)
+    "ivory": "#D8D3CC", "navy": "#3E4A63", "trim_gold": "#D99A2B", "canopy": "#8F92B4",
+    "deck": "#8B91AD", "soil": "#5B4036", "strut": "#E4DFD8",
 }
 C = {k: hexcol(v) for k, v in PAL.items()}
 NOMASK = (0.0, 0.0, 0.0, 1.0)
@@ -429,6 +432,119 @@ def rounded_hull(mb, x0, x1, y0, y1, z0, z1, radii, dome=(0.0, 0.0), squeeze=0.4
     loops = [[mb.bm.verts.new((x, cy + (py - cy) * k, cz + (pz - cz) * k)) for py, pz in prof]
              for x, k in xs]
     return _loft(mb, loops)
+
+
+# ================================================================ chamfered hulls (canopy style)
+def chamfer_profile(y0, y1, z0, z1, kb, kt, split, grow=0.0):
+    """Octagonal section (chamfered rectangle) in YZ: keel chamfers `kb`, roof
+    chamfers `kt`, plus a vertex on each vertical side at z `split` (where the
+    glass canopy starts). `grow` offsets it outward. Always 10 points."""
+    y0, y1, z0, z1 = y0 - grow, y1 + grow, z0 - grow, z1 + grow
+    return [(y0 + kb, z0), (y1 - kb, z0), (y1, z0 + kb), (y1, split), (y1, z1 - kt),
+            (y1 - kt, z1), (y0 + kt, z1), (y0, z1 - kt), (y0, split), (y0, z0 + kb)]
+
+
+def nose_point(p, z0, k):
+    """Section point `p` (y, z) shrunk for a chamfered end nose: y towards 0 by
+    k[0], z towards the keel `z0` by k[1] (the floor line stays level)."""
+    return (p[0] * k[0], z0 + (p[1] - z0) * k[1])
+
+
+def chamfer_hull(mb, x0, x1, y0, y1, z0, z1, kb, kt, split, nose=(1.0, 1.0),
+                 squeeze=(0.72, 0.85), stations=()):
+    """Faceted tube: `chamfer_profile` lofted along X, full section from x0 to x1
+    (seams at `stations`), chamfered noses `nose` m beyond each end, scaled by
+    `squeeze` (y, z). Centred on y = 0. Watertight. Returns its faces."""
+    prof = chamfer_profile(y0, y1, z0, z1, kb, kt, split)
+    small = [nose_point(p, z0, squeeze) for p in prof]
+    xs = [(x0 - nose[0], small)] if nose[0] else []
+    xs += [(x, prof) for x in sorted({x0, x1, *[x for x in stations if x0 < x < x1]})]
+    if nose[1]:
+        xs.append((x1 + nose[1], small))
+    loops = [[mb.bm.verts.new((x, py, pz)) for py, pz in pr] for x, pr in xs]
+    return _loft(mb, loops)
+
+
+def offset_polygon(pts, d):
+    """Mitred offset of a counter-clockwise plan polygon [(x, y)]: d > 0 moves the
+    edges inward by d, d < 0 outward. Works on concave outlines (stars) too."""
+    n = len(pts)
+    out = []
+    for i in range(n):
+        p0, p1, p2 = Vector(pts[i - 1]), Vector(pts[i]), Vector(pts[(i + 1) % n])
+        e0, e1 = (p1 - p0).normalized(), (p2 - p1).normalized()
+        n0, n1 = Vector((-e0.y, e0.x)), Vector((-e1.y, e1.x))   # inward for CCW
+        b = n0 + n1
+        b = b.normalized() if b.length > 1e-6 else n0
+        out.append(tuple(p1 + b * (d / max(0.25, b.dot(n0)))))
+    return out
+
+
+def regular_polygon(n, apothem, phase=0.0):
+    """CCW n-gon with flats at distance `apothem`; phase 0 puts a flat facing +X."""
+    r = apothem / math.cos(math.pi / n)
+    return [(r * math.cos(phase + math.pi / n + 2 * math.pi * i / n),
+             r * math.sin(phase + math.pi / n + 2 * math.pi * i / n)) for i in range(n)]
+
+
+def polygon_hull(mb, pts, steps):
+    """Vertical prism over the plan polygon `pts` with a stepped section: `steps` =
+    [(inset, z), ...] bottom to top (keel chamfer, walls, roof chamfer or dome rings).
+    Watertight. Returns its faces."""
+    loops = [[mb.bm.verts.new((x, y, z)) for x, y in offset_polygon(pts, inset)]
+             for inset, z in steps]
+    return _loft(mb, loops)
+
+
+def polygon_band(mb, pts, lo, hi, grow=0.06, inset=0.05):
+    """Closed ring band around a polygon hull, from `inset` inside to `grow` outside."""
+    po, pi = offset_polygon(pts, -grow), offset_polygon(pts, inset)
+    rings = [[mb.bm.verts.new((x, y, z)) for x, y in pr]
+             for pr, z in ((po, lo), (po, hi), (pi, hi), (pi, lo))]
+    faces = []
+    n = len(pts)
+    for k in range(4):
+        a, b = rings[k], rings[(k + 1) % 4]
+        for i in range(n):
+            j = (i + 1) % n
+            faces.append(mb.bm.faces.new((a[i], a[j], b[j], b[i])))
+    bmesh.ops.recalc_face_normals(mb.bm, faces=faces)
+    return faces
+
+
+def prism_ring(mb, centre, axis, r_out, r_in, depth, color, msk=NOMASK, mat=HULL, n=8):
+    """Closed n-gon annulus around `axis` (flat at the bottom for n = 8), from
+    `centre` to `centre + axis * depth`."""
+    a = Vector(axis).normalized()
+    up = Vector((0, 0, 1))
+    side = up.cross(a).normalized()
+    c0 = Vector(centre)
+    rings = []
+    for r, d in ((r_out, 0.0), (r_out, depth), (r_in, depth), (r_in, 0.0)):
+        rings.append([mb.bm.verts.new(c0 + a * d + (side * math.cos(t) + up * math.sin(t)) * r)
+                      for t in (math.pi / n + 2 * math.pi * i / n for i in range(n))])
+    faces = []
+    for k in range(4):
+        p, q = rings[k], rings[(k + 1) % 4]
+        for i in range(n):
+            j = (i + 1) % n
+            faces.append(mb.bm.faces.new((p[i], p[j], q[j], q[i])))
+    bmesh.ops.recalc_face_normals(mb.bm, faces=faces)
+    paint(mb, faces, color, msk, mat)
+    return faces
+
+
+def beam(mb, a, b, w, color, msk=NOMASK, mat=HULL):
+    """Square beam w x w from a to b (ends extended by w / 2 so joints close)."""
+    a, b = Vector(a), Vector(b)
+    d = b - a
+    if d.length < 1e-4:
+        return set()
+    up = "Z" if abs(d.normalized().z) < 0.99 else "Y"
+    rot = d.normalized().to_track_quat("X", up).to_matrix().to_4x4()
+    v = bmesh.ops.create_cube(mb.bm, size=1.0)["verts"]
+    xf = Matrix.Translation((a + b) / 2) @ rot @ Matrix.Diagonal(Vector((d.length + w, w, w)).to_4d())
+    return mb._tag(v, xf, color, msk, mat)
 
 
 def rounded_band(mb, x0, x1, y0, y1, z0, z1, radii, grow=0.12, inset=0.08, seg=4):
