@@ -8,7 +8,7 @@ extends Node
 enum Phase { IDLE, WALKING, HOLDING }
 
 ## Real seconds without orders before a routine starts.
-const IDLE_SECONDS := 10.0
+const IDLE_SECONDS := 60.0
 ## Meal windows, [from, to) in hours.
 const MEAL_HOURS: Array[Vector2] = [Vector2(7, 9), Vector2(12, 14), Vector2(19, 21)]
 
