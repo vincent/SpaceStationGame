@@ -1,6 +1,6 @@
 """Module kit, core: palette, preview materials, mesh builder (MB), capsule-style
-rounded hulls, greeble kit. Copied from art/station_early/scripts/build_station.py
-(the early diorama keeps its own copy) and shared by every art/modules/<id>.py.
+rounded hulls, canopy-style chamfered hulls, greeble kit. Shared by every
+art/modules/<id>.py.
 
 Conventions: docs/ART_PIPELINE.md. Blender is Z up; Godot (x, y, z) = Blender (x, z, -y).
 """
@@ -40,6 +40,9 @@ PAL = {
     # canopy style (glass-roofed modules, docs/MODULE_CATALOG.md)
     "ivory": "#D8D3CC", "navy": "#3E4A63", "trim_gold": "#D99A2B", "canopy": "#8F92B4",
     "deck": "#8B91AD", "soil": "#5B4036", "strut": "#E4DFD8",
+    # weathered canopy style (the derelict wreck) and visitors
+    "ivory_old": "#ABA393", "navy_faded": "#4F5566", "gold_faded": "#9C7A3A",
+    "scorch": "#2A2420", "canopy_dk": "#3F4160", "strut_old": "#B3AC9F",
 }
 C = {k: hexcol(v) for k, v in PAL.items()}
 NOMASK = (0.0, 0.0, 0.0, 1.0)

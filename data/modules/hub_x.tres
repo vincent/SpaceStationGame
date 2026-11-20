@@ -21,3 +21,6 @@ attach_slot = &"A"
 layout = "#d#
 bLc
 #a#"
+slot_frames = Dictionary[StringName, Vector3]({&"A": Vector3(0.0, 2.55, 0.0), &"B": Vector3(-2.55, -0.0, -90.0), &"C": Vector3(2.55, -0.0, 90.0), &"D": Vector3(0.0, -2.55, 180.0)})
+massing = Array[Rect2]([Rect2(-2.0, -2.0, 4.0, 4.0)])
+slot_sizes = Dictionary[StringName, int]({})

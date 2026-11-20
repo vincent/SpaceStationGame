@@ -7,7 +7,7 @@ columns run along +X, ASCII rows along -Y. One cell = 2 m.
 
 A spec looks like:
 
-    ID = "hub_node"
+    ID = "hub_oct"
     LAYOUT = '''##c##
     a.L.b
     ...'''
@@ -72,6 +72,11 @@ def box(mb, a, b, color, msk=core.NOMASK, mat=HULL):
     the box turns inside out)."""
     a, b = Vector(a), Vector(b)
     return mb.box([min(a[i], b[i]) for i in range(3)], [max(a[i], b[i]) for i in range(3)], color, msk, mat)
+
+
+def _shift(mb, at):
+    if any(at):
+        bmesh.ops.translate(mb.bm, vec=Vector(at), verts=list(mb.bm.verts))
 
 
 class Module:
@@ -180,12 +185,14 @@ class Module:
     # ------------------------------------------------------------ canopy style
     def canopy_tube(self, x0, x1, y1, z1=3.4, kb=0.45, kt=1.3, nose=(1.0, 1.0),
                     squeeze=(0.72, 0.85), ribs=(), thick=WALL, strut=0.2, glow=0.0,
-                    glass="canopy", frame=True):
-        """Glass-canopy tube centred on y = 0 (half width `y1`): octagonal section,
-        ivory below GLASS_Z, glass above (cut away in room view), chamfered noses
-        beyond x0..x1, a gold stripe along the wall top and a white strut frame
-        (`frame`: never cut, always visible). Ribs at x0, x1 and `ribs`.
-        Returns the hull piece index."""
+                    glass="canopy", frame=True, wall="ivory", stripe="trim_gold",
+                    frame_color="strut", broken=0.0, at=(0.0, 0.0, 0.0)):
+        """Glass-canopy tube centred on y = 0 (half width `y1`), moved by `at`: octagonal section,
+        `wall` (ivory) below GLASS_Z, glass above (cut away in room view), chamfered
+        noses beyond x0..x1, a `stripe` (gold) along the wall top and a strut frame
+        (`frame`: never cut, always visible). Ribs at x0, x1 and `ribs`. `broken`:
+        share of glass panes painted dark (smashed, weathered style; the hull stays
+        watertight). Returns the hull piece index."""
         y0, z0 = -y1, KEEL
         stations = sorted({x0, x1, *ribs})
 
@@ -194,25 +201,27 @@ class Module:
                                       squeeze, stations)
             for f in faces:
                 if abs(f.normal.x) > 0.95 or f.calc_center_median().z < GLASS_Z:
-                    core.paint(mb, [f], C["ivory"], mask(0.2))
+                    core.paint(mb, [f], C[wall], mask(0.2))
                 else:
-                    core.paint(mb, [f], C[glass], mask(0.02, glow, 0 if glass == "canopy" else 1))
+                    self._paint_glass(mb, f, glass, glow, broken)
+            _shift(mb, at)
         hull = self.piece(body, thick=thick)
 
-        def stripe(mb):
+        def stripe_band(mb):
             lo, hi = GLASS_Z - 0.34, GLASS_Z - 0.1
             for sy in (1, -1):
-                box(mb, (x0, sy * (y1 - 0.05), lo), (x1, sy * (y1 + 0.06), hi), C["trim_gold"], mask(0.3))
+                box(mb, (x0, sy * (y1 - 0.05), lo), (x1, sy * (y1 + 0.06), hi), C[stripe], mask(0.3))
                 for xa, n in ((x0, -nose[0]), (x1, nose[1])):
                     if n:
                         a = Vector((xa, sy * (y1 + 0.03), (lo + hi) / 2))
                         py, pz = core.nose_point((sy * y1, (lo + hi) / 2), z0, squeeze)
-                        core.beam(mb, a, (xa + n, py + sy * 0.03, pz), hi - lo, C["trim_gold"], mask(0.3))
-        self.piece(stripe, massing=False, name="_stripe")
+                        core.beam(mb, a, (xa + n, py + sy * 0.03, pz), hi - lo, C[stripe], mask(0.3))
+            _shift(mb, at)
+        self.piece(stripe_band, massing=False, name="_stripe")
 
         def struts(mb):
             prof = core.chamfer_profile(y0, y1, z0, z1, kb, kt, GLASS_Z, grow=strut / 2)[3:9]
-            col, msk = C["strut"], mask(0.15)
+            col, msk = C[frame_color], mask(0.15)
 
             def chain(x, pts):
                 for p, q in zip(pts, pts[1:]):
@@ -228,38 +237,44 @@ class Module:
                 for p, q in zip(prof, small):
                     core.beam(mb, (xa, *p), (xa + n, *q), strut, col, msk)
                 chain(xa + n, small)
+            _shift(mb, at)
         if frame:
             self.frame(struts)
         return hull
 
     def canopy_polygon(self, pts, z1=3.6, kb=0.45, kt=1.2, roof=None, thick=WALL,
-                       strut=0.2, spokes=False):
-        """Glass-canopy room over a plan polygon (CCW, Blender XY): ivory walls below
-        GLASS_Z, glass above, gold band, white strut frame along every step. `roof` =
-        [(inset, z), ...] above the wall top (default: one chamfer of `kt` up to z1;
-        give several rings for a dome). `spokes`: struts from the top ring to the
-        centre. Returns the hull piece index."""
+                       strut=0.2, spokes=False, wall="ivory", stripe="trim_gold",
+                       frame_color="strut", glass="canopy", glow=0.0, broken=0.0,
+                       wall_top=None):
+        """Glass-canopy room over a plan polygon (CCW, Blender XY): `wall` (ivory)
+        below GLASS_Z, glass above, `stripe` (gold) band, strut frame along every
+        step. `roof` = [(inset, z), ...] above the wall top (default: one chamfer of
+        `kt` up to z1; give several rings for a dome). `wall_top`: where the vertical
+        walls end (default z1 - kt). `spokes`: struts from the top ring to the centre.
+        `broken`: share of glass faces painted dark (see canopy_tube). Returns the
+        hull piece index."""
         z0 = KEEL
         upper = roof or [(kt, z1)]
-        wall_top = z1 - kt if roof is None else roof[0][1] - 0.9
+        if wall_top is None:
+            wall_top = z1 - kt if roof is None else roof[0][1] - 0.9
         steps = [(kb, z0), (0.0, z0 + kb), (0.0, GLASS_Z), (0.0, wall_top)] + list(upper)
 
         def body(mb):
             faces = core.polygon_hull(mb, pts, steps)
             for f in faces:
                 if f.calc_center_median().z < GLASS_Z:
-                    core.paint(mb, [f], C["ivory"], mask(0.2))
+                    core.paint(mb, [f], C[wall], mask(0.2))
                 else:
-                    core.paint(mb, [f], C["canopy"], mask(0.02))
+                    self._paint_glass(mb, f, glass, glow, broken)
         hull = self.piece(body, thick=thick)
 
         def band(mb):
             faces = core.polygon_band(mb, pts, GLASS_Z - 0.34, GLASS_Z - 0.1)
-            core.paint(mb, faces, C["trim_gold"], mask(0.3))
+            core.paint(mb, faces, C[stripe], mask(0.3))
         self.piece(band, massing=False, name="_band")
 
         def frame(mb):
-            col, msk = C["strut"], mask(0.15)
+            col, msk = C[frame_color], mask(0.15)
             rings = [[Vector((x, y, z)) for x, y in core.offset_polygon(pts, inset - strut / 2)]
                      for inset, z in steps[2:]]
             for ring in rings:
@@ -275,6 +290,28 @@ class Module:
                     core.beam(mb, p, c, strut, col, msk)
         self.frame(frame)
         return hull
+
+    def _paint_glass(self, mb, f, glass, glow, broken):
+        """Canopy glass face; with `broken`, some panes are dark (smashed)."""
+        if broken and glass == "canopy" and self.rng.random() < broken:
+            core.paint(mb, [f], C["canopy_dk"], mask(0.3))
+        else:
+            core.paint(mb, [f], C[glass], mask(0.02, glow, 0 if glass == "canopy" else 1))
+
+    def decals(self, items, name="_decals"):
+        """Flat plates on the hull (scorch marks, streaks, patches, hatch panels):
+        [(centre, outward normal, width, height, colour[, mask])]. Each is a thin
+        closed box, centred on the surface, `width` along the surface horizontally."""
+        def build(mb):
+            for it in items:
+                at, out, w, h, col = it[:5]
+                msk = it[5] if len(it) > 5 else mask(0.4)
+                n = Vector(out).normalized()
+                rot = n.to_track_quat("Y", "Z").to_euler()
+                at = Vector(at)
+                mb.box(at - Vector((w / 2, 0.025, h / 2)), at + Vector((w / 2, 0.025, h / 2)),
+                       C[col], msk, rot=rot)
+        self.piece(build, massing=False, name=name)
 
     def portholes(self, xs, y1, z=0.5, r=0.34, sides=(1, -1)):
         """Octagonal amber portholes on the side walls (y = +-y1) of a canopy tube,

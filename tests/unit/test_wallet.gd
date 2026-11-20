@@ -54,7 +54,7 @@ func test_build_costs_come_from_the_stock() -> void:
 	GameState.give({&"scrap_metal": 20})
 	var wreck := GameState.station.find_module(&"wreck_core")
 	var before := GameState.count(&"scrap_metal")
-	assert_gt(GameState.build_module(&"agri_bay", wreck, &"B"), 0)
+	assert_gt(GameState.build_module(&"greenhouse", wreck, &"B"), 0)
 	assert_eq(GameState.count(&"scrap_metal"), before - 10)
 
 

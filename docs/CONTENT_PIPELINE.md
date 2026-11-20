@@ -61,8 +61,8 @@ exploded view reveals its part and applies its effects.
      mirrored with `part_mirror`.
    - Exploded-view direction: `explode_dir`, default the mount's up axis.
 
-A mount is an empty named `mount_<name>` in the module's Blender script
-(`art/station_early/scripts/build_station.py`, see `mount_roof_a`).
+A mount is an empty named `mount_<name>` in the module's kit spec
+(`m.mount("roof_a", ...)` in `art/modules/wreck_core.py`).
 Its **+Z (Blender) is the surface normal** (+Y in Godot); parts grow
 along it. For procedural modules, add a `Marker3D` named `mount_<name>`
 to the `.tscn` by hand.
@@ -183,7 +183,7 @@ the rest (power cells...) to the inventory. So `build_cost`, upgrade
 
 Modules make and use resources per game hour:
 
-- `ModuleDef.production` — e.g. agri bay `{food: 0.15, water: -0.15}`,
+- `ModuleDef.production` — e.g. greenhouse `{food: 0.15, water: -0.15}`,
   wreck core `{water: 0.3}`. Positive = output, negative = input.
 - `UpgradeDef.production` **adds** to its module's (a tier = a bigger
   upgrade, e.g. `agri_hydroponics` `{food: 0.2, water: -0.15}` + `power_draw 0.5`).
@@ -213,6 +213,6 @@ live net rate.
 2. Producer: `production` on the module `.tres` (or an upgrade's).
    `test_module_data` / `test_upgrade_definitions_are_valid` check that
    ids are bulk items and rates are non-zero.
-3. Try it: `tools/screenshot.sh build/p.png --build=agri_bay --power=all
+3. Try it: `tools/screenshot.sh build/p.png --build=greenhouse --power=all
    --stock=water:5 --popover=food --story=off`, or debug panel → Items →
    Give 5 (bulk items go to the stock).

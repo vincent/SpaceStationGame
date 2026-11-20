@@ -16,11 +16,11 @@ func before_each() -> void:
 	station.add_module(&"capsule", wreck, &"A", StationState.State.REPAIRED, 0.25, true)
 
 
-## A repaired agri bay on the wreck, plus a solar array so there's power.
+## A repaired greenhouse on the wreck, plus a solar array so there's power.
 func _agri(powered: bool = true) -> int:
 	station.repair(wreck)
 	station.add_module(&"solar_array", wreck, &"C", StationState.State.REPAIRED, 0.3, false)
-	var bay := station.add_module(&"agri_bay", wreck, &"B", StationState.State.REPAIRED, 0.3, false)
+	var bay := station.add_module(&"greenhouse", wreck, &"B", StationState.State.REPAIRED, 0.3, false)
 	if powered:
 		assert_true(station.set_powered(bay, true), "enough power for the bay")
 	return bay
@@ -73,7 +73,7 @@ func test_upgrade_production_adds_to_the_base() -> void:
 	assert_almost_eq(station.module_draw(bay), 2.0, 0.0001, "the tier draws more power")
 
 
-func test_chain_wreck_water_feeds_the_agri_bay_for_a_day() -> void:
+func test_chain_wreck_water_feeds_the_greenhouse_for_a_day() -> void:
 	_agri()
 	assert_true(station.set_powered(wreck, true))
 	for hour in 24:

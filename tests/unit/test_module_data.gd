@@ -94,7 +94,7 @@ func test_production_uses_bulk_items() -> void:
 		var errors := UpgradeDef.validate_production(String(id), def.production, items)
 		assert_eq(errors.size(), 0, "\n".join(errors))
 		producers += 1 if not def.production.is_empty() else 0
-	assert_gt(producers, 1, "the wreck and the agri bay produce")
+	assert_gt(producers, 1, "the wreck and the greenhouse produce")
 
 
 func test_part_nodes_are_unique_per_module() -> void:
@@ -131,8 +131,8 @@ func test_crew_data() -> void:
 		assert_gte(def.jobs, 0, "%s: jobs" % id)
 		if def.jobs > 0:
 			assert_false(def.production.is_empty(), "%s: jobs only make sense on producers" % id)
-	assert_eq(db.get_module(&"hab_drum").crew_beds(), 2)
-	assert_eq(db.get_module(&"agri_bay").jobs, 2)
+	assert_eq(db.get_module(&"dorm").crew_beds(), 6)
+	assert_eq(db.get_module(&"greenhouse").jobs, 2)
 
 
 ## Furniture (B, K, C, S, T, G) and "#" cells block the navmesh: every doorway must

@@ -16,17 +16,17 @@ func before_each() -> void:
 	st.add_module(&"capsule", wreck, &"A", StationState.State.REPAIRED, 0.25, true)
 
 
-## A repaired, powered station with a hab drum (2 bunks) and an agri bay.
+## A repaired, powered station with a dormitory (6 bunks) and a greenhouse.
 func _station() -> Dictionary:
 	st.repair(wreck)
-	var bay := st.add_module(&"agri_bay", wreck, &"B", StationState.State.REPAIRED, 0.3, false)
+	var bay := st.add_module(&"greenhouse", wreck, &"B", StationState.State.REPAIRED, 0.3, false)
 	assert_true(st.set_powered(bay, true), "bay powered")
-	var hab := _attach_anywhere(&"hab_drum")
+	var hab := _attach_anywhere(&"dorm")
 	if hab == 0:  # no direct fit: through a corridor
 		var corridor := _attach_anywhere(&"corridor")
 		assert_gt(corridor, 0, "corridor attached")
-		hab = _attach_anywhere(&"hab_drum")
-	assert_gt(hab, 0, "hab drum attached")
+		hab = _attach_anywhere(&"dorm")
+	assert_gt(hab, 0, "dorm attached")
 	return {"bay": bay, "hab": hab}
 
 
@@ -42,13 +42,12 @@ func test_beds_need_a_habitat() -> void:
 	assert_eq(st.crew.capacity(), 0, "the capsule bunk is the castaway's")
 	assert_null(st.crew.add("Ines"), "no bed, no crew")
 	var hab: int = _station().hab
-	assert_eq(st.crew.beds(hab), 2)
-	assert_eq(st.crew.capacity(), 2)
-	var a := st.crew.add("Ines")
-	var b := st.crew.add("Tomas")
-	assert_not_null(a)
-	assert_eq(a.home_uid, hab)
-	assert_eq(b.home_uid, hab)
+	assert_eq(st.crew.beds(hab), 6)
+	assert_eq(st.crew.capacity(), 6)
+	for i in 6:
+		var m := st.crew.add("Crew %d" % i)
+		assert_not_null(m)
+		assert_eq(m.home_uid, hab)
 	assert_eq(st.crew.free_beds(), 0)
 	assert_null(st.crew.add("Yara"), "station full")
 

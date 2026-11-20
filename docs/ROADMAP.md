@@ -11,7 +11,7 @@ Status markers: `[x]` done · `[~]` in progress / partial · `[ ]` todo
 - [x] Fixed oblique ortho camera, station/room zoom tiers, pan clamp (CP1)
 - [x] Cutaway shader: clip box, back-face section fill, ink edge (CP2)
 - [x] Modules on slots, per-module navigation + links, save v2 (CP3)
-- [~] Art pipeline: conventions + import script done; first real art imported (capsule + wreck core, `art/station_early/`), other modules still procedural (CP4)
+- [x] Art pipeline: conventions + import script; every module is kit art (`art/modules/`) (CP4)
 - [x] Power & wear as progression: power-on sequence, power budget, rust (CP5)
 - [x] Zoom opens the cut, tap-to-focus, touch mapping (CP6)
 - [x] Ambient life, character routines, clock lighting, placeholder audio (CP7)
@@ -68,10 +68,13 @@ Status markers: `[x]` done · `[~]` in progress / partial · `[ ]` todo
 - [x] Hatch sizes S/M/L (`slot_sizes`), smaller fits larger; `adapter_ml` (M→L)
 - [x] Blender module kit `art/kit/` + `tools/art.sh` (validators, renders, export) + `tools/new_module.py`
 - [x] `/new-module` command + `docs/MODULE_CATALOG.md` (10 modules + connectors)
-- [x] Pilot: `hub_node`, `hab_drum` (+ antenna / radiator upgrades)
-- [ ] Remaining catalog modules (see docs/MODULE_CATALOG.md), connector art
+- [x] Pilot: `hub_node`, `hab_drum` (+ antenna / radiator upgrades); retired for the canopy set
+- [x] Canopy style: 14 new modules; old modules restyled (connectors, hab pod, solar array,
+  capsule, trader ship, weathered wreck core); `hub_node` / `agri_bay` / `hab_drum` retired
+  for `hub_oct` / `greenhouse` / `dorm`
+- [ ] Remaining catalog modules (see docs/MODULE_CATALOG.md)
 - [ ] Station-view zoom for large (L) modules; deferred mechanics (heat, gravity, hangar)
-- [ ] Move `station_early` onto the kit
+- [x] Move `station_early` onto the kit (`capsule.py`, `wreck_core.py`)
 - [ ] Loops: join two free slots that meet (needs gap-free placement)
 
 ## Content pipeline (docs/CONTENT_PIPELINE.md)

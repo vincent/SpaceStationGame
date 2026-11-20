@@ -25,13 +25,13 @@ func before_each() -> void:
 	var st := GameState.station
 	wreck = st.find_module(&"wreck_core")
 	st.repair(wreck)
-	var node := st.add_module(&"hub_node", wreck, &"C")
+	var node := st.add_module(&"hub_oct", wreck, &"B")
 	hab = 0
 	for slot in st.free_slots(node):
-		if st.attach_error(&"hab_drum", node, slot) == "":
-			hab = st.add_module(&"hab_drum", node, slot)
+		if st.attach_error(&"dorm", node, slot) == "":
+			hab = st.add_module(&"dorm", node, slot)
 			break
-	assert_gt(hab, 0, "hab drum attached")
+	assert_gt(hab, 0, "dorm attached")
 	await wait_seconds(0.8)  # arrival animation + navigation map sync
 
 

@@ -15,7 +15,7 @@ Reference: docs/ART_PIPELINE.md ("Module kit"), docs/MODULE_CATALOG.md (the brie
    navmesh), at most one interior room (the cutaway opens one `cut_box`). Non-walkable
    modules (truss, reactor, pylon arms): a tiny maintenance room or none (then no cut_box).
 3. **Spec.** `art/modules/<id>.py` with `ID`, `LAYOUT`, optional `SIZES` ({"A": 3} for an L
-   hatch), `BUDGET`, `SEED`, and `build(m)`. Copy `hub_node.py` / `hab_drum.py`:
+   hatch), `BUDGET`, `SEED`, and `build(m)`. Copy `greenhouse.py` (tube) / `hub_oct.py` (polygon):
    `m.piece()` closed solids (`thick=` for shells with an interior; `massing=False` for bits
    above the roofs or tiny trims), `m.doorway(letter, pieces, face=)`, `m.light`, `m.mount`,
    `m.cut_box`, `m.greeble` / `m.pipe` (kit names in `core.build_kit`), `m.prop`, `m.part`.

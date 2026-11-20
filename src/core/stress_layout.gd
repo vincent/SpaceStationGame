@@ -9,9 +9,9 @@ extends RefCounted
 ## Deterministic for a given `seed_value`.
 
 const BRANCHING: Array[StringName] = [
-	&"hub_x", &"hub_node", &"junction_t", &"corridor", &"hab_drum", &"adapter_ml",
+	&"hub_x", &"hub_oct", &"junction_t", &"corridor", &"dorm", &"adapter_ml",
 ]
-const LEAVES: Array[StringName] = [&"hab_pod", &"agri_bay", &"solar_array"]
+const LEAVES: Array[StringName] = [&"hab_pod", &"greenhouse", &"solar_array"]
 ## Chance a slot gets a leaf first (else a branching module first).
 const LEAF_CHANCE := 0.25
 ## Open branches needed before a slot may get a leaf.

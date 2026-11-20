@@ -1,9 +1,8 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://assets/models/station_early/capsule.glb" id="1_art"]
+[ext_resource type="PackedScene" path="res://assets/models/modules/capsule.glb" id="1_art"]
 [ext_resource type="Script" path="res://src/station/module.gd" id="2_module"]
-[ext_resource type="Script" path="res://src/station/module_part.gd" id="3_part"]
-[ext_resource type="Texture2D" path="res://assets/models/station_early/station_palette.png" id="4_palette"]
+[ext_resource type="Texture2D" path="res://assets/models/modules/kit_palette.png" id="3_palette"]
 
 [node name="Capsule" instance=ExtResource("1_art")]
 script = ExtResource("2_module")
@@ -16,12 +15,4 @@ hull_color = Color(0.847, 0.251, 0.18, 1)
 trim_color = Color(0.91, 0.894, 0.855, 1)
 cap_tint = Color(1, 0.945, 0.839, 1)
 light_color = Color(1, 0.851, 0.627, 1)
-art_palette = ExtResource("4_palette")
-
-[node name="part_solar_wings" type="Node3D" parent="Parts"]
-transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0.6, 3.5, 0)
-script = ExtResource("3_part")
-kind = 1
-length = 7.0
-mirror = true
-explode_dir = Vector3(0, 1, 0)
+art_palette = ExtResource("3_palette")

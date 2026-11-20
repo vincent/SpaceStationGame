@@ -17,17 +17,19 @@ Hatch collars are colour-coded on the art: S cyan, M yellow, L violet.
 
 | id | Module | Attach | Offers | Status |
 |---|---|---|---|---|
-| `corridor` | Corridor | M-P | 1 M-P | procedural (art: todo) |
-| `adapter_ml` | Docking adapter | M-P | 1 L-P | procedural (art: todo) |
-| `hub_node` | Hub node | M-P | 3 M-P | ✅ kit art, 2.8k tris |
-| `junction_t`, `hub_x` | T-junction, cross hub | M-P | 2 / 3 M-P | procedural, cheap early versions |
+| `corridor` | Corridor | M-P | 1 M-P | ✅ canopy, 1.0k tris |
+| `adapter_ml` | Docking adapter | M-P | 1 L-P | ✅ canopy (flared), 0.8k tris |
+| `junction_t`, `hub_x` | T-junction, cross hub | M-P | 2 / 3 M-P | ✅ canopy, 1.2k / 1.5k tris |
+| `hub_oct`, `hub_dome` | Octagon / dome hub | M-P | 3 / 2 M-P | ✅ canopy (table below) |
+
+`hub_node` (old kit pilot) is retired: `hub_oct` replaces it.
 
 ## Modules
 
 | # | id | Module (inspiration) | Size | Attach | Offers (slots) | Mounts (upgrades) | Role | Look | Status |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | `hub_node` | Hub Node (ISS Unity/Harmony) | 6.6 × 4.6 m | M-P | 3 M-P (end + 2 radial ports) | top face | Junction, storage racks | Short stubby node, a hatch on every side, cable bundles and handrails | ✅ |
-| 2 | `hab_drum` | Habitat Drum (Skylab, TransHab) | 10.6 × 8.6 m | M-P | 1 M-P (far end) | antenna, radiator | Habitat: bunks, galley, hygiene | Fat inflated drum, quilted fabric skin, band of portholes | ✅ (looks boxy: rounder top?) |
+| 1 | `hub_node` | Hub Node (ISS Unity/Harmony) | 6.6 × 4.6 m | M-P | 3 M-P (end + 2 radial ports) | top face | Junction, storage racks | Short stubby node, a hatch on every side, cable bundles and handrails | retired → `hub_oct` |
+| 2 | `hab_drum` | Habitat Drum (Skylab, TransHab) | 10.6 × 8.6 m | M-P | 1 M-P (far end) | antenna, radiator | Habitat: bunks, galley, hygiene | Fat inflated drum, quilted fabric skin, band of portholes | retired → `dorm` |
 | 3 | `cupola` | Observation Cupola (ISS Cupola, B5) | Ø3 × 1.5 m | S-P | none | shutters | Morale (stargazing) | Faceted dome, seven windows, shutters open when powered | todo |
 | 4 | `solar_truss` | Solar Truss (ISS ITS + wings) | 30 m truss, 35 m wings | M-P | none | 2 wing pairs, 2 radiators, arm rail | Power (early-mid) | Square lattice girder, gold and blue wings tracking the sun | todo |
 | 5 | `reactor_spine` | Reactor Spine (Discovery One) | 40 m boom, Ø6 m reactor | L-P | none | 4 radiator fins, 1 small | Power (late: output, heat, risk) | Thin boom, reactor bulb far away behind a shadow shield, red-glowing fins | todo |
@@ -37,7 +39,7 @@ Hatch collars are colour-coded on the art: S cyan, M yellow, L violet.
 | 9 | `promenade` | Promenade (DS9, B5 Zocalo) | Ø12 × 25 m | L-P | 1 L-P, 2 M-P | | Economy and culture: stalls, bar, shrine | Wide drum, long panoramic window band, neon shop signs | todo |
 | 10 | `gravity_ring` | Gravity Ring (Space Station V, Stanford torus) | Ø70 m ring, 4 spokes | L-P (hub) | 1 L-P (axis) | 2 on the hub | Late habitat: gravity, health & morale | Slowly turning wheel on spokes, lit windows round the rim | todo (budget > 15k?) |
 
-### Canopy style (experiment, branch `module-style-canopy`)
+### Canopy style (the station's style)
 
 Glass-roofed modules from the mockups (`~/Downloads/images`, numbers below): ivory walls up
 to 1.15 m (= the cut height), a glass canopy on a white strut frame (`frame`: never cut,
@@ -53,7 +55,7 @@ Station view of the whole set: `tools/screenshot.sh build/c.png --layout=demo --
 | id | Module (mockup) | Shell | Size (m) | Attach | Offers | Mount | Role (data) | Tris |
 |---|---|---|---|---|---|---|---|---|
 | `greenhouse` | Greenhouse (489) | tube | 18 × 8.6 | M-P | 1 M-P | lamp_rack | food +0.15 / water −0.15, 2 jobs | 1.6k |
-| `dorm` | Dormitory (491) | tube | 18 × 8.6 | M-P | 1 M-P | antenna | 6 bunks (crew beds), console | 2.8k |
+| `dorm` | Dormitory (491) | tube | 18 × 8.6 | M-P | 1 M-P | antenna, radiator | 6 bunks (crew beds), console | 2.8k |
 | `cargo` | Cargo hold (502) | tube, dead end | 18 × 8.6 | M-P | — | crane | decorative storage | 2.8k |
 | `storage` | Storage module (494–496 tubes) | tube | 18 × 8.6 | M-P | 1 M-P | crane | decorative storage | 1.7k |
 | `workshop` | Workshop (497) | tube | 18 × 8.6 | M-P | 1 M-P | crane | benches, console | 2.4k |
@@ -71,7 +73,25 @@ Deviations from the mockups: ports only on flats facing ±X / ±Y (the triangle 
 two or three of them, not one per side); the plaza's arms meet at sharp inner corners; the
 tall octagonal columns of the mockups are neighbours, not modelled.
 
-Early, cheaper procedural modules stay: `hab_pod`, `agri_bay`, `solar_array`.
+### Restyled early modules
+
+The modules from before the canopy set, rebuilt in its language. Layouts, slots and
+gameplay values are unchanged; `agri_bay` and `hab_drum` are retired (`greenhouse`,
+`dorm` replace them; their upgrades moved: `agri_hydroponics`, `dorm_antenna`,
+`dorm_radiator`).
+
+| id | Module | Shell | Size (m) | Notes | Tris |
+|---|---|---|---|---|---|
+| `hab_pod` | Hab pod | chamfered polygon | 6.8 × 5.2 | the cheap early room; bay window W in its north wall; mount `garden` | 1.2k |
+| `solar_array` | Solar array | small polygon cabin + truss | 6.8 × 5.5 (+ wings) | navy wings on a gold spar; parts `array`, `extension` | 1.6k |
+| `capsule` | Rescue capsule | short tube, engine nose | 8.0 × 4.6 | **own livery** (red walls, opaque offwhite roof) so it stays distinct; parts `antenna`, `thruster`, `solar_wings` | 1.6k |
+| `wreck_core` | Wreck core | room A tube + derelict wing, neck, roof pod | 22 × 12.4 | **weathered**: `ivory_old` / `gold_faded` / `strut_old`, `broken=` dark panes, scorch and rust decals, broken truss; at full wear the shader adds rust. Wing kept at z ≤ −3.7 so an 8.6–9.2 m module fits on slot B; mounts `roof_a` / `roof_b`, part `dish` | 3.9k |
+| `trader_ship` | Trader ship (visitor) | narrow tube + 2 cargo pods | 8.0 × 6.1 | navy walls, gold trim, hatch collar (too narrow for a port plate); parts `engine`, `mast` | 1.7k |
+
+Kit options used by them: `canopy_tube` / `canopy_polygon` take `wall`, `stripe`,
+`frame_color`, `glass`, `broken` (and the tube an `at` offset); `Module.decals()` for flat
+plates. Slot C of the wreck sits next to the capsule: only modules up to ~6.8 m wide fit
+there (corridor, hab pod, solar array); bigger ones go on B or through a corridor.
 
 ## Deferred mechanics
 
@@ -82,6 +102,6 @@ station-view zoom tiers retuned and probably a bigger triangle budget.
 
 ## Making them (order)
 
-Pilot done: Hub node, Habitat drum. Next: Corridor + Docking adapter art, Solar truss
+Done: the canopy set and the restyled early modules. Next: Solar truss
 (first non-walkable module), Cupola, Biodome, Pylons, Promenade, Reactor spine, Hangar,
 Gravity ring.

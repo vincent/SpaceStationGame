@@ -4,13 +4,15 @@ How module art is made so it works with the diorama cutaway
 ([PLAN_DIORAMA_CUTAWAY.md](PLAN_DIORAMA_CUTAWAY.md)). Procedural modules get
 their hull from `HullMesher` (built from the interior ASCII) and placeholder
 parts from `ModulePart`. Imported art replaces those piece by piece, using the
-same conventions. **First imported modules:** `capsule` and `wreck_core`, built
-by script in `art/station_early/` (see its `notes.md`).
+same conventions. Every module now has art, built with the **module kit**
+(`art/kit/`, one spec per module in `art/modules/<id>.py`, `/new-module`); the
+canopy style and its weathered variant (the wreck) are described in
+[MODULE_CATALOG.md](MODULE_CATALOG.md).
 
-## Workflow (how `capsule` / `wreck_core` are set up)
+## Workflow (how a kit module is set up)
 
-1. Blender → `.glb` + palette PNG in `assets/models/<set>/` (the art set's
-   script does it: `blender -b --factory-startup --python art/station_early/scripts/make_pass2.py`).
+1. Blender → `.glb` + the shared palette PNG in `assets/models/modules/`
+   (`tools/art.sh <id>`; `tools/new_module.py <id>` writes steps 2–3).
 2. In the `.glb.import` file (or Import dock): **Import Script** =
    `res://src/tools/module_import.gd`; palette PNG imported **lossless**.
 3. The module scene (`src/station/modules/<id>.tscn`) is an **inherited scene

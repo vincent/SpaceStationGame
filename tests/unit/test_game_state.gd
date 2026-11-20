@@ -177,15 +177,15 @@ func test_crew_outcome_and_save() -> void:
 	var hab := 0
 	for uid in GameState.station.uids():
 		for slot in GameState.station.free_slots(uid):
-			for by in GameState.station.attach_options(&"hab_drum", uid, slot):
-				hab = GameState.station.add_module(&"hab_drum", uid, slot, StationState.State.REPAIRED, 0.3, false, by)
+			for by in GameState.station.attach_options(&"dorm", uid, slot):
+				hab = GameState.station.add_module(&"dorm", uid, slot, StationState.State.REPAIRED, 0.3, false, by)
 				break
 			if hab:
 				break
 		if hab:
 			break
 	if hab == 0:
-		pass_test("no spot for a hab drum on the start station")
+		pass_test("no spot for a dormitory on the start station")
 		return
 	GameState.apply_outcome("recruit")
 	assert_eq(GameState.station.crew.size(), 1)

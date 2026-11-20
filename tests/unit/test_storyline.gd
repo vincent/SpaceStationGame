@@ -107,7 +107,7 @@ func test_first_food_fires_the_harvest_beat() -> void:
 	GameState.resolve_encounter()  # wreck_lights
 	GameState.station.set_powered(wreck, true)
 	assert_gt(GameState.build_module(&"solar_array", wreck, &"C"), 0)
-	var bay := GameState.build_module(&"agri_bay", wreck, &"B")
+	var bay := GameState.build_module(&"greenhouse", wreck, &"B")
 	while GameState.current_encounter:
 		GameState.resolve_encounter(0)
 	assert_true(GameState.toggle_power(bay))

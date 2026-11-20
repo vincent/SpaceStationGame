@@ -1,6 +1,6 @@
 """Dormitory (canopy style, mockup 1000037491): the greenhouse tube fitted with bunk
 beds along both walls and a row of amber portholes. Attach M-P (A, -X end) . offers
-B (+X end, M-P). Mount: antenna (roof). Six crew bunks (B cells)."""
+B (+X end, M-P). Mounts: antenna, radiator (roof). Six crew bunks (B cells)."""
 from kit.module import C, box, mask
 
 ID = "dorm"
@@ -38,6 +38,7 @@ def build(m):
     m.light("west", -4.0, 0.0)
     m.light("east", 4.0, 0.0)
     m.mount("antenna", (5.0, 2.0, Z1 + 0.01))
+    m.mount("radiator", (-5.0, -1.5, Z1 + 0.01))
     m.cut_box(X0, X1, -Y1 - 0.6, Y1 + 0.6, 7.0)
 
     def bunks(mb):  # upper bunk over each bed: navy posts, slatted frame, mattress

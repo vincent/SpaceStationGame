@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"agri_hydroponics"
-module_id = &"agri_bay"
+module_id = &"greenhouse"
 display_name = "Hydroponics"
 description = "Stacked nutrient racks. More food, more water, more power."
 part_node = &"part_hydroponics"
@@ -13,6 +13,6 @@ cost = Dictionary[StringName, int]({&"scrap_metal": 6, &"power_cell": 1})
 requires = []
 effects = Dictionary[StringName, float]({&"power_draw": 0.5})
 production = Dictionary[StringName, float]({&"food": 0.2, &"water": -0.15})
-mount = &"rack"
+mount = &"lamp_rack"
 part_kind = 7
 part_length = 3.0

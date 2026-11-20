@@ -114,9 +114,9 @@ Placement (orientation = which own slot attaches, overlap check) is `StationGrid
 Slots have sizes (`slot_sizes`, S/M/L = 1/2/3, default `size_class`): a module fits a hatch of
 its size or larger.
 
-**New / updated module art (Blender, hand-made like station_early):** follow the checklist and troubleshooting table in
+**New / updated module art (any Blender art, kit or hand-made):** follow the checklist and troubleshooting table in
 `docs/ART_PIPELINE.md` (layout fit → export → import script → inherited scene → tests,
-screenshots, `/update-goldens`). Example set: `art/station_early/` (`notes.md`).
+screenshots, `/update-goldens`). Examples: `art/modules/wreck_core.py` (weathered), `capsule.py` (own livery).
 
 **New upgrade:** add `data/upgrades/<id>.tres` (`module_id`, `part_node`, cost, requires,
 effects from `UpgradeDef.EFFECTS`). The part is either authored (`Parts/<part_node>` in the

@@ -1,6 +1,6 @@
 extends Interactable
-## Planter row of an agri bay. The bay grows food on its own (Production);
-## tending the plants is a small morale break and shows how the bay is doing.
+## Planter row of a greenhouse. The greenhouse grows food on its own (Production);
+## tending the plants is a small morale break and shows how the greenhouse is doing.
 
 const TEND_MINUTES := 30.0
 const TEND_MORALE := 4.0

@@ -1,8 +1,8 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://assets/models/station_early/wreck_core.glb" id="1_art"]
+[ext_resource type="PackedScene" path="res://assets/models/modules/wreck_core.glb" id="1_art"]
 [ext_resource type="Script" path="res://src/station/module.gd" id="2_module"]
-[ext_resource type="Texture2D" path="res://assets/models/station_early/station_palette.png" id="4_palette"]
+[ext_resource type="Texture2D" path="res://assets/models/modules/kit_palette.png" id="3_palette"]
 
 [node name="WreckCore" instance=ExtResource("1_art")]
 script = ExtResource("2_module")
@@ -15,5 +15,4 @@ hull_color = Color(0.784, 0.761, 0.706, 1)
 trim_color = Color(0.659, 0.282, 0.227, 1)
 cap_tint = Color(0.91, 0.875, 0.784, 1)
 light_color = Color(1, 0.71, 0.278, 1)
-art_palette = ExtResource("4_palette")
-
+art_palette = ExtResource("3_palette")

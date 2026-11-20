@@ -207,8 +207,8 @@ func test_modules_on_wreck_slots_dont_overlap() -> void:
 	var capsule := station.find_module(&"capsule")
 	GameState.give({&"scrap_metal": 40})
 	GameState.repair_module(wreck.uid)
-	var front := station.get_module(GameState.build_module(&"agri_bay", wreck.uid, &"C"))
-	var side := station.get_module(GameState.build_module(&"hab_pod", wreck.uid, &"B"))
+	var front := station.get_module(GameState.build_module(&"hab_pod", wreck.uid, &"C"))
+	var side := station.get_module(GameState.build_module(&"greenhouse", wreck.uid, &"B"))
 	assert_not_null(front)
 	assert_not_null(side)
 	var front_box := front.get_rest_aabb().grow(-0.02)
@@ -323,7 +323,7 @@ func test_idle_routine_waits_while_upgrade_view_is_open() -> void:
 	await wait_seconds(ExplodedView.SECONDS + 0.6)
 
 
-func test_agri_bay_shows_in_the_status_bar_and_popover() -> void:
+func test_greenhouse_shows_in_the_status_bar_and_popover() -> void:
 	var hud := get_tree().get_first_node_in_group(&"hud") as HUD
 	var bar := hud.status_bar
 	var wreck := station.find_module(&"wreck_core")
@@ -332,7 +332,7 @@ func test_agri_bay_shows_in_the_status_bar_and_popover() -> void:
 	GameState.repair_module(wreck.uid)
 	assert_true(GameState.toggle_power(wreck.uid))
 	assert_gt(GameState.build_module(&"solar_array", wreck.uid, &"C"), 0)
-	var bay := GameState.build_module(&"agri_bay", wreck.uid, &"B")
+	var bay := GameState.build_module(&"greenhouse", wreck.uid, &"B")
 	assert_gt(bay, 0)
 	assert_true(GameState.toggle_power(bay))
 	assert_true(bar.chips[&"food"].visible, "food chip (starting stock + a producer)")
@@ -347,11 +347,11 @@ func test_agri_bay_shows_in_the_status_bar_and_popover() -> void:
 	popover.toggle(&"food", bar.chips[&"food"])
 	assert_true(popover.visible)
 	var texts := _button_texts(popover)
-	assert_true(texts.any(func(t: String) -> bool: return t.begins_with("Agri bay · +0.15/h")), str(texts))
+	assert_true(texts.any(func(t: String) -> bool: return t.begins_with("Greenhouse · +0.15/h")), str(texts))
 	assert_true(texts.any(func(t: String) -> bool: return t.contains("Upgrade: Hydroponics")), str(texts))
 	assert_true(GameState.toggle_power(bay))  # off
 	texts = _button_texts(popover)
-	assert_true(texts.any(func(t: String) -> bool: return t.begins_with("Agri bay · Unpowered")), str(texts))
+	assert_true(texts.any(func(t: String) -> bool: return t.begins_with("Greenhouse · Unpowered")), str(texts))
 	popover.toggle(&"food", bar.chips[&"food"])
 	assert_false(popover.visible, "the same chip closes it")
 
@@ -389,14 +389,14 @@ func test_object_card_merges_objects_of_one_type() -> void:
 	var wreck := station.find_module(&"wreck_core")
 	GameState.give({&"scrap_metal": 40, &"power_cell": 1})
 	GameState.repair_module(wreck.uid)
-	var bay := GameState.build_module(&"agri_bay", wreck.uid, &"B")
+	var bay := GameState.build_module(&"greenhouse", wreck.uid, &"B")
 	assert_gt(bay, 0)
 	main.focus_module(station.get_module(bay), true)
 	await wait_frames(2)
 	var panel := _hud().object_panel
-	assert_eq(panel.cards.size(), 1, "four planters, one card")
+	assert_eq(panel.cards.size(), 1, "twelve planters, one card")
 	var card: ObjectPanel.ObjectCard = panel.cards.values()[0]
-	assert_eq(card.targets.size(), 4)
+	assert_eq(card.targets.size(), 12)
 	assert_eq(card.actions[0].label, "Tend the plants")
 	assert_string_contains(card.actions[0].subtitle(), "Needs power")
 

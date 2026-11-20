@@ -314,8 +314,8 @@ func _cheat_build(module_id: StringName) -> void:
 
 
 ## A branched station for screenshots: wreck B -> corridor -> cross hub,
-## with a rotated T-junction, a hab pod and an agri bay on its arms; wreck C
-## -> hub node -> habitat drum + docking adapter (kit art modules).
+## with a rotated T-junction, a hab pod and a greenhouse on its arms; wreck C
+## -> corridor (clears the capsule) -> octagon hub -> dormitory + docking adapter.
 func _cheat_demo_layout() -> void:
 	var st := GameState.station
 	var wreck := st.find_module(&"wreck_core")
@@ -325,10 +325,11 @@ func _cheat_demo_layout() -> void:
 	var hub := st.add_module(&"hub_x", corridor, &"B", r, 0.3)
 	var t := st.add_module(&"junction_t", hub, &"B", r, 0.3, false, &"B")
 	st.add_module(&"hab_pod", hub, &"D", r, 0.3)
-	st.add_module(&"agri_bay", t, &"A", r, 0.3)
+	st.add_module(&"greenhouse", t, &"A", r, 0.3)
 	st.add_module(&"solar_array", t, &"C", r, 0.3)
-	var node := st.add_module(&"hub_node", wreck, &"C", r, 0.3)
-	for module_id: StringName in [&"hab_drum", &"adapter_ml"]:
+	var neck := st.add_module(&"corridor", wreck, &"C", r, 0.3)
+	var node := st.add_module(&"hub_oct", neck, &"B", r, 0.3)
+	for module_id: StringName in [&"dorm", &"adapter_ml"]:
 		for slot in st.free_slots(node):
 			if st.attach_error(module_id, node, slot) == "":
 				st.add_module(module_id, node, slot, r, 0.3)

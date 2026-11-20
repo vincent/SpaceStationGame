@@ -11,7 +11,7 @@ extends Node3D
 ##   D  inner doorway     P  player spawn     L  floor + ceiling light
 ##   B  bed               K  kitchen          W  bay window (in a wall)
 ##   S  salvage pile      C  console          T  trader
-##   G  planter (agri bay)
+##   G  planter (greenhouse)
 ##   a..z  slot doorway on the hull boundary (slot "A".."Z")
 ## Add new furniture by mapping a character in FURNITURE_SCENES.
 
@@ -219,6 +219,8 @@ func _add_furniture(c: String, pos: Vector3, cell: Vector2i) -> void:
 		node.rotation.y = atan2(facing.x, facing.y)
 		if c == WALL_FURNITURE:
 			node.position += Vector3(facing.x, 0.0, facing.y) * wall_furniture_inset
+			if wall_furniture_inset > 0.0 and node.has_method(&"fit_wall"):
+				node.call(&"fit_wall", CELL - 2.0 * wall_furniture_inset)
 	_generated.add_child(node)
 	furniture_nodes.append(node)
 	if node is Interactable and facing != Vector2i.ZERO:

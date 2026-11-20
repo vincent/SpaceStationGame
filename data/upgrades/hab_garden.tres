@@ -12,3 +12,6 @@ part_node = &"part_garden"
 cost = Dictionary[StringName, int]({&"scrap_metal": 4, &"water": 2})
 requires = []
 effects = Dictionary[StringName, float]({&"food_decay": -0.8, &"power_draw": 0.5})
+mount = &"garden"
+part_kind = 7
+part_length = 3.0
