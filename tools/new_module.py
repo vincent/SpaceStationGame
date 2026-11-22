@@ -166,6 +166,44 @@ detect_3d/compress_to=0
         print("created", os.path.relpath(pal, ROOT))
 
 
+def write_paint(mid):
+    """Painted art (tools/paint.sh wrote assets/models/modules/<id>_paint_<yaw>.webp, one per module
+    direction): import them with mip-maps (VRAM compressed) and set the scene's art_paint_path.
+    Textures are loaded by path at runtime, only for the directions actually used."""
+    d = os.path.join(ROOT, "assets", "models", "modules")
+    pngs = sorted(f for f in os.listdir(d) if re.fullmatch(re.escape(mid) + r"_paint_\d+\.png", f))
+    if not pngs:
+        return
+    for f in pngs:
+        imp = os.path.join(d, f + ".import")
+        text = open(imp).read() if os.path.exists(imp) else """[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+
+[deps]
+
+source_file="res://assets/models/modules/%s"
+
+[params]
+""" % f
+        for key, val in (("compress/mode", "2"), ("mipmaps/generate", "true"), ("detect_3d/compress_to", "0")):
+            if re.search(r"^%s=" % re.escape(key), text, re.M):
+                text = re.sub(r"^%s=.*$" % re.escape(key), "%s=%s" % (key, val), text, flags=re.M)
+            else:
+                text = text.rstrip("\n") + "\n%s=%s\n" % (key, val)
+        open(imp, "w").write(text)
+    path = os.path.join(ROOT, "src", "station", "modules", mid + ".tscn")
+    text = open(path).read()
+    value = '"res://assets/models/modules/%s_paint_%%d.webp"' % mid
+    if "art_paint_path = " in text:
+        text = set_field(text, "art_paint_path", value)
+    else:
+        text = text.rstrip("\n") + "\nart_paint_path = %s\n" % value
+    open(path, "w").write(text)
+    print("painted", os.path.relpath(path, ROOT), [f for f in pngs])
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -181,6 +219,7 @@ def main():
     write_imports(mid)
     write_tres(mid, side, opts.get("name", mid.replace("_", " ").capitalize()), opts.get("description", ""))
     write_scene(mid, side)
+    write_paint(mid)
 
 
 if __name__ == "__main__":

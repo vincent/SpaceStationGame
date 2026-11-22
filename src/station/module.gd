@@ -33,6 +33,9 @@ const REPAIR_SECONDS := 1.5
 ## Wall thickness of imported art: wall furniture (bay windows) sits inside it.
 const ART_WALL := 0.3
 
+## Debug: draw painted art with the plain palette (A/B comparison).
+static var paint_disabled := false
+
 @export var module_id: StringName
 @export_multiline var interior_ascii: String = "":
 	set(value):
@@ -48,6 +51,11 @@ const ART_WALL := 0.3
 ## Palette texture of imported art (its UVs point at swatches). Unset for
 ## procedural modules.
 @export var art_palette: Texture2D
+## Camera-projected paintings of the art (tools/paint.sh): path pattern with %d = module yaw
+## in degrees (0/90/180/270). Only the attached direction's texture is loaded. "" = palette.
+@export var art_paint_path: String = ""
+## Inverted-hull ink outline on painted art (the painting already has ink lines).
+@export var art_paint_outline: bool = true
 @export_tool_button("Rebuild", "Reload") var rebuild_action: Callable = build
 
 var uid := 0
@@ -84,6 +92,8 @@ var _cut_geometry: Array[GeometryInstance3D] = []
 ## This module's own copies of the toon_cut materials its geometry uses
 ## (per-module values: wear, power, cap tint, sweeps).
 var _cut_materials: Array[ShaderMaterial] = []
+## Module-owned copies of the painted prop materials (the cut ones are in _cut_materials).
+var _paint_materials: Array[ShaderMaterial] = []
 var _art_greebles: Array[Node3D] = []
 var _cut_box: MeshInstance3D
 var _sequence: Tween
@@ -106,6 +116,7 @@ func build() -> void:
 	_light_levels.clear()
 	_cut_geometry.clear()
 	_cut_materials.clear()
+	_paint_materials.clear()
 	_built = Node3D.new()
 	_built.name = "Built"
 	add_child(_built)
@@ -333,6 +344,24 @@ func set_slot_open(slot_name: StringName, open: bool) -> void:
 ## Call after the module moved (attach): world-space sweep range etc.
 func refresh_world_params() -> void:
 	_apply_instance_params()
+	_apply_paint()
+
+
+func _is_painted() -> bool:
+	return art_palette != null and art_paint_path != "" and not paint_disabled
+
+
+## Picks the painting of the direction this module is attached in (the camera never rotates).
+func _apply_paint() -> void:
+	if not _is_painted():
+		return
+	var dir := posmod(roundi(global_basis.get_euler().y / (PI / 2.0)), 4)
+	var path := art_paint_path % (dir * 90)
+	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	for mat: ShaderMaterial in _cut_materials + _paint_materials:
+		mat.set_shader_parameter(&"use_paint", tex != null)
+		mat.set_shader_parameter(&"paint_dir", dir)
+		mat.set_shader_parameter(&"paint_texture", tex)
 
 
 # --- Sequences ---------------------------------------------------------------
@@ -479,7 +508,7 @@ func _build_hull() -> void:
 	var authored := get_node_or_null(^"hull") as MeshInstance3D
 	if authored:
 		hull = authored
-		hull.material_override = ToonMaterials.get_art_material(art_palette, true) if art_palette else mat
+		hull.material_override = _art_material(true) if art_palette else mat
 		hull_aabb = hull.transform * hull.get_aabb()
 		_cut_geometry.append(hull)
 		return
@@ -638,11 +667,17 @@ func _local_transform(node: Node3D) -> Transform3D:
 
 func _build_parts() -> void:
 	var mat := ToonMaterials.get_cut_material(hull_color.lerp(Color.WHITE, 0.15), 0.0, true, trim_color)
-	var art_mat: Material = ToonMaterials.get_art_material(art_palette, true) if art_palette else mat
+	var art_mat: Material = _art_material(true) if art_palette else mat
 	for part in get_parts():
 		# Imported parts (CUSTOM) use the palette; procedural placeholders keep the module colours.
 		part.build(art_mat if part.kind == ModulePart.Kind.CUSTOM else mat)
 		_cut_geometry.append_array(part.geometries())
+
+
+func _art_material(cut: bool) -> ShaderMaterial:
+	if _is_painted():
+		return ToonMaterials.get_art_material(art_palette, cut, true, art_paint_outline)
+	return ToonMaterials.get_art_material(art_palette, cut)
 
 
 ## Imported art besides hull and parts: greebles (structure, cut by the
@@ -656,8 +691,11 @@ func _style_art() -> void:
 		_cut_box.visible = false
 	if not has_art():
 		return
-	var cut_mat: Material = ToonMaterials.get_art_material(art_palette, true) if art_palette else hull.material_override
-	var prop_mat: Material = ToonMaterials.get_art_material(art_palette, false) if art_palette else cut_mat
+	var cut_mat: Material = _art_material(true) if art_palette else hull.material_override
+	var prop_mat: Material = _art_material(false) if art_palette else cut_mat
+	if _is_painted():  # own copy: this module's direction picks its texture
+		prop_mat = prop_mat.duplicate()
+		_paint_materials.append(prop_mat as ShaderMaterial)
 	for child in get_children():
 		if child == _built or child == hull or child == _cut_box or child.name == &"Parts":
 			continue

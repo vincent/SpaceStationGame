@@ -1,0 +1,104 @@
+{
+ "closed": {
+  "model": "google/gemini-2.5-flash-image",
+  "ratio": "5:4",
+  "prompt": "The input is a flat-shaded 3D render of one module of a space station, seen from the fixed game camera. The roof is an OPAQUE dark lilac canopy in a light frame: paint it as solid tinted panels with a soft reflection, nothing visible through it. Repaint it as a finished 'ligne claire' science-fiction illustration (European bande dessinee): fine, even, black ink outlines on every silhouette, crease and panel edge; mostly flat colours with only one soft shade tone per surface; dense but small mechanical surface detail drawn ON the existing surfaces - panel seams, rivets, vents, hatches, small labels and stencilled numbers, decals, scuffs and light grime along edges. Keep the existing colour of every surface (ivory/off-white hull, navy blue details, mustard-gold trim bands, faded red stripe). Lights and screens glow (warm yellow / cyan). STRICT RULES: this is a paint-over that will be projected back onto the 3D model, so keep the exact same framing, camera, perspective, silhouette and scale. Every edge, opening and shape must stay exactly where it is in the input; do not move, add or remove geometry or objects, do not extend anything beyond the existing silhouette. Surfaces that look opaque stay opaque: never make a panel transparent and never invent what is behind it. Keep the background a perfectly flat uniform dark navy (#1b1d30) with nothing on it - no stars, no shadow, no text, no border. The first image is the render to repaint; the following image(s) are STYLE REFERENCES ONLY (line work, colouring and level of detail) - do not copy their content.",
+  "styles": [
+   "56ab109abae35a30fce48cca6324ec02.jpg",
+   "5cc5560aeb49e151dc42fbecea976e4b.jpg",
+   "a0693146286_10.jpg",
+   "c8bad50b7fccde449f195a029071c2c8.jpg",
+   "f36861d8859c1000291eaf5ee526ac3f.jpg"
+  ],
+  "candidates": [
+   {
+    "file": "closed_0.webp",
+    "cost": 0.0393407,
+    "seconds": 12.0
+   },
+   {
+    "file": "closed_1.webp",
+    "cost": 0.0393432,
+    "seconds": 20.1
+   },
+   {
+    "file": "closed_2.webp",
+    "cost": 0.0393357,
+    "seconds": 15.1
+   },
+   {
+    "file": "closed_3.webp",
+    "cost": 0.0393957,
+    "seconds": 13.1
+   }
+  ]
+ },
+ "cut": {
+  "model": "google/gemini-2.5-flash-image",
+  "ratio": "5:4",
+  "prompt": "The input is a flat-shaded 3D render of one module of a space station, seen from the fixed game camera, in a cutaway diorama view: the roof and the upper walls are sliced off at waist height so the room inside is visible (floor, consoles, table, tank, locker, crates). The flat pale-cream tops of the sliced walls are section cuts: keep them flat pale cream with a thin ink outline. The inside of the walls is plain: paint it, but do NOT add or redraw furniture - the furniture is painted separately. Repaint it as a finished 'ligne claire' science-fiction illustration (European bande dessinee): fine, even, black ink outlines on every silhouette, crease and panel edge; mostly flat colours with only one soft shade tone per surface; dense but small mechanical surface detail drawn ON the existing surfaces - panel seams, rivets, vents, hatches, small labels and stencilled numbers, decals, scuffs and light grime along edges. Keep the existing colour of every surface (ivory/off-white hull, navy blue details, mustard-gold trim bands, faded red stripe). Lights and screens glow (warm yellow / cyan). STRICT RULES: this is a paint-over that will be projected back onto the 3D model, so keep the exact same framing, camera, perspective, silhouette and scale. Every edge, opening and shape must stay exactly where it is in the input; do not move, add or remove geometry or objects, do not extend anything beyond the existing silhouette. Surfaces that look opaque stay opaque: never make a panel transparent and never invent what is behind it. Keep the background a perfectly flat uniform dark navy (#1b1d30) with nothing on it - no stars, no shadow, no text, no border. The first image is the render to repaint; the following image(s) are STYLE REFERENCES ONLY (line work, colouring and level of detail) - do not copy their content.",
+  "styles": [
+   "56ab109abae35a30fce48cca6324ec02.jpg",
+   "5cc5560aeb49e151dc42fbecea976e4b.jpg",
+   "a0693146286_10.jpg",
+   "c8bad50b7fccde449f195a029071c2c8.jpg",
+   "f36861d8859c1000291eaf5ee526ac3f.jpg"
+  ],
+  "candidates": [
+   {
+    "file": "cut_0.webp",
+    "cost": 0.0393306,
+    "seconds": 17.5
+   },
+   {
+    "file": "cut_1.webp",
+    "cost": 0.0393306,
+    "seconds": 20.7
+   },
+   {
+    "file": "cut_2.webp",
+    "cost": 0.0393306,
+    "seconds": 13.5
+   },
+   {
+    "file": "cut_3.webp",
+    "cost": 0.0394006,
+    "seconds": 17.1
+   }
+  ]
+ },
+ "interior": {
+  "model": "google/gemini-2.5-flash-image",
+  "ratio": "5:4",
+  "prompt": "The input is a flat-shaded 3D render of the furniture of a small space-station cabin (floor plate, consoles, bench, table, tank, gas canisters, locker, crate, a screen), seen from the fixed game camera with the walls removed. Each object is a simple block and must stay EXACTLY that block: same outline, same faces, same size and place - do not replace it by a different object, do not add any object, cable or clutter. Only add drawn detail on its existing faces (buttons, gauges, handles, labels, panel lines, vents, wear), so it reads as that piece of furniture. Repaint it as a finished 'ligne claire' science-fiction illustration (European bande dessinee): fine, even, black ink outlines on every silhouette, crease and panel edge; mostly flat colours with only one soft shade tone per surface; dense but small mechanical surface detail drawn ON the existing surfaces - panel seams, rivets, vents, hatches, small labels and stencilled numbers, decals, scuffs and light grime along edges. Keep the existing colour of every surface (ivory/off-white hull, navy blue details, mustard-gold trim bands, faded red stripe). Lights and screens glow (warm yellow / cyan). STRICT RULES: this is a paint-over that will be projected back onto the 3D model, so keep the exact same framing, camera, perspective, silhouette and scale. Every edge, opening and shape must stay exactly where it is in the input; do not move, add or remove geometry or objects, do not extend anything beyond the existing silhouette. Surfaces that look opaque stay opaque: never make a panel transparent and never invent what is behind it. Keep the background a perfectly flat uniform dark navy (#1b1d30) with nothing on it - no stars, no shadow, no text, no border. The first image is the render to repaint; the following image(s) are STYLE REFERENCES ONLY (line work, colouring and level of detail) - do not copy their content.",
+  "styles": [
+   "56ab109abae35a30fce48cca6324ec02.jpg",
+   "5cc5560aeb49e151dc42fbecea976e4b.jpg",
+   "a0693146286_10.jpg",
+   "c8bad50b7fccde449f195a029071c2c8.jpg",
+   "f36861d8859c1000291eaf5ee526ac3f.jpg"
+  ],
+  "candidates": [
+   {
+    "file": "interior_0.webp",
+    "cost": 0.0393804,
+    "seconds": 12.7
+   },
+   {
+    "file": "interior_1.webp",
+    "cost": 0.0392904,
+    "seconds": 11.5
+   },
+   {
+    "file": "interior_2.webp",
+    "cost": 0.0392904,
+    "seconds": 12.3
+   },
+   {
+    "file": "interior_3.webp",
+    "cost": 0.0392904,
+    "seconds": 13.1
+   }
+  ]
+ }
+}

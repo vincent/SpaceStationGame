@@ -9,6 +9,7 @@ __pycache__
 .godot-bin/
 build/
 !build/.gdignore
+.env
 
 # Android signing (never commit keystores)
 *.keystore
@@ -22,3 +23,4 @@ Thumbs.db
 
 # Builds
 dist/
+tools/paint/.venv/

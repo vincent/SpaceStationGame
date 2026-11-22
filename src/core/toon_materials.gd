@@ -55,8 +55,13 @@ static func get_cut_material(
 ## the palette texture (each face's UV points at a swatch), wear / glow / trim
 ## from the vertex colour masks. `cut` = station structure (hull, greebles,
 ## parts); otherwise interior props (never cut).
-static func get_art_material(palette: Texture2D, cut: bool) -> ShaderMaterial:
-	var key := "art|%s|%s" % [palette.resource_path, cut]
+## `painted`: the art carries camera-projected paintings (tools/paint.sh); the Module owns
+## copies of these materials and sets paint_texture / paint_dir / use_paint for its direction.
+## `outline` = false drops the inverted-hull ink pass (the painting has its own lines).
+static func get_art_material(
+		palette: Texture2D, cut: bool, painted: bool = false, outline: bool = true
+) -> ShaderMaterial:
+	var key := "art|%s|%s|%s|%s" % [palette.resource_path, cut, painted, outline]
 	if _cache.has(key):
 		return _cache[key]
 	var mat := ShaderMaterial.new()
@@ -68,7 +73,8 @@ static func get_art_material(palette: Texture2D, cut: bool) -> ShaderMaterial:
 		mat.set_shader_parameter("emission_from_texture", true)
 	else:
 		mat.set_shader_parameter("mask_emission", true)
-	mat.next_pass = _outline(cut)
+	if outline:
+		mat.next_pass = _outline(cut)
 	_cache[key] = mat
 	return mat
 

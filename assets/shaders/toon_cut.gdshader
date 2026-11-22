@@ -52,6 +52,7 @@ float noise3(vec3 x) {
 
 void vertex() {
 	v_world_pos = cut_world(MODEL_MATRIX, VERTEX);
+	v_paint_uv = use_paint ? paint_uv_for(paint_dir, UV2, CUSTOM0, CUSTOM1) : vec2(-1.0);
 }
 
 void fragment() {
@@ -67,20 +68,30 @@ void fragment() {
 		EMISSION = cap * 0.55;
 		NORMAL = vec3(0.0, 0.0, 1.0);
 	} else {
-		vec3 base = mix(albedo.rgb, trim_color.rgb, COLOR.b) * texture(albedo_texture, UV).rgb;
+		bool painted = use_paint && v_paint_uv.x >= 0.0;
+		vec3 base = painted ? texture(paint_texture, v_paint_uv).rgb
+				: mix(albedo.rgb, trim_color.rgb, COLOR.b) * texture(albedo_texture, UV).rgb;
 		// Wear: 3D grunge noise in world space, gated by the R mask.
 		float grunge = noise3(v_world_pos * 1.3) * 0.65 + noise3(v_world_pos * 4.7) * 0.35;
 		float mask = COLOR.r * 0.35 + grunge * 0.7;
 		float rust = smoothstep(1.0 - wear * 0.75, 1.05 - wear * 0.75, mask);
 		base = mix(base, rust_color.rgb * (0.7 + 0.5 * grunge), rust * 0.85);
 		base *= 1.0 - wear * (0.25 + 0.35 * grunge);
-		ALBEDO = base;
 
 		// Emissive strips light up along X as power_level goes 0 -> 1.
 		float front = mix(sweep_range.x - 1.0, sweep_range.y + 1.0, power_level);
 		float powered = clamp((front - v_world_pos.x) * 2.0, 0.0, 1.0) * step(0.001, power_level);
 		vec3 strip = emission_from_texture ? texture(albedo_texture, UV).rgb : strip_color.rgb;
-		EMISSION = strip * strip_energy * COLOR.g * powered * (1.0 + 0.5 * interior_warmth);
+		if (painted) {
+			// The painting shows the lights on: dim the glow areas while unpowered.
+			base *= mix(1.0, mix(0.35, 1.0, powered), COLOR.g);
+			ALBEDO = base * (1.0 - paint_flatness);
+			EMISSION = base * paint_flatness;
+			EMISSION += strip * strip_energy * 0.35 * COLOR.g * powered * (1.0 + 0.5 * interior_warmth);
+		} else {
+			ALBEDO = base;
+			EMISSION = strip * strip_energy * COLOR.g * powered * (1.0 + 0.5 * interior_warmth);
+		}
 		EMISSION += emission_color.rgb * emission_energy * power_level;
 
 		if (repair_flash > 0.0) {

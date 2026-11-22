@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Camera-projection painting for one module (prototype, see tools/paint/*.py).
+# Usage: tools/paint.sh <module_id> [--yaws=0,90,180,270] [--n=4] [--model=google/gemini-2.5-flash-image]
+#                       [--size=2K] [--skip-ai] [--dry-run] [--pick=closed:K,cut:K,interior:K]
+# The camera is fixed, so each module direction (yaw 0/90/180/270) is painted separately:
+#   per direction:
+#     1. render   game-camera passes from art/modules/build/<id>.blend          (Blender)
+#     2. ai       N paint-over candidates per view via OpenRouter                (OPENROUTER_API_KEY, or .env)
+#     3. align    snap to geometry, score, pick, write <id>_paint_<yaw>.png atlas (OpenCV)
+#   then once:
+#     4. project  one UV set per direction + palette fallback, export <id>.glb   (Blender)
+#     5. new_module.py (art_paint_path, texture imports) + tools/import.sh
+# --skip-ai reuses art/paint/<id>/y<yaw>/cand/* (hand-edit a candidate, then re-run with --skip-ai).
+# --pick applies to every direction listed in --yaws (use with a single direction).
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ID="${1:?usage: tools/paint.sh <module_id> [options]}"; shift
+if [[ -z "${BLENDER:-}" ]]; then
+  BLENDER="$(ls -d "$HOME"/Downloads/blender-*/blender 2>/dev/null | sort -V | tail -1 || true)"
+  BLENDER="${BLENDER:-$(command -v blender || true)}"
+fi
+if [[ -z "${OPENROUTER_API_KEY:-}" && -f "$ROOT/.env" ]]; then   # .env is gitignored
+  OPENROUTER_API_KEY="$(sed -n 's/^OPENROUTER_API_KEY=//p' "$ROOT/.env" | tail -1 | tr -d "\"'\r")"
+  export OPENROUTER_API_KEY
+fi
+PY="$ROOT/tools/paint/.venv/bin/python"
+[[ -x "$PY" ]] || { echo "Create the venv: python3 -m venv tools/paint/.venv && tools/paint/.venv/bin/pip install opencv-python-headless numpy requests" >&2; exit 1; }
+SKIP_AI=0; AI_ARGS=(); AL_ARGS=(); BL_ARGS=(); YAWS="0,90,180,270"
+for a in "$@"; do
+  case "$a" in
+    --skip-ai) SKIP_AI=1 ;;
+    --pick=*|--max-flow=*) AL_ARGS+=("$a") ;;
+    --yaws=*) YAWS="${a#--yaws=}" ;;
+    --res=*) BL_ARGS+=("$a") ;;
+    *) AI_ARGS+=("$a") ;;
+  esac
+done
+BLEND="$ROOT/art/modules/build/$ID.blend"
+[[ -f "$BLEND" ]] || { echo "Missing $BLEND: build the module first (tools/art.sh $ID)" >&2; exit 1; }
+cd "$ROOT"
+run_blender() { "$BLENDER" -b "$BLEND" --python-exit-code 1 -P tools/paint/paint_blender.py -- "$@" 2>&1 \
+  | grep -E "^(PAINT|Error|Traceback|  File|    |[A-Za-z]+Error)" || true; return "${PIPESTATUS[0]}"; }
+for Y in ${YAWS//,/ }; do
+  echo "PAINT ===== $ID yaw $Y"
+  run_blender render --module="$ID" --yaw="$Y" "${BL_ARGS[@]}"
+  [[ $SKIP_AI == 1 ]] || "$PY" tools/paint/paint_ai.py "$ID" --yaw="$Y" "${AI_ARGS[@]}"
+  "$PY" tools/paint/paint_align.py "$ID" --yaw="$Y" "${AL_ARGS[@]}"
+done
+run_blender project --module="$ID"
+python3 tools/new_module.py "$ID" >/dev/null
+tools/import.sh

@@ -178,6 +178,8 @@ func _give_selected() -> void:
 ##   --visitor              dock a trader ship now (needs a powered dock)
 ##   --focus=<module_id>    focus a module; --view=station|room picks the zoom
 ##   --cut=off              disable the cutaway; --backfaces paints holes magenta
+##   --paint=off            painted art (art_paint_path) drawn with the plain palette instead
+##   --spin=<module_id>:<deg>  turn a module in place by deg (checks each painted direction)
 ##   --explode              open the exploded view of the focused module
 ##   --interact=<name>      walk to the first object whose name contains <name>
 ##   --time=<HH>            jump the clock forward to that hour
@@ -193,6 +195,8 @@ func _run_cli_commands() -> void:
 	if args.has("inventory") and hud:
 		hud.inventory_panel.toggle()
 	var main := get_tree().current_scene
+	if args.get("paint", "") == "off":
+		Module.paint_disabled = true  # before --build / --layout create modules
 	if args.has("freeze") or args.get("story", "") == "off":
 		GameState.set_story_enabled(false)
 	if args.has("freeze"):
@@ -237,6 +241,8 @@ func _run_cli_commands() -> void:
 		_summon_visitor()
 		if args.has("focus"):  # frame the ship once it has docked
 			await get_tree().create_timer(VisitorDirector.APPROACH_SECONDS + 0.3).timeout
+	if args.has("spin"):
+		_cheat_spin(main, String(args.spin))
 	if args.has("cut") and args.cut == "off":
 		_toggle_cut()
 	if args.has("backfaces"):
@@ -274,6 +280,20 @@ func _run_cli_commands() -> void:
 		var err := image.save_png(path)
 		print("Screenshot %s -> %s" % [error_string(err), ProjectSettings.globalize_path(path)])
 		get_tree().quit()
+
+
+func _cheat_spin(main: Node, spec: String) -> void:
+	var kv := spec.split(":")
+	var station := main.get_node_or_null(^"Station") as Station
+	var module: Module = station.find_module(StringName(kv[0])) if station else null
+	if module == null or kv.size() != 2:
+		push_warning("--spin: expected <module_id>:<deg>, got '%s'" % spec)
+		return
+	# Rotate the rest pose (the module may still be dropping in from --build), then the node.
+	var turn := Basis(Vector3.UP, deg_to_rad(float(kv[1])))
+	module.rest_transform.basis = turn * module.rest_transform.basis
+	module.global_basis = turn * module.global_basis
+	module.refresh_world_params()
 
 
 func _interact_with_named(fragment: String) -> void:
