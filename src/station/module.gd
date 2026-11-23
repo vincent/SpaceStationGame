@@ -94,6 +94,7 @@ var _cut_geometry: Array[GeometryInstance3D] = []
 var _cut_materials: Array[ShaderMaterial] = []
 ## Module-owned copies of the painted prop materials (the cut ones are in _cut_materials).
 var _paint_materials: Array[ShaderMaterial] = []
+var _paint_texture: Texture2D
 var _art_greebles: Array[Node3D] = []
 var _cut_box: MeshInstance3D
 var _sequence: Tween
@@ -255,6 +256,7 @@ func apply_record(rec: Dictionary, animate: bool) -> void:
 
 	if animate and was_derelict and state != StationState.State.DERELICT:
 		play_repair(target_wear)
+		_play_paint_reveal()
 	elif animate and not is_equal_approx(target_wear, wear):
 		_tween_wear(target_wear, REPAIR_SECONDS)
 	else:
@@ -266,6 +268,8 @@ func apply_record(rec: Dictionary, animate: bool) -> void:
 		play_power_off()
 	elif not animate:
 		_set_power_instant(1.0 if powered else 0.0)
+	if not (animate and was_derelict and state != StationState.State.DERELICT):
+		_apply_paint()  # painting of the current state (the repair case is revealed above)
 	refresh_parts()
 	refresh_ambient()
 
@@ -351,17 +355,37 @@ func _is_painted() -> bool:
 	return art_palette != null and art_paint_path != "" and not paint_disabled
 
 
-## Picks the painting of the direction this module is attached in (the camera never rotates).
+## Picks the painting of the direction this module is attached in (the camera never rotates)
+## and of its state: "<path>_derelict.<ext>" while derelict when the art has one.
 func _apply_paint() -> void:
 	if not _is_painted():
 		return
 	var dir := posmod(roundi(global_basis.get_euler().y / (PI / 2.0)), 4)
 	var path := art_paint_path % (dir * 90)
+	if state == StationState.State.DERELICT:
+		var derelict := path.get_basename() + "_derelict." + path.get_extension()
+		if ResourceLoader.exists(derelict):
+			path = derelict
 	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	_paint_texture = tex
 	for mat: ShaderMaterial in _cut_materials + _paint_materials:
 		mat.set_shader_parameter(&"use_paint", tex != null)
 		mat.set_shader_parameter(&"paint_dir", dir)
 		mat.set_shader_parameter(&"paint_texture", tex)
+		mat.set_shader_parameter(&"paint_reveal", 1.0)
+
+
+## Derelict -> repaired: the new painting is revealed under the repair sweep band.
+func _play_paint_reveal() -> void:
+	var prev := _paint_texture
+	_apply_paint()
+	if prev == null or prev == _paint_texture:
+		return
+	for mat: ShaderMaterial in _cut_materials:
+		mat.set_shader_parameter(&"paint_texture_prev", prev)
+		mat.set_shader_parameter(&"paint_reveal", 0.0)
+	var reveal := create_tween()
+	reveal.tween_method(func(v: float) -> void: _set_param(&"paint_reveal", v), 0.001, 1.0, REPAIR_SECONDS)
 
 
 # --- Sequences ---------------------------------------------------------------

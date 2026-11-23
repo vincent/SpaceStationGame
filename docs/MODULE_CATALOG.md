@@ -84,8 +84,8 @@ gameplay values are unchanged; `agri_bay` and `hab_drum` are retired (`greenhous
 |---|---|---|---|---|---|
 | `hab_pod` | Hab pod | chamfered polygon | 6.8 × 5.2 | the cheap early room; bay window W in its north wall; mount `garden` | 1.2k |
 | `solar_array` | Solar array | small polygon cabin + truss | 6.8 × 5.5 (+ wings) | navy wings on a gold spar; parts `array`, `extension` | 1.6k |
-| `capsule` | Rescue capsule | short tube, engine nose | 8.0 × 4.6 | **own livery** (red walls, opaque offwhite roof) so it stays distinct; parts `antenna`, `thruster`, `solar_wings` | 1.6k |
-| `wreck_core` | Wreck core | room A tube + derelict wing, neck, roof pod | 22 × 12.4 | **weathered**: `ivory_old` / `gold_faded` / `strut_old`, `broken=` dark panes, scorch and rust decals, broken truss; at full wear the shader adds rust. Wing kept at z ≤ −3.7 so an 8.6–9.2 m module fits on slot B; mounts `roof_a` / `roof_b`, part `dish` | 3.9k |
+| `capsule` | Rescue capsule | elongated octagon pod, glass dome on white struts, long docking tube | 8.0 × 5.6 | canopy style in its **own livery** (red walls, offwhite stripe, SR-7, amber portholes, glowing keel pads) so it stays distinct; parts `antenna`, `thruster`, `solar_wings` | 2.2k |
+| `wreck_core` | Wreck core | **deck style**: L-shaped open-topped deck, room A = roofed cabin, derelict wing open to space, shack, docking-tube elbow | 22.3 × 12.4 | ivory walls broken into teeth, rust roofs and inner panels, banded tank, cargo container, glowing floor hatches, floating debris. Wing kept at z ≤ −3.7 west of room A so an 8.6–9.2 m module fits on slot B; mounts `roof_a` (shack roof) / `roof_b` (wing deck), part `dish` | 2.7k |
 | `trader_ship` | Trader ship (visitor) | narrow tube + 2 cargo pods | 8.0 × 6.1 | navy walls, gold trim, hatch collar (too narrow for a port plate); parts `engine`, `mast` | 1.7k |
 
 Kit options used by them: `canopy_tube` / `canopy_polygon` take `wall`, `stripe`,

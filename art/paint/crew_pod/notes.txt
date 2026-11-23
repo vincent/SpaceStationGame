@@ -1,0 +1,4 @@
+# Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
+*: The module is a small crew cabin: ivory/off-white hull, navy blue details, mustard-gold trim bands, faded red stripe.
+closed: The roof is an OPAQUE dark lilac canopy in a light frame: paint it as solid tinted panels with a soft reflection, nothing visible through it.
+interior: The furniture is: floor plate, consoles, bench, table, tank, gas canisters, locker, crate, a screen.

@@ -16,3 +16,4 @@ trim_color = Color(0.91, 0.894, 0.855, 1)
 cap_tint = Color(1, 0.945, 0.839, 1)
 light_color = Color(1, 0.851, 0.627, 1)
 art_palette = ExtResource("3_palette")
+art_paint_path = "res://assets/models/modules/capsule_paint_%d.webp"

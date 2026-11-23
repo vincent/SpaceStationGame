@@ -20,6 +20,11 @@ uniform float emission_energy : hint_range(0.0, 8.0) = 0.0;
 uniform sampler2D paint_texture : source_color, filter_linear_mipmap, hint_default_white;
 uniform bool use_paint = false;
 uniform int paint_dir = 0;
+// State change (derelict -> repaired): the previous painting stays where x >= the sweep front.
+uniform sampler2D paint_texture_prev : source_color, filter_linear_mipmap, hint_default_white;
+uniform float paint_reveal = 1.0;
+// Painted art already shows its wear: the procedural rust/grime is scaled down on it.
+uniform float paint_wear_scale : hint_range(0.0, 1.0) = 0.3;
 uniform float paint_flatness : hint_range(0.0, 1.0) = 0.85;
 varying vec2 v_paint_uv;
 

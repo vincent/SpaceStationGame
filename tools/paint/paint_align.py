@@ -130,11 +130,16 @@ def main():
     pick = dict(p.split(':') for p in opt['pick'].split(',')) if 'pick' in opt else {}
     yaw = int(opt.get('yaw', 0))
     work = os.path.join(ROOT, 'art', 'paint', mid, 'y%d' % yaw)
-    os.makedirs(os.path.join(work, 'aligned'), exist_ok=True)
+    variant = opt.get('variant', '')
+    if variant == 'default': variant = ''
+    sfx = '_' + variant if variant else ''
+    configs = json.load(open(os.path.join(work, 'camera.json'))).get('configs', ['closed', 'cut', 'interior'])
+    adir = os.path.join(work, 'aligned' + sfx)
+    os.makedirs(adir, exist_ok=True)
     report = {}
-    for cfg in ('closed', 'cut', 'interior'):
+    for cfg in configs:
         geo_lines, mask = geometry(work, cfg)
-        cands = sorted(glob.glob(os.path.join(work, 'cand', cfg + '_*.png')))
+        cands = sorted(glob.glob(os.path.join(work, 'cand' + sfx, cfg + '_*.png')))
         if not cands:
             log(cfg, 'no candidates'); continue
         floor = chamfer(edges(cv2.imread(os.path.join(work, cfg + '_beauty.png'))), geo_lines, mask)
@@ -153,7 +158,7 @@ def main():
             # colour drift vs the render inside the silhouette (consistency between views)
             ref = cv2.imread(os.path.join(work, cfg + '_beauty.png'))
             drift = float(np.abs(cv2.blur(out, (31, 31)).astype(int) - cv2.blur(ref, (31, 31)).astype(int))[mask].mean())
-            cv2.imwrite(os.path.join(work, 'aligned', '%s_%s.png' % (cfg, k)), out)
+            cv2.imwrite(os.path.join(adir, '%s_%s.png' % (cfg, k)), out)
             cov = coverage(geo_lines, edges(out), mask)
             iou = silhouette_iou(out, mask, ref[2, 2].tolist())
             score = cov + 40.0 * (1.0 - iou)          # px-equivalent: lower is better
@@ -163,13 +168,13 @@ def main():
             log(cfg, k, 'score %.2f (edges %.2f px, silhouette IoU %.3f) chamfer %.2f -> %.2f, drift %.1f'
                 % (score, cov, iou, before, after, drift))
         best = pick.get(cfg) or min(rows, key=lambda r: r['score'])['k']
-        img = cv2.imread(os.path.join(work, 'aligned', '%s_%s.png' % (cfg, best)))
-        cv2.imwrite(os.path.join(work, 'paint_' + cfg + '.png'), bleed(img, mask))
+        img = cv2.imread(os.path.join(adir, '%s_%s.png' % (cfg, best)))
+        cv2.imwrite(os.path.join(work, 'paint_%s%s.png' % (cfg, sfx)), bleed(img, mask))
         report[cfg] = dict(chamfer_floor=round(floor, 2), candidates=rows, picked=best)
         # contact sheet: candidate + geometry lines in red, score in the corner
         tiles = []
         for r in rows:
-            t = cv2.imread(os.path.join(work, 'aligned', '%s_%s.png' % (cfg, r['k'])))
+            t = cv2.imread(os.path.join(adir, '%s_%s.png' % (cfg, r['k'])))
             t[geo_lines > 0] = (0, 0, 255)
             t = cv2.resize(t, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
             label = '%s #%s  score %.1f  IoU %.2f%s' % (cfg, r['k'], r['score'], r['iou'],
@@ -178,13 +183,13 @@ def main():
             tiles.append(t)
         while len(tiles) % 2: tiles.append(np.zeros_like(tiles[0]))
         sheet = np.vstack([np.hstack(tiles[i:i + 2]) for i in range(0, len(tiles), 2)])
-        cv2.imwrite(os.path.join(work, 'contact_' + cfg + '.png'), sheet)
+        cv2.imwrite(os.path.join(work, 'contact_%s%s.png' % (cfg, sfx)), sheet)
         log(cfg, 'picked', best)
-    json.dump(report, open(os.path.join(work, 'align.json'), 'w'), indent=1)
+    json.dump(report, open(os.path.join(work, 'align%s.json' % sfx), 'w'), indent=1)
     # atlas for the game: one row per configuration, closed / cut / interior (matches paint_blender)
-    parts = [cv2.imread(os.path.join(work, 'paint_%s.png' % c)) for c in ('closed', 'cut', 'interior')]
+    parts = [cv2.imread(os.path.join(work, 'paint_%s%s.png' % (c, sfx))) for c in configs]
     if all(p is not None for p in parts):
-        atlas = os.path.join(ROOT, 'assets', 'models', 'modules', '%s_paint_%d.png' % (mid, yaw))
+        atlas = os.path.join(ROOT, 'assets', 'models', 'modules', '%s_paint_%d%s.png' % (mid, yaw, sfx))
         cv2.imwrite(atlas, np.vstack(parts))
         log('atlas', os.path.relpath(atlas, ROOT), np.vstack(parts).shape[1::-1])
 

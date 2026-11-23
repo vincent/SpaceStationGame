@@ -291,6 +291,74 @@ class Module:
         self.frame(frame)
         return hull
 
+    # ------------------------------------------------------------ deck style
+    def deck(self, pts, top=-0.15, kb=0.45, side="ivory", floor="deck", under="navy",
+             rects=None, name="_deck"):
+        """Deck style (open-topped wreck): a slab over the CCW plan polygon `pts`,
+        keel chamfer `kb`, top at `top` (just under the game's floor tiles). `rects`
+        = [(x0, y0, x1, y1)] Blender plan rectangles for the footprint instead of the
+        slab's bounding box (an L-shaped deck would otherwise block its notch).
+        Returns the piece index."""
+        def build(mb):
+            faces = core.polygon_hull(mb, pts, [(kb, KEEL), (0.0, KEEL + kb), (0.0, top)])
+            for f in faces:
+                nz = f.normal.z
+                core.paint(mb, [f], C[floor if nz > 0.9 else under if nz < -0.9 else side], mask(0.3))
+        p = self.piece(build, massing=rects is None, name=name)
+        for x0, y0, x1, y1 in rects or ():
+            self.massing.append((x0, -y1, x1, -y0))
+        return p
+
+    def wall(self, a, b, tops, t=WALL, z0=-0.35, color="ivory", inner=None, massing=False,
+             name="_wall"):
+        """Deck-style wall from plan point a to b, `t` thick on the left of a->b (the
+        inside of a CCW outline), from z0 (sunk into the deck) up to `tops`: one
+        height, or [(s_end, z), ...] steps along the wall (broken teeth). `inner`:
+        colour of the inside face (rust panels). `massing` off: the deck's footprint
+        covers it. Returns the piece index, for doorway() / hole()."""
+        length = (Vector(b) - Vector(a)).length
+        steps = [(length, tops)] if isinstance(tops, (int, float)) else list(tops)
+        d = (Vector(b) - Vector(a)).normalized()
+        left = Vector((-d.y, d.x))
+
+        def build(mb):
+            faces = core.wall_prism(mb, a, b, core.step_profile(length, steps, z0), t)
+            for f in faces:
+                n = f.normal
+                inside = inner and Vector((n.x, n.y)).dot(left) > 0.9
+                core.paint(mb, [f], C[inner if inside else color], mask(0.3))
+        return self.piece(build, massing=massing, name=name)
+
+    def banded_tube(self, pts, r, color="offwhite", band="trim_gold", every=0.0,
+                    collar="navy", frame=False, name="_tube"):
+        """Octagonal pipe through plan/space points `pts` (docking tubes, elbows):
+        straight segments overlapping at the joints, a `collar` ring hiding each
+        joint and both ends, `band` rings every `every` metres (0: one per
+        segment). Part of the hull (massing off) unless `frame`."""
+        def build(mb):
+            ps = [Vector(p) for p in pts]
+            for i, (p, q) in enumerate(zip(ps, ps[1:])):
+                d = (q - p).normalized()
+                a = p - d * (r * 0.85 if i else 0.0)
+                b = q + d * (r * 0.85 if i < len(ps) - 2 else 0.0)
+                mb.cyl(r, (b - a).length, (a + b) / 2, d.to_track_quat("Z", "Y").to_euler(), C[color],
+                       mask(0.3), seg=8)
+                seg = (q - p).length
+                n = max(1, int(seg / every)) if every else 1
+                for k in range(n):
+                    c = p + d * (seg * (k + 0.5) / n)
+                    core.prism_ring(mb, c - d * 0.12, d, r * 1.12, r * 0.8, 0.24, C[band], mask(0.3))
+            for i, p in enumerate(ps):
+                if 0 < i < len(ps) - 1:
+                    d = (ps[i + 1] - ps[i - 1]).normalized()
+                    core.prism_ring(mb, p - d * r * 0.6, d, r * 1.25, r * 0.5, r * 1.2, C[collar], mask(0.3))
+            for p, q in ((ps[0], ps[1]), (ps[-1], ps[-2])):
+                d = (p - q).normalized()
+                core.prism_ring(mb, p - d * 0.3, d, r * 1.3, r * 0.6, 0.3, C[collar], mask(0.3))
+        if frame:
+            return self.frame(build)
+        return self.piece(build, massing=False, name=name)
+
     def _paint_glass(self, mb, f, glass, glow, broken):
         """Canopy glass face; with `broken`, some panes are dark (smashed)."""
         if broken and glass == "canopy" and self.rng.random() < broken:

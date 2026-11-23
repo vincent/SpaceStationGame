@@ -16,3 +16,4 @@ trim_color = Color(0.659, 0.282, 0.227, 1)
 cap_tint = Color(0.91, 0.875, 0.784, 1)
 light_color = Color(1, 0.71, 0.278, 1)
 art_palette = ExtResource("3_palette")
+art_paint_path = "res://assets/models/modules/wreck_core_paint_%d.webp"

@@ -111,6 +111,13 @@ briefs: [MODULE_CATALOG.md](MODULE_CATALOG.md).
   keep a path of side-by-side free cells between every pair of doorways (cells touching
   only at a corner don't connect; `test_every_doorway_reaches_the_others` checks it).
   Stacked solids must overlap, never touch face to face (the room check counts surfaces).
+- **Deck style** (open-topped, `art/modules/wreck_core.py`): `deck(pts, rects=...)` = slab over a
+  plan polygon with a keel chamfer (`rects` = footprint rectangles when the outline is concave),
+  `wall(a, b, tops)` = one watertight wall solid on the left of a->b, its top stepping through
+  `tops` (broken teeth, `core.wall_prism` + `core.step_profile`), `banded_tube(pts, r)` =
+  octagonal pipe with gold bands and collars (docking tubes, elbows). Walkable rooms still need
+  a roof (the room check casts rays up), so roof them with a slab and let `cut_box` open them;
+  keep `cut_box` off the back wall so it isn't sliced into a dark band.
 - **Checks** (any failure = non-zero exit): watertight hull, triangle budget, palette
   colours only, every layout letter has a doorway, slot yaw a multiple of 90° and
   outside the footprint, the nav door point (1.15 m inside) on a walkable cell, and

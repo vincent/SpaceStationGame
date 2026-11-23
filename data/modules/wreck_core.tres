@@ -23,6 +23,6 @@ layout = "######
 vC..S#
 b....a
 ##Wc##"
-massing = Array[Rect2]([Rect2(-4.3, -2.3, 8.6, 4.6), Rect2(-19.6, -10.1, 22.0, 6.4), Rect2(-13.1, -9.0, 8.2, 3.4), Rect2(-1.5, -4.0, 3.0, 1.9)])
+massing = Array[Rect2]([Rect2(-4.3, -10.1, 8.6, 12.4), Rect2(-18.0, -10.1, 13.7, 6.4)])
 slot_frames = Dictionary[StringName, Vector3]({&"A": Vector3(4.45, 1.0, 90.0), &"B": Vector3(-4.45, 1.0, -90.0), &"C": Vector3(1.0, 2.45, 0.0), &"V": Vector3(-4.45, -1.0, -90.0)})
 slot_sizes = Dictionary[StringName, int]({})

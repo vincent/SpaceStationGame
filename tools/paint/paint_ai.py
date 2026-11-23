@@ -3,10 +3,11 @@
 paint_ai.py - AI paint-over of the render passes through OpenRouter (image output models).
 
     tools/paint/.venv/bin/python tools/paint/paint_ai.py <id> [--cfg=closed,cut,interior] [--n=4]
-        [--model=google/gemini-2.5-flash-image] [--size=2K] [--dry-run] [--yaw=0]
+        [--model=google/gemini-2.5-flash-image] [--size=2K] [--dry-run] [--yaw=0] [--variant=derelict]
 
 Reads  art/paint/<id>/y<yaw>/<cfg>_beauty.png  (+ optional style refs in art/paint/style/*.png|jpg)
-Writes art/paint/<id>/y<yaw>/cand/<cfg>_<k>.png and .../cand/meta.json
+Writes art/paint/<id>/y<yaw>/cand[_<variant>]/<cfg>_<k>.png and meta.json
+art/paint/<id>/notes.txt (optional) adds module-specific lines to the prompts.
 Needs OPENROUTER_API_KEY in the environment (never stored in the repo).
 --dry-run writes the beauty render itself as candidates (tests the rest of the pipeline offline).
 """
@@ -23,10 +24,9 @@ STYLE = (
     "Repaint it as a finished 'ligne claire' science-fiction illustration (European bande dessinee): "
     "fine, even, black ink outlines on every silhouette, crease and panel edge; mostly flat colours "
     "with only one soft shade tone per surface; dense but small mechanical surface detail drawn ON the "
-    "existing surfaces - panel seams, rivets, vents, hatches, small labels and stencilled numbers, "
-    "decals, scuffs and light grime along edges. Keep the existing colour of every surface "
-    "(ivory/off-white hull, navy blue details, mustard-gold trim bands, faded red stripe). "
-    "Lights and screens glow (warm yellow / cyan).")
+    "existing surfaces - panel seams, rivets, vents, hatches, small stencilled numbers, decals, scuffs. "
+    "Keep the existing colour of every surface exactly as in the input (same hue per part); no readable "
+    "words longer than a few letters.")
 STRICT = (
     "STRICT RULES: this is a paint-over that will be projected back onto the 3D model, so keep the "
     "exact same framing, camera, perspective, silhouette and scale. Every edge, opening and shape "
@@ -37,21 +37,30 @@ STRICT = (
     "no border.")
 VIEW = {
     'closed': "The input is a flat-shaded 3D render of one module of a space station, seen from the "
-              "fixed game camera. The roof is an OPAQUE dark lilac canopy in a light frame: paint it as "
-              "solid tinted panels with a soft reflection, nothing visible through it.",
+              "fixed game camera.",
     'cut': "The input is a flat-shaded 3D render of one module of a space station, seen from the fixed "
            "game camera, in a cutaway diorama view: the roof and the upper walls are sliced off at "
-           "waist height so the room inside is visible (floor, consoles, table, tank, locker, crates). "
-           "The flat pale-cream tops of the sliced walls are section cuts: keep them flat pale cream "
-           "with a thin ink outline. The inside of the walls is plain: paint it, but do NOT add or "
-           "redraw furniture - the furniture is painted separately.",
-    'interior': "The input is a flat-shaded 3D render of the furniture of a small space-station cabin "
-                "(floor plate, consoles, bench, table, tank, gas canisters, locker, crate, a screen), "
-                "seen from the fixed game camera with the walls removed. Each object is a simple block "
-                "and must stay EXACTLY that block: same outline, same faces, same size and place - "
+           "waist height so the room inside is visible. The flat pale-cream tops of the sliced walls "
+           "are section cuts: keep them flat pale cream with a thin ink outline. The inside of the "
+           "walls and the floor are plain: paint them, but do NOT add or redraw furniture - the "
+           "furniture is painted separately.",
+    'interior': "The input is a flat-shaded 3D render of the furniture and props of one space-station "
+                "module, seen from the fixed game camera with the walls removed. Each object is a simple "
+                "block and must stay EXACTLY that block: same outline, same faces, same size and place - "
                 "do not replace it by a different object, do not add any object, cable or clutter. "
                 "Only add drawn detail on its existing faces (buttons, gauges, handles, labels, panel "
-                "lines, vents, wear), so it reads as that piece of furniture.",
+                "lines, vents, wear), so it reads as a piece of equipment.",
+    'parts': "The input is a flat-shaded 3D render of the add-on parts of one space-station module "
+             "(antennas, solar panels, thrusters, dishes...), shown alone where they attach, seen from "
+             "the fixed game camera. Each part must stay EXACTLY its shape: same outline, size and place; "
+             "only add drawn detail on its existing faces.",
+}
+VARIANT = {
+    '': "STATE: clean, maintained and in working order; lights and screens glow (warm yellow / cyan).",
+    'derelict': "STATE: a DERELICT, long-abandoned wreck: heavy rust streaks, scorch marks, dents, "
+                "peeling and faded paint, grime, cracked panels; every light and screen is DEAD and dark "
+                "(no glow anywhere). Damage is drawn on the existing surfaces only - no holes through "
+                "them, no missing pieces, no debris added around.",
 }
 
 
@@ -105,10 +114,20 @@ def call(model, prompt, images, ratio, size, key):
 def main():
     mid = sys.argv[1]
     opt = dict(a[2:].split('=', 1) if '=' in a else (a[2:], '1') for a in sys.argv[2:] if a.startswith('--'))
-    cfgs = opt.get('cfg', 'closed,cut,interior').split(',')
+    variant = opt.get('variant', '')
+    if variant == 'default': variant = ''
     n = int(opt.get('n', 4)); model = opt.get('model', 'google/gemini-2.5-flash-image')
     size = opt.get('size', '2K') or None; dry = 'dry-run' in opt
-    work = os.path.join(ROOT, 'art', 'paint', mid, 'y' + opt.get('yaw', '0')); cand = os.path.join(work, 'cand')
+    work = os.path.join(ROOT, 'art', 'paint', mid, 'y' + opt.get('yaw', '0'))
+    cand = os.path.join(work, 'cand' + ('_' + variant if variant else ''))
+    cfgs = opt['cfg'].split(',') if 'cfg' in opt else json.load(open(os.path.join(work, 'camera.json')))['configs']
+    # optional per-module notes (what the module is, colours, special surfaces), one line per view:
+    #   "*: ..." applies to every view, "<view>: ..." to one view
+    notes = {}
+    npath = os.path.join(ROOT, 'art', 'paint', mid, 'notes.txt')
+    for line in (open(npath).read().splitlines() if os.path.exists(npath) else []):
+        if ':' in line and not line.startswith('#'):
+            k, v = line.split(':', 1); notes.setdefault(k.strip(), []).append(v.strip())
     os.makedirs(cand, exist_ok=True)
     key = os.environ.get('OPENROUTER_API_KEY')
     if not dry and not key:
@@ -122,7 +141,7 @@ def main():
         src = cv2.imread(os.path.join(work, cfg + '_beauty.png'))
         bg = src[2, 2].tolist()
         padded, ratio, box = pad_to_ratio(src, bg)
-        prompt = VIEW[cfg] + ' ' + STYLE + ' ' + STRICT
+        prompt = ' '.join([VIEW[cfg]] + notes.get('*', []) + notes.get(cfg, []) + [VARIANT[variant], STYLE, STRICT])
         if styles:
             prompt += (' The first image is the render to repaint; the following image(s) are STYLE '
                        'REFERENCES ONLY (line work, colouring and level of detail) - do not copy their content.')

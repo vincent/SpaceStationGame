@@ -438,6 +438,40 @@ def rounded_hull(mb, x0, x1, y0, y1, z0, z1, radii, dome=(0.0, 0.0), squeeze=0.4
 
 
 # ================================================================ chamfered hulls (canopy style)
+def wall_prism(mb, a, b, profile, t):
+    """Closed wall solid: the (s, z) outline `profile` (s = metres along a->b) on
+    the vertical plane through plan points a, b, extruded `t` to the left of a->b
+    (the inside of a CCW plan outline). One watertight solid even with a stepped /
+    broken top. Returns its faces."""
+    a, b = Vector((*a, 0.0)), Vector((*b, 0.0))
+    d = (b - a).normalized()
+    n = Vector((-d.y, d.x, 0.0)) * t
+    front = [mb.bm.verts.new(a + d * s + Vector((0, 0, z))) for s, z in profile]
+    back = [mb.bm.verts.new(v.co + n) for v in front]
+    faces = [mb.bm.faces.new(front), mb.bm.faces.new(list(reversed(back)))]
+    k = len(front)
+    for i in range(k):
+        j = (i + 1) % k
+        faces.append(mb.bm.faces.new((front[j], front[i], back[i], back[j])))
+    bmesh.ops.recalc_face_normals(mb.bm, faces=faces)
+    return faces
+
+
+def step_profile(length, tops, z0):
+    """(s, z) outline for wall_prism: bottom at z0 from 0 to `length`, top stepping
+    through `tops` = [(s_end, z), ...] (each top runs from the previous s_end)."""
+    pts = [(0.0, z0), (length, z0)]
+    for i in reversed(range(len(tops))):
+        s, z = tops[i]
+        s0 = tops[i - 1][0] if i else 0.0
+        pts += [(min(s, length), z), (s0, z)]
+    out = []
+    for p in pts:  # drop repeated points (equal neighbouring tops)
+        if not out or abs(out[-1][0] - p[0]) > 1e-6 or abs(out[-1][1] - p[1]) > 1e-6:
+            out.append(p)
+    return out
+
+
 def chamfer_profile(y0, y1, z0, z1, kb, kt, split, grow=0.0):
     """Octagonal section (chamfered rectangle) in YZ: keel chamfers `kb`, roof
     chamfers `kt`, plus a vertex on each vertical side at z `split` (where the

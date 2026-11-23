@@ -1,0 +1,6 @@
+# Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
+*: The module is the SR-7 rescue capsule the crew arrived in: a red lower hull with the "SR-7" marking and round amber portholes, a light grey faceted frame, a docking ring with a gold band.
+closed: The upper part is an OPAQUE dark lilac canopy inside the grey frame: paint it as solid tinted panels with a soft reflection, nothing visible through it.
+cut: The cabin inside is cramped and plain; keep the round amber portholes and the small wall screen where they are.
+interior: The props are a few small items on the cabin walls and floor (a screen, small boxes, a rack).
+parts: The parts are an antenna dish on a mast, two blue solar panel wings and a thruster nozzle.

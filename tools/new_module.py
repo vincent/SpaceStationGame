@@ -171,7 +171,7 @@ def write_paint(mid):
     direction): import them with mip-maps (VRAM compressed) and set the scene's art_paint_path.
     Textures are loaded by path at runtime, only for the directions actually used."""
     d = os.path.join(ROOT, "assets", "models", "modules")
-    pngs = sorted(f for f in os.listdir(d) if re.fullmatch(re.escape(mid) + r"_paint_\d+\.png", f))
+    pngs = sorted(f for f in os.listdir(d) if re.fullmatch(re.escape(mid) + r"_paint_\d+(_[a-z]+)?\.webp", f))
     if not pngs:
         return
     for f in pngs:

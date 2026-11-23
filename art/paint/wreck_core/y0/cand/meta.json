@@ -1,0 +1,138 @@
+{
+ "closed": {
+  "model": "google/gemini-2.5-flash-image",
+  "ratio": "16:9",
+  "prompt": "The input is a flat-shaded 3D render of one module of a space station, seen from the fixed game camera. The module is the core of an old space station: grey hull walls with broken, jagged tops, rust-brown roofs on the two cabins, gold trim around doors and windows, a long white tank with gold bands lying inside, a docking tube with a grey pillar, an antenna mast. The small cubes floating around it are debris: keep each exactly where it is. STATE: clean, maintained and in working order; lights and screens glow (warm yellow / cyan). Repaint it as a finished 'ligne claire' science-fiction illustration (European bande dessinee): fine, even, black ink outlines on every silhouette, crease and panel edge; mostly flat colours with only one soft shade tone per surface; dense but small mechanical surface detail drawn ON the existing surfaces - panel seams, rivets, vents, hatches, small stencilled numbers, decals, scuffs. Keep the existing colour of every surface exactly as in the input (same hue per part); no readable words longer than a few letters. STRICT RULES: this is a paint-over that will be projected back onto the 3D model, so keep the exact same framing, camera, perspective, silhouette and scale. Every edge, opening and shape must stay exactly where it is in the input; do not move, add or remove geometry or objects, do not extend anything beyond the existing silhouette. Surfaces that look opaque stay opaque: never make a panel transparent and never invent what is behind it. Keep the background a perfectly flat uniform dark navy (#1b1d30) with nothing on it - no stars, no shadow, no text, no border. The first image is the render to repaint; the following image(s) are STYLE REFERENCES ONLY (line work, colouring and level of detail) - do not copy their content.",
+  "styles": [
+   "56ab109abae35a30fce48cca6324ec02.jpg",
+   "5cc5560aeb49e151dc42fbecea976e4b.jpg",
+   "a0693146286_10.jpg",
+   "c8bad50b7fccde449f195a029071c2c8.jpg",
+   "f36861d8859c1000291eaf5ee526ac3f.jpg"
+  ],
+  "candidates": [
+   {
+    "file": "closed_0.webp",
+    "cost": 0.0393636,
+    "seconds": 14.8
+   },
+   {
+    "file": "closed_1.webp",
+    "cost": 0.0393161,
+    "seconds": 14.2
+   },
+   {
+    "file": "closed_2.webp",
+    "cost": 0.0393611,
+    "seconds": 14.3
+   },
+   {
+    "file": "closed_3.webp",
+    "cost": 0.0393486,
+    "seconds": 12.3
+   }
+  ]
+ },
+ "cut": {
+  "model": "google/gemini-2.5-flash-image",
+  "ratio": "16:9",
+  "prompt": "The input is a flat-shaded 3D render of one module of a space station, seen from the fixed game camera, in a cutaway diorama view: the roof and the upper walls are sliced off at waist height so the room inside is visible. The flat pale-cream tops of the sliced walls are section cuts: keep them flat pale cream with a thin ink outline. The inside of the walls and the floor are plain: paint them, but do NOT add or redraw furniture - the furniture is painted separately. The module is the core of an old space station: grey hull walls with broken, jagged tops, rust-brown roofs on the two cabins, gold trim around doors and windows, a long white tank with gold bands lying inside, a docking tube with a grey pillar, an antenna mast. The small cubes floating around it are debris: keep each exactly where it is. The cabin on the right is cut open; the work lamp on a tripod and the crates inside are painted separately - keep the floor plain there. STATE: clean, maintained and in working order; lights and screens glow (warm yellow / cyan). Repaint it as a finished 'ligne claire' science-fiction illustration (European bande dessinee): fine, even, black ink outlines on every silhouette, crease and panel edge; mostly flat colours with only one soft shade tone per surface; dense but small mechanical surface detail drawn ON the existing surfaces - panel seams, rivets, vents, hatches, small stencilled numbers, decals, scuffs. Keep the existing colour of every surface exactly as in the input (same hue per part); no readable words longer than a few letters. STRICT RULES: this is a paint-over that will be projected back onto the 3D model, so keep the exact same framing, camera, perspective, silhouette and scale. Every edge, opening and shape must stay exactly where it is in the input; do not move, add or remove geometry or objects, do not extend anything beyond the existing silhouette. Surfaces that look opaque stay opaque: never make a panel transparent and never invent what is behind it. Keep the background a perfectly flat uniform dark navy (#1b1d30) with nothing on it - no stars, no shadow, no text, no border. The first image is the render to repaint; the following image(s) are STYLE REFERENCES ONLY (line work, colouring and level of detail) - do not copy their content.",
+  "styles": [
+   "56ab109abae35a30fce48cca6324ec02.jpg",
+   "5cc5560aeb49e151dc42fbecea976e4b.jpg",
+   "a0693146286_10.jpg",
+   "c8bad50b7fccde449f195a029071c2c8.jpg",
+   "f36861d8859c1000291eaf5ee526ac3f.jpg"
+  ],
+  "candidates": [
+   {
+    "file": "cut_0.webp",
+    "cost": 0.0394063,
+    "seconds": 13.9
+   },
+   {
+    "file": "cut_1.webp",
+    "cost": 0.0393763,
+    "seconds": 12.2
+   },
+   {
+    "file": "cut_2.webp",
+    "cost": 0.0394488,
+    "seconds": 12.6
+   },
+   {
+    "file": "cut_3.webp",
+    "cost": 0.0393688,
+    "seconds": 12.1
+   }
+  ]
+ },
+ "interior": {
+  "model": "google/gemini-2.5-flash-image",
+  "ratio": "16:9",
+  "prompt": "The input is a flat-shaded 3D render of the furniture and props of one space-station module, seen from the fixed game camera with the walls removed. Each object is a simple block and must stay EXACTLY that block: same outline, same faces, same size and place - do not replace it by a different object, do not add any object, cable or clutter. Only add drawn detail on its existing faces (buttons, gauges, handles, labels, panel lines, vents, wear), so it reads as a piece of equipment. The module is the core of an old space station: grey hull walls with broken, jagged tops, rust-brown roofs on the two cabins, gold trim around doors and windows, a long white tank with gold bands lying inside, a docking tube with a grey pillar, an antenna mast. The small cubes floating around it are debris: keep each exactly where it is. The props are a work lamp on a tripod, a cable, a few crates and junk on the floor. STATE: clean, maintained and in working order; lights and screens glow (warm yellow / cyan). Repaint it as a finished 'ligne claire' science-fiction illustration (European bande dessinee): fine, even, black ink outlines on every silhouette, crease and panel edge; mostly flat colours with only one soft shade tone per surface; dense but small mechanical surface detail drawn ON the existing surfaces - panel seams, rivets, vents, hatches, small stencilled numbers, decals, scuffs. Keep the existing colour of every surface exactly as in the input (same hue per part); no readable words longer than a few letters. STRICT RULES: this is a paint-over that will be projected back onto the 3D model, so keep the exact same framing, camera, perspective, silhouette and scale. Every edge, opening and shape must stay exactly where it is in the input; do not move, add or remove geometry or objects, do not extend anything beyond the existing silhouette. Surfaces that look opaque stay opaque: never make a panel transparent and never invent what is behind it. Keep the background a perfectly flat uniform dark navy (#1b1d30) with nothing on it - no stars, no shadow, no text, no border. The first image is the render to repaint; the following image(s) are STYLE REFERENCES ONLY (line work, colouring and level of detail) - do not copy their content.",
+  "styles": [
+   "56ab109abae35a30fce48cca6324ec02.jpg",
+   "5cc5560aeb49e151dc42fbecea976e4b.jpg",
+   "a0693146286_10.jpg",
+   "c8bad50b7fccde449f195a029071c2c8.jpg",
+   "f36861d8859c1000291eaf5ee526ac3f.jpg"
+  ],
+  "candidates": [
+   {
+    "file": "interior_0.webp",
+    "cost": 0.0393782,
+    "seconds": 11.1
+   },
+   {
+    "file": "interior_1.webp",
+    "cost": 0.0393132,
+    "seconds": 12.9
+   },
+   {
+    "file": "interior_2.webp",
+    "cost": 0.0393132,
+    "seconds": 10.9
+   },
+   {
+    "file": "interior_3.webp",
+    "cost": 0.0393132,
+    "seconds": 11.4
+   }
+  ]
+ },
+ "parts": {
+  "model": "google/gemini-2.5-flash-image",
+  "ratio": "16:9",
+  "prompt": "The input is a flat-shaded 3D render of the add-on parts of one space-station module (antennas, solar panels, thrusters, dishes...), shown alone where they attach, seen from the fixed game camera. Each part must stay EXACTLY its shape: same outline, size and place; only add drawn detail on its existing faces. The module is the core of an old space station: grey hull walls with broken, jagged tops, rust-brown roofs on the two cabins, gold trim around doors and windows, a long white tank with gold bands lying inside, a docking tube with a grey pillar, an antenna mast. The small cubes floating around it are debris: keep each exactly where it is. The part is a small satellite dish. STATE: clean, maintained and in working order; lights and screens glow (warm yellow / cyan). Repaint it as a finished 'ligne claire' science-fiction illustration (European bande dessinee): fine, even, black ink outlines on every silhouette, crease and panel edge; mostly flat colours with only one soft shade tone per surface; dense but small mechanical surface detail drawn ON the existing surfaces - panel seams, rivets, vents, hatches, small stencilled numbers, decals, scuffs. Keep the existing colour of every surface exactly as in the input (same hue per part); no readable words longer than a few letters. STRICT RULES: this is a paint-over that will be projected back onto the 3D model, so keep the exact same framing, camera, perspective, silhouette and scale. Every edge, opening and shape must stay exactly where it is in the input; do not move, add or remove geometry or objects, do not extend anything beyond the existing silhouette. Surfaces that look opaque stay opaque: never make a panel transparent and never invent what is behind it. Keep the background a perfectly flat uniform dark navy (#1b1d30) with nothing on it - no stars, no shadow, no text, no border. The first image is the render to repaint; the following image(s) are STYLE REFERENCES ONLY (line work, colouring and level of detail) - do not copy their content.",
+  "styles": [
+   "56ab109abae35a30fce48cca6324ec02.jpg",
+   "5cc5560aeb49e151dc42fbecea976e4b.jpg",
+   "a0693146286_10.jpg",
+   "c8bad50b7fccde449f195a029071c2c8.jpg",
+   "f36861d8859c1000291eaf5ee526ac3f.jpg"
+  ],
+  "candidates": [
+   {
+    "file": "parts_0.webp",
+    "cost": 0.0392979,
+    "seconds": 10.7
+   },
+   {
+    "file": "parts_1.webp",
+    "cost": 0.0392979,
+    "seconds": 9.8
+   },
+   {
+    "file": "parts_2.webp",
+    "cost": 0.0392979,
+    "seconds": 10.8
+   },
+   {
+    "file": "parts_3.webp",
+    "cost": 0.0392979,
+    "seconds": 10.5
+   }
+  ]
+ }
+}

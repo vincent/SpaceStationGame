@@ -56,7 +56,9 @@ def render_objects():
     """Mesh objects that the game draws (helpers, cut_box, -col/-nav excluded)."""
     out = []
     for ob in bpy.data.objects:
-        if ob.type != 'MESH' or ob.name == 'cut_box':
+        if ob.type != 'MESH' or ob.name == 'cut_box' or ob.hide_render:
+            continue        # hide_render: helpers and the kit's GREEBLE_KIT templates
+        if any(c.name == 'GREEBLE_KIT' for c in ob.users_collection):
             continue
         if ob.name.endswith(('-col', '-nav', '_col', '_nav')) or ob.get('helper'):
             continue
@@ -66,7 +68,11 @@ def render_objects():
 
 def is_prop(ob): return ob.name.startswith('prop_')
 def is_interior(ob): return ob.name.startswith(('prop_', 'deck', 'floor'))   # painted from the interior pass
-CONFIGS = ('closed', 'cut', 'interior')
+def is_part(ob): return ob.name.startswith('part_')       # upgrade parts: hidden until bought
+# Views (= atlas rows, top-down). With the parts pass, hull views are rendered WITHOUT the parts so the
+# hull behind a part not yet bought is painted for real; parts get their own view.
+PARTS_PASS = OPT.get('parts-pass', '1') == '1'
+CONFIGS = ('closed', 'cut', 'interior', 'parts') if PARTS_PASS else ('closed', 'cut', 'interior')
 def is_uncut(ob): return ob.name.startswith(('prop_', 'frame'))
 
 
@@ -96,7 +102,7 @@ def fit_camera(sc, obs):
     sc.camera = cam
     sc.render.resolution_x, sc.render.resolution_y = resx, resy
     sc.render.resolution_percentage = 100
-    info = dict(module=MID, yaw=YAW, pitch=PITCH, cam_yaw=CAM_YAW, res=[resx, resy],
+    info = dict(module=MID, yaw=YAW, pitch=PITCH, cam_yaw=CAM_YAW, res=[resx, resy], configs=list(CONFIGS),
                 width_m=w, height_m=w * resy / resx,
                 world_to_cam=[list(r) for r in cam.matrix_world.inverted()])
     return cam, info
@@ -112,13 +118,38 @@ def project_px(info, p):
 
 # ----------------------------------------------------------------------------- configurations
 def cut_copy(ob, cutter):
-    """Evaluated copy of ob with the cut_box volume removed (EXACT boolean, attributes kept)."""
-    md = ob.modifiers.new('PAINT_CUT', 'BOOLEAN'); md.operation = 'DIFFERENCE'; md.solver = 'EXACT'
-    md.object = cutter
-    bpy.context.view_layer.update()
-    me = bpy.data.meshes.new_from_object(ob.evaluated_get(bpy.context.evaluated_depsgraph_get()))
-    ob.modifiers.remove(md)
+    """Copy of ob with what lies inside the cut_box removed, as the toon_cut shader does (discard):
+    slice along the box planes, delete the faces inside, no caps (the game draws the back faces as
+    the section fill: see back_shell). Works on non-watertight meshes, keeps every attribute."""
+    lo = Vector([min((cutter.matrix_world @ Vector(c))[i] for c in cutter.bound_box) for i in range(3)])
+    hi = Vector([max((cutter.matrix_world @ Vector(c))[i] for c in cutter.bound_box) for i in range(3)])
+    me = ob.data.copy()
+    bm = bmesh.new(); bm.from_mesh(me)
+    bm.transform(ob.matrix_world)
+    planes = [((0, 0, lo.z), (0, 0, 1)), ((lo.x, 0, 0), (1, 0, 0)), ((hi.x, 0, 0), (1, 0, 0)),
+              ((0, lo.y, 0), (0, 1, 0)), ((0, hi.y, 0), (0, 1, 0))]
+    for co, no in planes:
+        geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+        bmesh.ops.bisect_plane(bm, geom=geom, plane_co=co, plane_no=no, dist=1e-5)
+    eps = 1e-4
+    inside = [f for f in bm.faces if all(lo[i] - eps <= f.calc_center_median()[i] <= hi[i] + eps for i in range(3))]
+    bmesh.ops.delete(bm, geom=inside, context='FACES')
+    bm.transform(ob.matrix_world.inverted())
+    bm.to_mesh(me); bm.free()
     return me
+
+
+def back_shell(me):
+    """Flipped copy of a cut-material mesh: with back-face culling on, what the camera sees of it is
+    exactly what toon_cut paints as the flat section fill (back faces through the cut)."""
+    sh = me.copy()
+    bm = bmesh.new(); bm.from_mesh(sh)
+    bmesh.ops.reverse_faces(bm, faces=bm.faces[:])
+    bm.to_mesh(sh); bm.free()
+    a = sh.attributes.get('paint_fid')
+    if a is not None:
+        a.data.foreach_set('value', [0] * len(sh.polygons))     # fid 0 = section fill colour
+    return sh
 
 
 def build_config(sc, obs, cfg):
@@ -132,15 +163,23 @@ def build_config(sc, obs, cfg):
             continue
         if cfg == 'interior' and not is_interior(ob):
             continue        # props and floor alone: the painter cannot redesign the room around them
+        if cfg == 'parts' and not is_part(ob):
+            continue
+        if cfg in ('closed', 'cut') and PARTS_PASS and is_part(ob):
+            continue
         if cfg == 'cut' and cutter is not None and not is_uncut(ob):
             me = cut_copy(ob, cutter)
         else:
             me = ob.data.copy()
         if not me.polygons:
             continue
-        t = bpy.data.objects.new('T_' + cfg + '_' + ob.name, me); t.matrix_world = ob.matrix_world.copy()
-        coll.objects.link(t); temps.append(t)
-        me.materials.clear()
+        meshes = [(ob.name, me)]
+        if cfg in ('closed', 'cut') and not is_uncut(ob):
+            meshes.append((ob.name + '#back', back_shell(me)))
+        for name, m in meshes:
+            t = bpy.data.objects.new('T_' + cfg + '_' + name, m); t.matrix_world = ob.matrix_world.copy()
+            coll.objects.link(t); temps.append(t)
+            m.materials.clear()
     for ob in obs:
         ob.hide_render = True
     return coll, temps
@@ -201,7 +240,7 @@ def set_active(temps, name):
 def setup_render(sc):
     sc.render.engine = 'BLENDER_WORKBENCH'
     sc.display.shading.color_type = 'VERTEX'
-    sc.display.shading.show_backface_culling = False
+    sc.display.shading.show_backface_culling = True     # back faces: see back_shell
     sc.render.film_transparent = False
     sc.world = sc.world or bpy.data.worlds.new('W')
     sc.render.image_settings.file_format = 'PNG'
@@ -252,7 +291,8 @@ def cmd_render():
     faces = tag_faces(obs)
     cam, info = fit_camera(sc, obs)
     setup_render(sc)
-    for cfg in CONFIGS:
+    info['configs'] = [c for c in CONFIGS if c != 'parts' or any(is_part(o) for o in obs)]
+    for cfg in info['configs']:
         coll, temps = build_config(sc, obs, cfg)
         write_attrs(temps, None)
         render_pass(sc, temps, 'PaintBase', os.path.join(WORK, cfg + '_beauty.png'), True)
@@ -276,25 +316,31 @@ def load_png(path):
     return np.flipud((px.reshape(h, w, 4) * 255 + 0.5).astype(np.int32))   # row 0 = top
 
 
-def face_choice(work, faces):
+def face_choice(work, faces, configs):
     """face id -> configuration index (row in that direction's atlas) or None (never visible)."""
     counts = {}
-    for cfg in CONFIGS:
-        ids = dec(load_png(os.path.join(work, cfg + '_faceid.png')))
+    for cfg in configs:
+        path = os.path.join(work, cfg + '_faceid.png')
+        if not os.path.exists(path):
+            counts[cfg] = {}; continue
+        ids = dec(load_png(path))
         u, c = np.unique(ids, return_counts=True)
         counts[cfg] = dict(zip(u.tolist(), c.tolist()))
     CLOSED_BIAS, MIN_PX = 1.1, 6
     choice = {}
-    stats = dict(closed=0, cut=0, interior=0, fallback=0)
+    stats = {c: 0 for c in configs}; stats['fallback'] = 0
     for fid, (obname, _) in faces.items():
         i = int(fid)
-        if is_interior(bpy.data.objects[obname]):
+        ob = bpy.data.objects[obname]
+        if is_interior(ob):
             ch = 2 if counts['interior'].get(i, 0) >= MIN_PX else None
+        elif 'parts' in configs and is_part(ob):
+            ch = 3 if counts['parts'].get(i, 0) >= MIN_PX else None
         else:
             a, b = counts['closed'].get(i, 0) * CLOSED_BIAS, counts['cut'].get(i, 0)
             ch = None if max(a, b) < MIN_PX else (0 if a >= b else 1)
         choice[i] = ch
-        stats[CONFIGS[ch] if ch is not None else 'fallback'] += 1
+        stats[configs[ch] if ch is not None else 'fallback'] += 1
     return choice, stats
 
 
@@ -309,7 +355,8 @@ def cmd_project():
         faces = {int(k): v for k, v in json.load(open(os.path.join(w, 'faces.json'))).items()}
         assert faces == faces_now, 'y%d: face ids differ from the render: re-render' % yaw
         info = json.load(open(os.path.join(w, 'camera.json')))
-        choice, stats = face_choice(w, faces)
+        info.setdefault('configs', ['closed', 'cut', 'interior'])     # bakes made before the parts pass
+        choice, stats = face_choice(w, faces, info['configs'])
         dirs[yaw] = (info, choice)
         log('y%d faces' % yaw, stats)
     for ob in obs:
@@ -329,14 +376,15 @@ def cmd_project():
                     resx, resy = info['res']
                     x, y = project_px(info, mw @ me.vertices[me.loops[li].vertex_index].co)
                     ay = y + ch * resy                         # atlas rows top-down: closed, cut, interior
-                    uv.data[li].uv = (x / resx, 1.0 - ay / (len(CONFIGS) * resy))
+                    uv.data[li].uv = (x / resx, 1.0 - ay / (len(info['configs']) * resy))
         me.attributes.remove(me.attributes['paint_fid'])
         me.uv_layers.active = me.uv_layers['UVMap']
         assert [u.name for u in me.uv_layers][:5] == ['UVMap', 'Paint0', 'Paint90', 'Paint180', 'Paint270'], ob.name
     # export like the kit, with all UV sets
     for ob in bpy.context.view_layer.objects: ob.select_set(False)
-    for ob in bpy.data.objects:
-        if ob.type in ('MESH', 'EMPTY') and not ob.name.startswith(('CAM_', 'SUN_', 'PAINT_')):
+    for ob in bpy.data.objects:         # what the kit exports: the module, not the greeble templates
+        if ob.type in ('MESH', 'EMPTY') and not ob.name.startswith(('CAM_', 'SUN_', 'PAINT_')) \
+                and not any(c.name == 'GREEBLE_KIT' for c in ob.users_collection):
             ob.select_set(True)
     glb = os.path.join(ROOT, 'assets', 'models', 'modules', MID + '.glb')
     props = bpy.ops.export_scene.gltf.get_rna_type().properties.keys()

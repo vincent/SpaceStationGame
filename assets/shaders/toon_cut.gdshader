@@ -69,14 +69,23 @@ void fragment() {
 		NORMAL = vec3(0.0, 0.0, 1.0);
 	} else {
 		bool painted = use_paint && v_paint_uv.x >= 0.0;
-		vec3 base = painted ? texture(paint_texture, v_paint_uv).rgb
-				: mix(albedo.rgb, trim_color.rgb, COLOR.b) * texture(albedo_texture, UV).rgb;
+		vec3 base = mix(albedo.rgb, trim_color.rgb, COLOR.b) * texture(albedo_texture, UV).rgb;
+		if (painted) {
+			base = texture(paint_texture, v_paint_uv).rgb;
+			if (paint_reveal < 1.0) {
+				float reveal_x = mix(sweep_range.x - 1.0, sweep_range.y + 1.0, paint_reveal);
+				if (v_world_pos.x > reveal_x) {
+					base = texture(paint_texture_prev, v_paint_uv).rgb;
+				}
+			}
+		}
+		float wear_k = painted ? wear * paint_wear_scale : wear;
 		// Wear: 3D grunge noise in world space, gated by the R mask.
 		float grunge = noise3(v_world_pos * 1.3) * 0.65 + noise3(v_world_pos * 4.7) * 0.35;
 		float mask = COLOR.r * 0.35 + grunge * 0.7;
-		float rust = smoothstep(1.0 - wear * 0.75, 1.05 - wear * 0.75, mask);
+		float rust = smoothstep(1.0 - wear_k * 0.75, 1.05 - wear_k * 0.75, mask);
 		base = mix(base, rust_color.rgb * (0.7 + 0.5 * grunge), rust * 0.85);
-		base *= 1.0 - wear * (0.25 + 0.35 * grunge);
+		base *= 1.0 - wear_k * (0.25 + 0.35 * grunge);
 
 		// Emissive strips light up along X as power_level goes 0 -> 1.
 		float front = mix(sweep_range.x - 1.0, sweep_range.y + 1.0, power_level);
