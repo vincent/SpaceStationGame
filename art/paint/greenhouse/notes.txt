@@ -1,0 +1,5 @@
+# Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
+*: The module is a long greenhouse: ivory lower walls with a thin gold stripe, navy hatch panels, a small green leaf emblem, octagonal docking rings with a gold band at both ends.
+closed: The upper part is a glass canopy in a white strut frame: paint the glass as pale lilac tinted panels with a soft reflection, opaque, nothing visible through it.
+cut: Inside are six raised planter beds with dark soil along both long walls; keep the floor between them plain.
+interior: The props are six long raised planter beds: ivory plinths with dark brown soil on top.
