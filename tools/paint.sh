@@ -5,7 +5,7 @@
 #                       [--variants=default,derelict] [--parts-pass=1]
 # The camera is fixed, so each module direction (yaw 0/90/180/270) is painted separately:
 #   per direction:
-#     1. render   game-camera passes from art/modules/build/<id>.blend          (Blender)
+#     1. render   game-camera passes from art/modules/build/<id>.blend, lossless WebP (Blender)
 #     2. ai       N paint-over candidates per view via OpenRouter                (OPENROUTER_API_KEY, or .env)
 #     3. align    snap to geometry, score, pick, write <id>_paint_<yaw>.webp atlas (OpenCV)
 #   then once:

@@ -1,5 +1,5 @@
 extends SceneTree
-## Compares two PNGs: godot --headless -s res://tools/image_diff.gd -- <expected> <actual> [diff_out]
+## Compares two images (PNG / WebP): godot --headless -s res://tools/image_diff.gd -- <expected> <actual> [diff_out]
 ## Fails (exit 1) when the mean per-channel difference exceeds MAX_MEAN or
 ## more than MAX_BAD_RATIO of the pixels differ by more than PIXEL_THRESHOLD.
 ## Tolerances absorb shader-TIME animation (stars, steam) between runs.
@@ -46,6 +46,9 @@ func _init() -> void:
 	var ratio := bad / n
 	var ok := mean <= MAX_MEAN and ratio <= MAX_BAD_RATIO
 	if args.size() > 2:
-		diff.save_png(args[2])
+		if args[2].get_extension() == "webp":
+			diff.save_webp(args[2], false)
+		else:
+			diff.save_png(args[2])
 	print("%s mean=%.4f bad=%.2f%%" % ["OK  " if ok else "FAIL", mean, ratio * 100.0])
 	quit(0 if ok else 1)

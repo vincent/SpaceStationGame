@@ -36,7 +36,7 @@ Throwaway branch, built on the current prototype. The aim is a go/no-go on the v
 - [x] Point an orthographic `Camera3D` at the current station at a fixed oblique angle (start at rotation x = −28°, y = 25°).
 - [x] Wrap the existing rooms in a rough closed hull (CSG boxes or a quick Blender block-out, watertight, ~0.3 m thick). *(Procedural voxel hull, `HullMesher`, watertight by construction and tested.)*
 - [x] Add the cut shader from CP2 (clip box + back-face cap) on the hull only.
-- [x] Capture three screenshots with the headless tool: full station, cut open, zoomed on one room. *(`tests/goldens/station_closed.png`, `cut_open.png`, `room_view.png`.)*
+- [x] Capture three screenshots with the headless tool: full station, cut open, zoomed on one room. *(`tests/goldens/station_closed.webp`, `cut_open.webp`, `room_view.webp`.)*
 
 **Accept when:** the screenshots read as "an illustrated cutaway of a ship" rather than "a floor plan". **→ Needs your call:** done straight on `main` (no throwaway branch); the go/no-go on the look is still open. Compare them side by side with the reference images and keep the angle values that work best.
 

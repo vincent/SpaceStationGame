@@ -13,9 +13,11 @@ render  : orthographic camera matching src/camera/diorama_camera.gd (pitch -28, 
             closed : what station view shows (props hidden)
             cut    : what room view shows (geometry inside cut_box removed, props shown)
           and three passes each:
-            <cfg>_beauty.png  flat-shaded kit colours (input for the AI painter)
-            <cfg>_plane.png   per (object, plane) flat colour  -> geometry lines (alignment)
-            <cfg>_faceid.png  per original face id (24-bit)     -> visibility (projection)
+            <cfg>_beauty.webp  flat-shaded kit colours (input for the AI painter)
+            <cfg>_plane.webp   per (object, plane) flat colour  -> geometry lines (alignment)
+            <cfg>_faceid.webp  per original face id (24-bit)     -> visibility (projection)
+          all LOSSLESS WebP (quality 100): the id passes are decoded exactly (older work dirs may still
+          hold .png renders; render_file() reads either)
           plus camera.json and faces.json (id -> object, polygon).
 project : for every direction with a camera.json, picks for every face the configuration in which
           it is most visible and projects it through that camera into the direction's atlas
@@ -37,6 +39,12 @@ YAW = float(OPT.get('yaw', 0))
 RES = int(OPT.get('res', 2048))
 YAWS = (0, 90, 180, 270)
 def work_dir(yaw): return os.path.join(ROOT, 'art', 'paint', MID, 'y%d' % int(yaw))
+
+
+def render_file(work, name):
+    """Render pass <name> (e.g. closed_faceid) in `work`: lossless .webp, or a .png made before WebP."""
+    webp = os.path.join(work, name + '.webp')
+    return webp if os.path.exists(webp) else os.path.join(work, name + '.png')
 WORK = work_dir(YAW)
 
 # game camera (src/camera/diorama_camera.gd): rotation_degrees = (pitch, yaw, 0), Euler YXZ
@@ -243,9 +251,9 @@ def setup_render(sc):
     sc.display.shading.show_backface_culling = True     # back faces: see back_shell
     sc.render.film_transparent = False
     sc.world = sc.world or bpy.data.worlds.new('W')
-    sc.render.image_settings.file_format = 'PNG'
+    sc.render.image_settings.file_format = 'WEBP'
     sc.render.image_settings.color_mode = 'RGB'
-    sc.render.image_settings.color_depth = '8'
+    sc.render.image_settings.quality = 100     # 100 = lossless WebP: id passes must be exact
     sc.render.dither_intensity = 0.0          # id passes must be exact
 
 
@@ -295,9 +303,9 @@ def cmd_render():
     for cfg in info['configs']:
         coll, temps = build_config(sc, obs, cfg)
         write_attrs(temps, None)
-        render_pass(sc, temps, 'PaintBase', os.path.join(WORK, cfg + '_beauty.png'), True)
-        render_pass(sc, temps, 'PaintPlane', os.path.join(WORK, cfg + '_plane.png'), False)
-        render_pass(sc, temps, 'PaintFace', os.path.join(WORK, cfg + '_faceid.png'), False)
+        render_pass(sc, temps, 'PaintBase', os.path.join(WORK, cfg + '_beauty.webp'), True)
+        render_pass(sc, temps, 'PaintPlane', os.path.join(WORK, cfg + '_plane.webp'), False)
+        render_pass(sc, temps, 'PaintFace', os.path.join(WORK, cfg + '_faceid.webp'), False)
         for t in temps:
             me = t.data; bpy.data.objects.remove(t); bpy.data.meshes.remove(me)
         bpy.data.collections.remove(coll)
@@ -307,7 +315,7 @@ def cmd_render():
 
 
 # ----------------------------------------------------------------------------- project
-def load_png(path):
+def load_image(path):
     img = bpy.data.images.load(path, check_existing=False)
     img.colorspace_settings.name = 'Non-Color'
     w, h = img.size
@@ -320,10 +328,10 @@ def face_choice(work, faces, configs):
     """face id -> configuration index (row in that direction's atlas) or None (never visible)."""
     counts = {}
     for cfg in configs:
-        path = os.path.join(work, cfg + '_faceid.png')
+        path = render_file(work, cfg + '_faceid')
         if not os.path.exists(path):
             counts[cfg] = {}; continue
-        ids = dec(load_png(path))
+        ids = dec(load_image(path))
         u, c = np.unique(ids, return_counts=True)
         counts[cfg] = dict(zip(u.tolist(), c.tolist()))
     CLOSED_BIAS, MIN_PX = 1.1, 6

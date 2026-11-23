@@ -5,7 +5,7 @@ paint_align.py - snap AI paintings back onto the geometry, score them, pick the 
     tools/paint/.venv/bin/python tools/paint/paint_align.py <id> --yaw=<0|90|180|270> [--max-flow=12] [--pick=closed:2,cut:0]
 
 For each configuration (closed, cut, interior) and each candidate in art/paint/<id>/y<yaw>/cand/ (.webp, or .png):
-  1. geometry lines  = boundaries of <cfg>_plane.png (object/plane ids) + silhouette
+  1. geometry lines  = boundaries of <cfg>_plane.webp (object/plane ids, lossless) + silhouette
   2. painting lines  = Canny edges of the candidate
   3. global ECC affine fit of the blurred painting lines onto the geometry lines
   4. local DIS optical flow (smoothed, capped at --max-flow px) for the remaining wobble
@@ -28,13 +28,19 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 def log(*a): print('PAINT', *a, flush=True)
 
 
+def render_file(work, name):
+    """Render pass <name> (e.g. closed_plane) in `work`: lossless .webp, or a .png made before WebP."""
+    webp = os.path.join(work, name + '.webp')
+    return webp if os.path.exists(webp) else os.path.join(work, name + '.png')
+
+
 def ids(img):
     q = np.clip(img.astype(np.int32) // 4, 0, 63)
     return q[..., 0] | (q[..., 1] << 6) | (q[..., 2] << 12)
 
 
 def geometry(work, cfg):
-    plane = ids(cv2.imread(os.path.join(work, cfg + '_plane.png')))
+    plane = ids(cv2.imread(render_file(work, cfg + '_plane')))
     mask = plane > 0
     e = np.zeros(plane.shape, bool)
     dx = plane[:, 1:] != plane[:, :-1]; dy = plane[1:, :] != plane[:-1, :]
@@ -146,7 +152,7 @@ def main():
         cands = sorted(p for ext in ('png', 'webp') for p in glob.glob(os.path.join(work, 'cand' + sfx, cfg + '_*.' + ext)))
         if not cands:
             log(cfg, 'no candidates'); continue
-        floor = chamfer(edges(cv2.imread(os.path.join(work, cfg + '_beauty.png'))), geo_lines, mask)
+        floor = chamfer(edges(cv2.imread(render_file(work, cfg + '_beauty'))), geo_lines, mask)
         log(cfg, 'chamfer floor (the render itself): %.2f px' % floor)
         rows, outs = [], {}
         for path in cands:
@@ -160,7 +166,7 @@ def main():
             if after > before:                       # alignment made it worse: keep the raw painting
                 out, warp, fmax, after = img, np.eye(2, 3), 0.0, before
             # colour drift vs the render inside the silhouette (consistency between views)
-            ref = cv2.imread(os.path.join(work, cfg + '_beauty.png'))
+            ref = cv2.imread(render_file(work, cfg + '_beauty'))
             drift = float(np.abs(cv2.blur(out, (31, 31)).astype(int) - cv2.blur(ref, (31, 31)).astype(int))[mask].mean())
             outs[k] = out
             cv2.imwrite(os.path.join(adir, '%s_%s.webp' % (cfg, k)), out, WEBP)

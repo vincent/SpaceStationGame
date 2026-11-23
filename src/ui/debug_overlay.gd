@@ -277,7 +277,8 @@ func _run_cli_commands() -> void:
 		var image := get_viewport().get_texture().get_image()
 		image.convert(Image.FORMAT_RGB8)
 		var path := String(args.screenshot)
-		var err := image.save_png(path)
+		# .webp = lossless WebP (goldens: same pixels as PNG, a fraction of the size); else PNG.
+		var err := image.save_webp(path, false) if path.get_extension() == "webp" else image.save_png(path)
 		print("Screenshot %s -> %s" % [error_string(err), ProjectSettings.globalize_path(path)])
 		get_tree().quit()
 

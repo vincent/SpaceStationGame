@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Renders the game (Compatibility renderer, close to Mobile) and saves a PNG — lets you (or Claude, in a headless
+# Renders the game (Compatibility renderer, close to Mobile) and saves a PNG (or a lossless WebP for out.webp) — lets you (or Claude, in a headless
 # session) check visuals without a device.
 #   tools/screenshot.sh [out.png] [dev hooks...]
 #   tools/screenshot.sh build/bed.png --interact=bed --delay=5

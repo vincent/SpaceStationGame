@@ -5,7 +5,7 @@ paint_ai.py - AI paint-over of the render passes through OpenRouter (image outpu
     tools/paint/.venv/bin/python tools/paint/paint_ai.py <id> [--cfg=closed,cut,interior] [--n=4]
         [--model=google/gemini-2.5-flash-image] [--size=2K] [--dry-run] [--yaw=0] [--variant=derelict]
 
-Reads  art/paint/<id>/y<yaw>/<cfg>_beauty.png  (+ optional style refs in art/paint/style/*.png|jpg)
+Reads  art/paint/<id>/y<yaw>/<cfg>_beauty.webp  (+ optional style refs in art/paint/style/*.png|jpg)
 Writes art/paint/<id>/y<yaw>/cand[_<variant>]/<cfg>_<k>.webp (lossy q90: ~15x smaller than PNG) and meta.json
 art/paint/<id>/notes.txt (optional) adds module-specific lines to the prompts.
 Needs OPENROUTER_API_KEY in the environment (never stored in the repo).
@@ -66,6 +66,12 @@ VARIANT = {
 
 
 def log(*a): print('PAINT', *a, flush=True)
+
+
+def render_file(work, name):
+    """Render pass <name> (e.g. closed_plane) in `work`: lossless .webp, or a .png made before WebP."""
+    webp = os.path.join(work, name + '.webp')
+    return webp if os.path.exists(webp) else os.path.join(work, name + '.png')
 
 
 def pad_to_ratio(img, bg):
@@ -139,7 +145,7 @@ def main():
     meta_path = os.path.join(cand, 'meta.json')
     meta = json.load(open(meta_path)) if os.path.exists(meta_path) else {}
     for cfg in cfgs:
-        src = cv2.imread(os.path.join(work, cfg + '_beauty.png'))
+        src = cv2.imread(render_file(work, cfg + '_beauty'))
         bg = src[2, 2].tolist()
         padded, ratio, box = pad_to_ratio(src, bg)
         prompt = ' '.join([VIEW[cfg]] + notes.get('*', []) + notes.get(cfg, []) + [VARIANT[variant], STYLE, STRICT])

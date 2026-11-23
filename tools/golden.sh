@@ -5,7 +5,7 @@
 #   tools/golden.sh --update    render + overwrite the goldens (do it on purpose!)
 #   tools/golden.sh room_view   only the named scene(s)
 # Rendering uses Mesa's software rasterizer (llvmpipe) so pixels match across
-# machines and CI. Diffs of failures land in build/golden/<name>.diff.png.
+# machines and CI. Goldens are lossless WebP. Diffs of failures land in build/golden/<name>.diff.webp.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GOLDENS="$ROOT/tests/goldens"
@@ -38,23 +38,23 @@ for entry in "${SCENES[@]}"; do
   hooks="${entry#*|}"
   if [[ ${#ONLY[@]} -gt 0 && ! " ${ONLY[*]} " =~ " $name " ]]; then continue; fi
   # shellcheck disable=SC2086
-  "$ROOT/tools/screenshot.sh" "build/golden/$name.png" --freeze --delay=4 $hooks >/dev/null 2>&1 || true
-  if [[ ! -f "$OUT/$name.png" ]]; then
+  "$ROOT/tools/screenshot.sh" "build/golden/$name.webp" --freeze --delay=4 $hooks >/dev/null 2>&1 || true
+  if [[ ! -f "$OUT/$name.webp" ]]; then
     echo "❌ $name: render failed"; FAILED=1; continue
   fi
   if [[ $UPDATE -eq 1 ]]; then
-    cp "$OUT/$name.png" "$GOLDENS/$name.png"
+    cp "$OUT/$name.webp" "$GOLDENS/$name.webp"
     echo "📸 $name: golden updated"
     continue
   fi
-  if [[ ! -f "$GOLDENS/$name.png" ]]; then
+  if [[ ! -f "$GOLDENS/$name.webp" ]]; then
     echo "❌ $name: no golden (run tools/golden.sh --update $name)"; FAILED=1; continue
   fi
   if result="$("$ROOT/tools/godot.sh" --headless --path "$ROOT" -s res://tools/image_diff.gd -- \
-      "$GOLDENS/$name.png" "$OUT/$name.png" "$OUT/$name.diff.png" 2>&1 | grep -E "^(OK|FAIL)")"; then
+      "$GOLDENS/$name.webp" "$OUT/$name.webp" "$OUT/$name.diff.webp" 2>&1 | grep -E "^(OK|FAIL)")"; then
     echo "✅ $name: $result"
   else
-    echo "❌ $name: ${result:-compare failed} (see build/golden/$name.diff.png)"; FAILED=1
+    echo "❌ $name: ${result:-compare failed} (see build/golden/$name.diff.webp)"; FAILED=1
   fi
 done
 exit $FAILED
