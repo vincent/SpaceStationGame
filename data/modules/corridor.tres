@@ -19,8 +19,10 @@ power_draw = 0.0
 slots = Dictionary[StringName, PackedStringArray]({&"A": PackedStringArray("module"), &"B": PackedStringArray("module")})
 attach_slot = &"A"
 layout = "#a#
+#.#
 #L#
+#.#
 #b#"
-slot_frames = Dictionary[StringName, Vector3]({&"A": Vector3(0.0, -2.55, 180.0), &"B": Vector3(0.0, 2.55, 0.0)})
-massing = Array[Rect2]([Rect2(-1.9, -2.0, 3.8, 4.0)])
+slot_frames = Dictionary[StringName, Vector3]({&"A": Vector3(0.0, -4.55, 180.0), &"B": Vector3(0.0, 4.55, 0.0)})
+massing = Array[Rect2]([Rect2(-1.9, -4.0, 3.8, 8.0)])
 slot_sizes = Dictionary[StringName, int]({})

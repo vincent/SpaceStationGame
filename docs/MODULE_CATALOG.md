@@ -17,7 +17,7 @@ Hatch collars are colour-coded on the art: S cyan, M yellow, L violet.
 
 | id | Module | Attach | Offers | Status |
 |---|---|---|---|---|
-| `corridor` | Corridor | M-P | 1 M-P | ✅ canopy, 1.0k tris |
+| `corridor` | Corridor | M-P | 1 M-P | ✅ canopy, 8 m (two glass bays), 1.3k tris |
 | `adapter_ml` | Docking adapter | M-P | 1 L-P | ✅ canopy (flared), 0.8k tris |
 | `junction_t`, `hub_x` | T-junction, cross hub | M-P | 2 / 3 M-P | ✅ canopy, 1.2k / 1.5k tris |
 | `hub_oct`, `hub_dome` | Octagon / dome hub | M-P | 3 / 2 M-P | ✅ canopy (table below) |

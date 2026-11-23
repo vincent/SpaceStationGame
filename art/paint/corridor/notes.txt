@@ -1,5 +1,5 @@
 # Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
-*: The module is a short corridor between two octagonal docking rings with a gold band: ivory lower walls, a thin gold stripe, one round amber porthole on each side wall.
+*: The module is a long corridor between two octagonal docking rings with a gold band: ivory lower walls, a thin gold stripe, two round amber portholes on each side wall, the glass canopy split into two bays by a mid strut.
 closed: The upper part is a glass canopy in a white strut frame: paint the glass as pale lilac tinted panels with a soft reflection, opaque, nothing visible through it.
 cut: The corridor floor is plain; keep it clear.
 interior: The props are a navy floor runner between the doors and two gold handrails on the side walls.

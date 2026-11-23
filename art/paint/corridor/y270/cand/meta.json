@@ -1,8 +1,8 @@
 {
  "closed": {
   "model": "google/gemini-2.5-flash-image",
-  "ratio": "5:4",
-  "prompt": "The input is a flat-shaded 3D render of one module of a space station, seen from the fixed game camera. The module is a short corridor between two octagonal docking rings with a gold band: ivory lower walls, a thin gold stripe, one round amber porthole on each side wall. The upper part is a glass canopy in a white strut frame: paint the glass as pale lilac tinted panels with a soft reflection, opaque, nothing visible through it. STATE: clean, maintained and in working order; lights and screens glow (warm yellow / cyan). Repaint it as a finished 'ligne claire' science-fiction illustration (European bande dessinee): fine, even, black ink outlines on every silhouette, crease and panel edge; mostly flat colours with only one soft shade tone per surface; dense but small mechanical surface detail drawn ON the existing surfaces - panel seams, rivets, vents, hatches, small stencilled numbers, decals, scuffs. Keep the existing colour of every surface exactly as in the input (same hue per part); no readable words longer than a few letters. STRICT RULES: this is a paint-over that will be projected back onto the 3D model, so keep the exact same framing, camera, perspective, silhouette and scale. Every edge, opening and shape must stay exactly where it is in the input; do not move, add or remove geometry or objects, do not extend anything beyond the existing silhouette. Surfaces that look opaque stay opaque: never make a panel transparent and never invent what is behind it. Keep the background a perfectly flat uniform dark navy (#1b1d30) with nothing on it - no stars, no shadow, no text, no border. The first image is the render to repaint; the following image(s) are STYLE REFERENCES ONLY (line work, colouring and level of detail) - do not copy their content.",
+  "ratio": "3:2",
+  "prompt": "The input is a flat-shaded 3D render of one module of a space station, seen from the fixed game camera. The module is a long corridor between two octagonal docking rings with a gold band: ivory lower walls, a thin gold stripe, two round amber portholes on each side wall, the glass canopy split into two bays by a mid strut. The upper part is a glass canopy in a white strut frame: paint the glass as pale lilac tinted panels with a soft reflection, opaque, nothing visible through it. STATE: clean, maintained and in working order; lights and screens glow (warm yellow / cyan). Repaint it as a finished 'ligne claire' science-fiction illustration (European bande dessinee): fine, even, black ink outlines on every silhouette, crease and panel edge; mostly flat colours with only one soft shade tone per surface; dense but small mechanical surface detail drawn ON the existing surfaces - panel seams, rivets, vents, hatches, small stencilled numbers, decals, scuffs. Keep the existing colour of every surface exactly as in the input (same hue per part); no readable words longer than a few letters. STRICT RULES: this is a paint-over that will be projected back onto the 3D model, so keep the exact same framing, camera, perspective, silhouette and scale. Every edge, opening and shape must stay exactly where it is in the input; do not move, add or remove geometry or objects, do not extend anything beyond the existing silhouette. Surfaces that look opaque stay opaque: never make a panel transparent and never invent what is behind it. Keep the background a perfectly flat uniform dark navy (#1b1d30) with nothing on it - no stars, no shadow, no text, no border. The first image is the render to repaint; the following image(s) are STYLE REFERENCES ONLY (line work, colouring and level of detail) - do not copy their content.",
   "styles": [
    "56ab109abae35a30fce48cca6324ec02.jpg",
    "5cc5560aeb49e151dc42fbecea976e4b.jpg",
@@ -13,30 +13,30 @@
   "candidates": [
    {
     "file": "closed_0.webp",
-    "cost": 0.0392796,
-    "seconds": 24.3
+    "cost": 0.0392835,
+    "seconds": 20.7
    },
    {
     "file": "closed_1.webp",
-    "cost": 0.0393271,
-    "seconds": 28.8
+    "cost": 0.0392835,
+    "seconds": 19.2
    },
    {
     "file": "closed_2.webp",
-    "cost": 0.0392796,
-    "seconds": 31.0
+    "cost": 0.0392835,
+    "seconds": 21.5
    },
    {
     "file": "closed_3.webp",
-    "cost": 0.0393946,
-    "seconds": 23.4
+    "cost": 0.0392835,
+    "seconds": 17.3
    }
   ]
  },
  "cut": {
   "model": "google/gemini-2.5-flash-image",
-  "ratio": "5:4",
-  "prompt": "The input is a flat-shaded 3D render of one module of a space station, seen from the fixed game camera, in a cutaway diorama view: the roof and the upper walls are sliced off at waist height so the room inside is visible. The flat pale-cream tops of the sliced walls are section cuts: keep them flat pale cream with a thin ink outline. The inside of the walls and the floor are plain: paint them, but do NOT add or redraw furniture - the furniture is painted separately. The module is a short corridor between two octagonal docking rings with a gold band: ivory lower walls, a thin gold stripe, one round amber porthole on each side wall. The corridor floor is plain; keep it clear. STATE: clean, maintained and in working order; lights and screens glow (warm yellow / cyan). Repaint it as a finished 'ligne claire' science-fiction illustration (European bande dessinee): fine, even, black ink outlines on every silhouette, crease and panel edge; mostly flat colours with only one soft shade tone per surface; dense but small mechanical surface detail drawn ON the existing surfaces - panel seams, rivets, vents, hatches, small stencilled numbers, decals, scuffs. Keep the existing colour of every surface exactly as in the input (same hue per part); no readable words longer than a few letters. STRICT RULES: this is a paint-over that will be projected back onto the 3D model, so keep the exact same framing, camera, perspective, silhouette and scale. Every edge, opening and shape must stay exactly where it is in the input; do not move, add or remove geometry or objects, do not extend anything beyond the existing silhouette. Surfaces that look opaque stay opaque: never make a panel transparent and never invent what is behind it. Keep the background a perfectly flat uniform dark navy (#1b1d30) with nothing on it - no stars, no shadow, no text, no border. The first image is the render to repaint; the following image(s) are STYLE REFERENCES ONLY (line work, colouring and level of detail) - do not copy their content.",
+  "ratio": "3:2",
+  "prompt": "The input is a flat-shaded 3D render of one module of a space station, seen from the fixed game camera, in a cutaway diorama view: the roof and the upper walls are sliced off at waist height so the room inside is visible. The flat pale-cream tops of the sliced walls are section cuts: keep them flat pale cream with a thin ink outline. The inside of the walls and the floor are plain: paint them, but do NOT add or redraw furniture - the furniture is painted separately. The module is a long corridor between two octagonal docking rings with a gold band: ivory lower walls, a thin gold stripe, two round amber portholes on each side wall, the glass canopy split into two bays by a mid strut. The corridor floor is plain; keep it clear. STATE: clean, maintained and in working order; lights and screens glow (warm yellow / cyan). Repaint it as a finished 'ligne claire' science-fiction illustration (European bande dessinee): fine, even, black ink outlines on every silhouette, crease and panel edge; mostly flat colours with only one soft shade tone per surface; dense but small mechanical surface detail drawn ON the existing surfaces - panel seams, rivets, vents, hatches, small stencilled numbers, decals, scuffs. Keep the existing colour of every surface exactly as in the input (same hue per part); no readable words longer than a few letters. STRICT RULES: this is a paint-over that will be projected back onto the 3D model, so keep the exact same framing, camera, perspective, silhouette and scale. Every edge, opening and shape must stay exactly where it is in the input; do not move, add or remove geometry or objects, do not extend anything beyond the existing silhouette. Surfaces that look opaque stay opaque: never make a panel transparent and never invent what is behind it. Keep the background a perfectly flat uniform dark navy (#1b1d30) with nothing on it - no stars, no shadow, no text, no border. The first image is the render to repaint; the following image(s) are STYLE REFERENCES ONLY (line work, colouring and level of detail) - do not copy their content.",
   "styles": [
    "56ab109abae35a30fce48cca6324ec02.jpg",
    "5cc5560aeb49e151dc42fbecea976e4b.jpg",
@@ -47,30 +47,30 @@
   "candidates": [
    {
     "file": "cut_0.webp",
-    "cost": 0.0393317,
-    "seconds": 30.2
+    "cost": 0.0394981,
+    "seconds": 26.5
    },
    {
     "file": "cut_1.webp",
-    "cost": 0.0393342,
-    "seconds": 23.1
+    "cost": 0.0393556,
+    "seconds": 27.4
    },
    {
     "file": "cut_2.webp",
-    "cost": 0.0393417,
-    "seconds": 23.5
+    "cost": 0.0393006,
+    "seconds": 27.5
    },
    {
     "file": "cut_3.webp",
-    "cost": 0.0392967,
-    "seconds": 42.7
+    "cost": 0.0393006,
+    "seconds": 19.0
    }
   ]
  },
  "interior": {
   "model": "google/gemini-2.5-flash-image",
-  "ratio": "5:4",
-  "prompt": "The input is a flat-shaded 3D render of the furniture and props of one space-station module, seen from the fixed game camera with the walls removed. Each object is a simple block and must stay EXACTLY that block: same outline, same faces, same size and place - do not replace it by a different object, do not add any object, cable or clutter. Only add drawn detail on its existing faces (buttons, gauges, handles, labels, panel lines, vents, wear), so it reads as a piece of equipment. The module is a short corridor between two octagonal docking rings with a gold band: ivory lower walls, a thin gold stripe, one round amber porthole on each side wall. The props are a navy floor runner between the doors and two gold handrails on the side walls. STATE: clean, maintained and in working order; lights and screens glow (warm yellow / cyan). Repaint it as a finished 'ligne claire' science-fiction illustration (European bande dessinee): fine, even, black ink outlines on every silhouette, crease and panel edge; mostly flat colours with only one soft shade tone per surface; dense but small mechanical surface detail drawn ON the existing surfaces - panel seams, rivets, vents, hatches, small stencilled numbers, decals, scuffs. Keep the existing colour of every surface exactly as in the input (same hue per part); no readable words longer than a few letters. STRICT RULES: this is a paint-over that will be projected back onto the 3D model, so keep the exact same framing, camera, perspective, silhouette and scale. Every edge, opening and shape must stay exactly where it is in the input; do not move, add or remove geometry or objects, do not extend anything beyond the existing silhouette. Surfaces that look opaque stay opaque: never make a panel transparent and never invent what is behind it. Keep the background a perfectly flat uniform dark navy (#1b1d30) with nothing on it - no stars, no shadow, no text, no border. The first image is the render to repaint; the following image(s) are STYLE REFERENCES ONLY (line work, colouring and level of detail) - do not copy their content.",
+  "ratio": "3:2",
+  "prompt": "The input is a flat-shaded 3D render of the furniture and props of one space-station module, seen from the fixed game camera with the walls removed. Each object is a simple block and must stay EXACTLY that block: same outline, same faces, same size and place - do not replace it by a different object, do not add any object, cable or clutter. Only add drawn detail on its existing faces (buttons, gauges, handles, labels, panel lines, vents, wear), so it reads as a piece of equipment. The module is a long corridor between two octagonal docking rings with a gold band: ivory lower walls, a thin gold stripe, two round amber portholes on each side wall, the glass canopy split into two bays by a mid strut. The props are a navy floor runner between the doors and two gold handrails on the side walls. STATE: clean, maintained and in working order; lights and screens glow (warm yellow / cyan). Repaint it as a finished 'ligne claire' science-fiction illustration (European bande dessinee): fine, even, black ink outlines on every silhouette, crease and panel edge; mostly flat colours with only one soft shade tone per surface; dense but small mechanical surface detail drawn ON the existing surfaces - panel seams, rivets, vents, hatches, small stencilled numbers, decals, scuffs. Keep the existing colour of every surface exactly as in the input (same hue per part); no readable words longer than a few letters. STRICT RULES: this is a paint-over that will be projected back onto the 3D model, so keep the exact same framing, camera, perspective, silhouette and scale. Every edge, opening and shape must stay exactly where it is in the input; do not move, add or remove geometry or objects, do not extend anything beyond the existing silhouette. Surfaces that look opaque stay opaque: never make a panel transparent and never invent what is behind it. Keep the background a perfectly flat uniform dark navy (#1b1d30) with nothing on it - no stars, no shadow, no text, no border. The first image is the render to repaint; the following image(s) are STYLE REFERENCES ONLY (line work, colouring and level of detail) - do not copy their content.",
   "styles": [
    "56ab109abae35a30fce48cca6324ec02.jpg",
    "5cc5560aeb49e151dc42fbecea976e4b.jpg",
@@ -81,23 +81,23 @@
   "candidates": [
    {
     "file": "interior_0.webp",
-    "cost": 0.0393012,
-    "seconds": 31.2
+    "cost": 0.0393051,
+    "seconds": 17.1
    },
    {
     "file": "interior_1.webp",
-    "cost": 0.0393637,
-    "seconds": 20.9
+    "cost": 0.0393051,
+    "seconds": 18.6
    },
    {
     "file": "interior_2.webp",
-    "cost": 0.0393712,
-    "seconds": 23.5
+    "cost": 0.0393051,
+    "seconds": 24.0
    },
    {
     "file": "interior_3.webp",
-    "cost": 0.0393637,
-    "seconds": 27.2
+    "cost": 0.0393676,
+    "seconds": 22.2
    }
   ]
  }
