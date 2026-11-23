@@ -6,7 +6,7 @@ paint_ai.py - AI paint-over of the render passes through OpenRouter (image outpu
         [--model=google/gemini-2.5-flash-image] [--size=2K] [--dry-run] [--yaw=0] [--variant=derelict]
 
 Reads  art/paint/<id>/y<yaw>/<cfg>_beauty.png  (+ optional style refs in art/paint/style/*.png|jpg)
-Writes art/paint/<id>/y<yaw>/cand[_<variant>]/<cfg>_<k>.png and meta.json
+Writes art/paint/<id>/y<yaw>/cand[_<variant>]/<cfg>_<k>.webp (lossy q90: ~15x smaller than PNG) and meta.json
 art/paint/<id>/notes.txt (optional) adds module-specific lines to the prompts.
 Needs OPENROUTER_API_KEY in the environment (never stored in the repo).
 --dry-run writes the beauty render itself as candidates (tests the rest of the pipeline offline).
@@ -18,6 +18,7 @@ import requests
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 URL = 'https://openrouter.ai/api/v1/chat/completions'
+WEBP_Q = 90   # candidates are the only paid, irreplaceable files: lossy WebP keeps art/paint small
 RATIOS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9']
 
 STYLE = (
@@ -158,8 +159,8 @@ def main():
             # back to the render frame: scale to the padded size, crop the padding
             x0, y0, w, h, W, H = box
             out = cv2.resize(out, (W, H), interpolation=cv2.INTER_LANCZOS4)[y0:y0 + h, x0:x0 + w]
-            path = os.path.join(cand, '%s_%d.png' % (cfg, k))
-            cv2.imwrite(path, out)
+            path = os.path.join(cand, '%s_%d.webp' % (cfg, k))
+            cv2.imwrite(path, out, [cv2.IMWRITE_WEBP_QUALITY, WEBP_Q])
             entries.append(dict(file=os.path.basename(path), cost=usage.get('cost'), seconds=round(time.time() - t0, 1)))
             log(cfg, k, 'ok', entries[-1])
         meta[cfg] = dict(model='dry-run' if dry else model, ratio=ratio, prompt=prompt,

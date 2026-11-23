@@ -24,3 +24,8 @@ Thumbs.db
 # Builds
 dist/
 tools/paint/.venv/
+
+# Paint pipeline intermediates (rebuilt by tools/paint.sh <id> --skip-ai)
+art/paint/*/*/aligned*/
+art/paint/*/*/contact_*
+art/paint/*/*/paint_*

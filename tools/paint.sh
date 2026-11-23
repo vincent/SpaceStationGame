@@ -7,14 +7,16 @@
 #   per direction:
 #     1. render   game-camera passes from art/modules/build/<id>.blend          (Blender)
 #     2. ai       N paint-over candidates per view via OpenRouter                (OPENROUTER_API_KEY, or .env)
-#     3. align    snap to geometry, score, pick, write <id>_paint_<yaw>.png atlas (OpenCV)
+#     3. align    snap to geometry, score, pick, write <id>_paint_<yaw>.webp atlas (OpenCV)
 #   then once:
 #     4. project  one UV set per direction + palette fallback, export <id>.glb   (Blender)
 #     5. new_module.py (art_paint_path, texture imports) + tools/import.sh
-# --skip-ai reuses art/paint/<id>/y<yaw>/cand/* (hand-edit a candidate, then re-run with --skip-ai).
+# --skip-ai reuses art/paint/<id>/y<yaw>/cand/*.webp (hand-edit a candidate, then re-run with --skip-ai).
+# Only renders, cand/ and json are committed; aligned/, contact_*.jpg, paint_*.webp are local (gitignored)
+# and rebuilt by --skip-ai. The game atlas is assets/models/modules/<id>_paint_<yaw>.webp.
 # --pick applies to every direction listed in --yaws (use with a single direction).
 # --variants: one painting set per module state, same projection (e.g. the wreck: default = repaired,
-#   derelict = before repair; files <id>_paint_<yaw>[_<variant>].png). Prompt notes: art/paint/<id>/notes.txt
+#   derelict = before repair; files <id>_paint_<yaw>[_<variant>].webp). Prompt notes: art/paint/<id>/notes.txt
 # --parts-pass=0: hull views include the upgrade parts (bakes made before the parts pass, e.g. crew_pod).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

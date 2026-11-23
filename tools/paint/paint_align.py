@@ -4,19 +4,23 @@ paint_align.py - snap AI paintings back onto the geometry, score them, pick the 
 
     tools/paint/.venv/bin/python tools/paint/paint_align.py <id> --yaw=<0|90|180|270> [--max-flow=12] [--pick=closed:2,cut:0]
 
-For each configuration (closed, cut, interior) and each candidate in art/paint/<id>/y<yaw>/cand/:
+For each configuration (closed, cut, interior) and each candidate in art/paint/<id>/y<yaw>/cand/ (.webp, or .png):
   1. geometry lines  = boundaries of <cfg>_plane.png (object/plane ids) + silhouette
   2. painting lines  = Canny edges of the candidate
   3. global ECC affine fit of the blurred painting lines onto the geometry lines
   4. local DIS optical flow (smoothed, capped at --max-flow px) for the remaining wobble
   5. score = symmetric mean chamfer distance (px) between the two line sets, inside the silhouette
-Writes art/paint/<id>/y<yaw>/paint_<cfg>.png (best or --pick, background bled outwards so mip-maps and
-bilinear filtering never pull the backdrop onto the model), aligned/<cfg>_<k>.png, contact_<cfg>.png
-and align.json.
+Writes art/paint/<id>/y<yaw>/paint_<cfg>.webp (best or --pick, background bled outwards so mip-maps and
+bilinear filtering never pull the backdrop onto the model), aligned/<cfg>_<k>.webp, contact_<cfg>.jpg
+and align.json; the game atlas assets/models/modules/<id>_paint_<yaw>.webp (q90, Godot VRAM-compresses it
+anyway) is built from the in-memory picks.
+paint_*, aligned/ and contact_* are local only (gitignored): --skip-ai rebuilds them from cand/.
 """
 import glob, json, os, sys
 import cv2
 import numpy as np
+
+WEBP = [cv2.IMWRITE_WEBP_QUALITY, 90]   # intermediates and game atlas (Godot VRAM-compresses it anyway)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -136,15 +140,15 @@ def main():
     configs = json.load(open(os.path.join(work, 'camera.json'))).get('configs', ['closed', 'cut', 'interior'])
     adir = os.path.join(work, 'aligned' + sfx)
     os.makedirs(adir, exist_ok=True)
-    report = {}
+    report, final = {}, {}   # final: picked paintings kept in memory (lossless into the atlas)
     for cfg in configs:
         geo_lines, mask = geometry(work, cfg)
-        cands = sorted(glob.glob(os.path.join(work, 'cand' + sfx, cfg + '_*.png')))
+        cands = sorted(p for ext in ('png', 'webp') for p in glob.glob(os.path.join(work, 'cand' + sfx, cfg + '_*.' + ext)))
         if not cands:
             log(cfg, 'no candidates'); continue
         floor = chamfer(edges(cv2.imread(os.path.join(work, cfg + '_beauty.png'))), geo_lines, mask)
         log(cfg, 'chamfer floor (the render itself): %.2f px' % floor)
-        rows = []
+        rows, outs = [], {}
         for path in cands:
             k = os.path.splitext(os.path.basename(path))[0].split('_')[-1]
             img = cv2.imread(path)
@@ -158,7 +162,8 @@ def main():
             # colour drift vs the render inside the silhouette (consistency between views)
             ref = cv2.imread(os.path.join(work, cfg + '_beauty.png'))
             drift = float(np.abs(cv2.blur(out, (31, 31)).astype(int) - cv2.blur(ref, (31, 31)).astype(int))[mask].mean())
-            cv2.imwrite(os.path.join(adir, '%s_%s.png' % (cfg, k)), out)
+            outs[k] = out
+            cv2.imwrite(os.path.join(adir, '%s_%s.webp' % (cfg, k)), out, WEBP)
             cov = coverage(geo_lines, edges(out), mask)
             iou = silhouette_iou(out, mask, ref[2, 2].tolist())
             score = cov + 40.0 * (1.0 - iou)          # px-equivalent: lower is better
@@ -168,13 +173,13 @@ def main():
             log(cfg, k, 'score %.2f (edges %.2f px, silhouette IoU %.3f) chamfer %.2f -> %.2f, drift %.1f'
                 % (score, cov, iou, before, after, drift))
         best = pick.get(cfg) or min(rows, key=lambda r: r['score'])['k']
-        img = cv2.imread(os.path.join(adir, '%s_%s.png' % (cfg, best)))
-        cv2.imwrite(os.path.join(work, 'paint_%s%s.png' % (cfg, sfx)), bleed(img, mask))
+        final[cfg] = bleed(outs[best], mask)
+        cv2.imwrite(os.path.join(work, 'paint_%s%s.webp' % (cfg, sfx)), final[cfg], WEBP)
         report[cfg] = dict(chamfer_floor=round(floor, 2), candidates=rows, picked=best)
         # contact sheet: candidate + geometry lines in red, score in the corner
         tiles = []
         for r in rows:
-            t = cv2.imread(os.path.join(adir, '%s_%s.png' % (cfg, r['k'])))
+            t = outs[r['k']].copy()
             t[geo_lines > 0] = (0, 0, 255)
             t = cv2.resize(t, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
             label = '%s #%s  score %.1f  IoU %.2f%s' % (cfg, r['k'], r['score'], r['iou'],
@@ -183,14 +188,14 @@ def main():
             tiles.append(t)
         while len(tiles) % 2: tiles.append(np.zeros_like(tiles[0]))
         sheet = np.vstack([np.hstack(tiles[i:i + 2]) for i in range(0, len(tiles), 2)])
-        cv2.imwrite(os.path.join(work, 'contact_%s%s.png' % (cfg, sfx)), sheet)
+        cv2.imwrite(os.path.join(work, 'contact_%s%s.jpg' % (cfg, sfx)), sheet, [cv2.IMWRITE_JPEG_QUALITY, 85])
         log(cfg, 'picked', best)
     json.dump(report, open(os.path.join(work, 'align%s.json' % sfx), 'w'), indent=1)
     # atlas for the game: one row per configuration, closed / cut / interior (matches paint_blender)
-    parts = [cv2.imread(os.path.join(work, 'paint_%s%s.png' % (c, sfx))) for c in configs]
+    parts = [final[c] if c in final else cv2.imread(os.path.join(work, 'paint_%s%s.webp' % (c, sfx))) for c in configs]
     if all(p is not None for p in parts):
-        atlas = os.path.join(ROOT, 'assets', 'models', 'modules', '%s_paint_%d%s.png' % (mid, yaw, sfx))
-        cv2.imwrite(atlas, np.vstack(parts))
+        atlas = os.path.join(ROOT, 'assets', 'models', 'modules', '%s_paint_%d%s.webp' % (mid, yaw, sfx))
+        cv2.imwrite(atlas, np.vstack(parts), WEBP)
         log('atlas', os.path.relpath(atlas, ROOT), np.vstack(parts).shape[1::-1])
 
 
