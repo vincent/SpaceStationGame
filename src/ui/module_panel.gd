@@ -5,7 +5,8 @@ extends PanelContainer
 ## status line (state, power, bunks), a condition bar (wear), a row of compact
 ## actions (Repair with its cost chips while derelict, else Power /
 ## Upgrade; Upgrade is the yellow primary only while something can be
-## installed) and, for modules with jobs, an inline crew stepper with a
+## installed, then a compact Trash for player-built modules: a first tap arms
+## it ("Confirm?", pink), a second dismantles the module) and, for modules with jobs, an inline crew stepper with a
 ## staffing bar (− Crew 1/2 · +25% +). Folded, the body hides.
 ## Repairs and upgrades of this module flash the card and pulse its light.
 
@@ -14,6 +15,7 @@ extends PanelContainer
 signal fold_requested
 
 const WIDTH := 330.0
+const TRASH_ARM_SECONDS := 3.0
 
 var module: Module
 ## Folded to the title by the chevron (kept across modules).
@@ -38,6 +40,10 @@ var _repair: Button
 var _repair_hint: Label
 var _power: Button
 var _upgrade: Button
+var _trash: Button
+## First tap on Trash done: the next one dismantles (disarms after TRASH_ARM_SECONDS).
+var _trash_armed := false
+var _trash_timer: SceneTreeTimer
 var _crew_box: HBoxContainer
 var _crew_label: Label
 var _crew_bar: ProgressBar
@@ -112,6 +118,9 @@ func _ready() -> void:
 	for b in [_power, _upgrade]:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_tiles.add_child(b)
+	_trash = _stepper(&"trash", _on_trash)
+	_trash.name = "Trash"
+	_tiles.add_child(_trash)
 
 	# Inline stepper: − Crew 1/2 · +25% +, with a staffing bar under the text.
 	_crew_box = HBoxContainer.new()
@@ -138,6 +147,8 @@ func _ready() -> void:
 	_crew_box.add_child(_crew_add)
 
 	EventBus.module_focused.connect(func(m: Module) -> void:
+		if m != module:
+			_disarm_trash()
 		module = m
 		refresh())
 	EventBus.upgrade_view_requested.connect(func(_m: Module) -> void:
@@ -147,6 +158,9 @@ func _ready() -> void:
 		_overlay_open = false
 		refresh())
 	GameState.station.module_changed.connect(_on_module_changed)
+	# Attaching / removing a neighbour changes whether this one can be trashed.
+	GameState.station.module_added.connect(func(_uid: int) -> void: refresh())
+	GameState.station.module_removed.connect(func(_uid: int) -> void: refresh())
 	GameState.inventory.changed.connect(refresh)
 	GameState.station.crew.changed.connect(refresh)
 	GameState.stock.count_changed.connect(func(_id: StringName, _n: int) -> void: refresh())
@@ -242,7 +256,8 @@ func refresh() -> void:
 	_upgrade.disabled = all_installed
 	# Yellow only while there is something to buy right now.
 	_upgrade.theme_type_variation = UITheme.PRIMARY if can_install else &""
-	_tiles.visible = _power.visible or _upgrade.visible
+	_refresh_trash(rec)
+	_tiles.visible = _power.visible or _upgrade.visible or _trash.visible
 	_fit.call_deferred()
 
 
@@ -254,6 +269,47 @@ func _fit() -> void:
 	var min_size := get_combined_minimum_size()
 	offset_top = offset_bottom - min_size.y
 	offset_right = offset_left + min_size.x
+
+
+## Trash: shown for player-built modules, disabled (reason as tooltip) while
+## something else is attached to it.
+func _refresh_trash(rec: Dictionary) -> void:
+	_trash.visible = rec.get("built", false)
+	var err := GameState.trash_error(module.uid)
+	_trash.disabled = err != ""
+	_trash.tooltip_text = err if err != "" else "Dismantle (refunds the build cost)"
+	if _trash.disabled:
+		_trash_armed = false
+	_trash.text = "Confirm?" if _trash_armed else ""
+	_trash.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT if _trash_armed else HORIZONTAL_ALIGNMENT_CENTER
+	var color := UITheme.DANGER if _trash_armed else UITheme.TEXT_DIM
+	_tint_icon(_trash, color)
+	for state in ["font_color", "font_hover_color", "font_pressed_color"]:
+		_trash.add_theme_color_override(state, color)
+
+
+func _on_trash() -> void:
+	if module == null or not is_instance_valid(module):
+		return
+	if not _trash_armed:
+		_trash_armed = true
+		UITheme.flash(_trash, UITheme.DANGER)
+		_trash_timer = get_tree().create_timer(TRASH_ARM_SECONDS)
+		var timer := _trash_timer
+		timer.timeout.connect(func() -> void:
+			if timer == _trash_timer:
+				_disarm_trash())
+		refresh()
+		return
+	_disarm_trash()
+	GameState.trash_module(module.uid, module)
+
+
+func _disarm_trash() -> void:
+	_trash_armed = false
+	_trash_timer = null
+	if is_node_ready() and module != null and is_instance_valid(module):
+		refresh()
 
 
 func _tint_icon(b: Button, color: Color) -> void:

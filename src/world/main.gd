@@ -41,6 +41,7 @@ func _ready() -> void:
 	tap_marker.material_override = ToonMaterials.get_material(Palette.YELLOW, 3.0, false)
 	tap_marker.hide()
 	station.layout_changed.connect(_on_layout_changed)
+	station.module_leaving.connect(_on_module_leaving)
 	camera.zoom_changed.connect(_on_zoom_changed)
 	EventBus.game_reset.connect(_on_game_reset)
 	EventBus.module_focus_requested.connect(focus_module)
@@ -111,6 +112,15 @@ func _set_focused(module: Module) -> void:
 func _on_layout_changed() -> void:
 	camera.set_station_aabb(station.get_aabb())
 	cutaway.mark_visibility_dirty()
+
+
+## A module is being dismantled: the castaway steps into its neighbour, and
+## the camera follows if it was looking at it.
+func _on_module_leaving(module: Module, refuge: Module) -> void:
+	if station.module_at(player.global_position) == module:
+		player.teleport(station.refuge_position(refuge, module))
+	if focused == module and refuge:
+		focus_module(refuge)
 
 
 func _on_game_reset() -> void:

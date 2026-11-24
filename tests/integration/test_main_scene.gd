@@ -179,6 +179,27 @@ func test_building_a_module_attaches_and_links_navigation() -> void:
 	assert_true(_has_path(player.global_position, room), "path from capsule to the new module")
 
 
+func test_trashing_a_module_moves_the_castaway_out() -> void:
+	var wreck := station.find_module(&"wreck_core")
+	GameState.give({&"scrap_metal": 20})
+	GameState.repair_module(wreck.uid)
+	var uid := GameState.build_module(&"hab_pod", wreck.uid, &"C")
+	var hab := station.get_module(uid)
+	await wait_seconds(0.8)  # arrival animation + navigation map sync
+	player.teleport(hab.floor_positions()[0])
+	main.focus_module(hab, true)
+	assert_eq(station.module_at(player.global_position), hab)
+	var scrap := GameState.count(&"scrap_metal")
+	assert_true(GameState.trash_module(uid))
+	assert_eq(station.module_at(player.global_position), wreck, "castaway moved to the parent")
+	assert_eq(main.focused, wreck, "camera focus follows")
+	assert_null(station.get_module(uid))
+	assert_null(wreck.slots[&"C"].occupied_by, "slot freed")
+	assert_eq(GameState.count(&"scrap_metal"), scrap + 8, "refund")
+	await wait_seconds(0.7)  # lift-off
+	assert_false(is_instance_valid(hab), "module freed after lifting off")
+
+
 func test_branching_station_through_connectors() -> void:
 	var wreck := station.find_module(&"wreck_core")
 	GameState.give({&"scrap_metal": 60})

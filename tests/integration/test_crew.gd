@@ -95,3 +95,16 @@ func test_load_restores_npcs() -> void:
 	GameState.from_dict(data)
 	await wait_physics_frames(2)
 	assert_eq(director.npcs.size(), 2)
+
+
+func test_trashing_a_module_moves_the_crew_out() -> void:
+	var npcs := await _recruit(2)
+	var node: int = GameState.station.get_record(hab).parent
+	GameState.station.get_record(hab).built = true  # as if the player built it
+	var inside := npcs.filter(func(n: CrewNPC) -> bool: return _module_of(n) == hab)
+	assert_false(inside.is_empty(), "someone at home in the dorm")
+	assert_true(GameState.trash_module(hab))
+	for npc: CrewNPC in inside:
+		assert_eq(_module_of(npc), node, "%s moved to the hub" % npc.member.display_name)
+	for m in GameState.station.crew.members:
+		assert_ne(m.home_uid, hab, "re-homed")

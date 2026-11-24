@@ -5,6 +5,9 @@ extends Node3D
 ## outlines on empty slots, and plays state changes on the modules.
 
 signal module_attached(module: Module)
+## `module` is being dismantled: whoever stands in it moves to `refuge` (its
+## parent, see `refuge_position`) before it lifts off.
+signal module_leaving(module: Module, refuge: Module)
 ## The station's bounding box changed (camera framing).
 signal layout_changed
 
@@ -332,8 +335,46 @@ func _on_module_removed(uid: int) -> void:
 	var module: Module = modules.get(uid)
 	if module == null:
 		return
+	# Visitors already flew away (VisitorDirector); dismantled modules lift off.
+	var dismantled := module.def.kind != &"visitor"
+	if dismantled:
+		var own := module.get_attach_slot()
+		var refuge: Module = own.occupied_by if own and own.occupied_by else null
+		module_leaving.emit(module, refuge)
 	detach(module)
 	modules.erase(uid)
-	module.queue_free()
+	if dismantled:
+		_play_departure(module)
+	else:
+		module.queue_free()
 	refresh_ghosts()
 	layout_changed.emit()
+
+
+## A floor position in `refuge` for someone leaving `from`: the free cell
+## nearest to the hatch between them (else the spawn point).
+func refuge_position(refuge: Module, from: Module) -> Vector3:
+	var cells := refuge.floor_positions() if refuge else ([] as Array[Vector3])
+	if cells.is_empty():
+		return spawn_position()
+	var own := from.get_attach_slot()
+	var door := from.to_global(own.door_position) if own else from.global_position
+	var best := cells[0]
+	for p in cells:
+		if p.distance_squared_to(door) < best.distance_squared_to(door):
+			best = p
+	return best
+
+
+## A dismantled module: unpickable and off the navmesh at once, then it rises
+## away (the arrival in reverse) and is freed.
+func _play_departure(module: Module) -> void:
+	if module.nav_region:
+		module.nav_region.enabled = false
+	for body: CollisionObject3D in module.find_children("*", "CollisionObject3D", true, false):
+		body.collision_layer = 0
+	EventBus.sfx.emit(&"snap")
+	var tween := module.create_tween()
+	tween.tween_property(module, "global_position", module.global_position + Vector3(0, 8, 0), 0.5) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tween.tween_callback(module.queue_free)

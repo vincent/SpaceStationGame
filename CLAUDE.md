@@ -73,7 +73,9 @@ Rules of thumb:
   interactable=4, walls=8, module_pick=16).
 - **The station is data first:** `GameState.station` (StationState) owns modules, slots,
   state, wear, power and upgrades; `Station` only mirrors it. Change it through
-  `GameState.build_module / repair_module / toggle_power / buy_upgrade`.
+  `GameState.build_module / trash_module / repair_module / toggle_power / buy_upgrade`.
+  `trash_module` only takes player-built leaves (`built` record flag, `StationState.remove_error`)
+  and refunds the build cost; `Station.module_leaving` moves the castaway and crew to the parent first.
 - Pure logic classes (`extends RefCounted`) get unit tests; scene behaviour gets an
   integration test in `tests/integration/`.
 - **Costs and rewards go through the wallet:** `GameState.count / has_all / give / pay`.

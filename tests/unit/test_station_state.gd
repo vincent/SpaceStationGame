@@ -108,3 +108,25 @@ func test_remove_module_removes_children() -> void:
 	assert_false(st.has_module(hab))
 	assert_false(st.has_module(capsule))
 	assert_signal_emit_count(st, "module_removed", 3)
+
+
+func test_remove_error_only_for_built_leaves() -> void:
+	assert_ne(st.remove_error(wreck), "", "root")
+	assert_ne(st.remove_error(capsule), "", "original module")
+	assert_ne(st.remove_error(999), "", "unknown")
+	var corridor := st.add_module(&"corridor", wreck, &"B", StationState.State.REPAIRED, 0.2, false, &"", true)
+	assert_eq(st.remove_error(corridor), "")
+	var hab := st.add_module(&"hab_pod", corridor, &"B", StationState.State.REPAIRED, 0.2, false, &"", true)
+	assert_gt(hab, 0)
+	assert_ne(st.remove_error(corridor), "", "something attached to it")
+	assert_eq(st.remove_error(hab), "")
+	st.remove_module(hab)
+	assert_eq(st.remove_error(corridor), "", "a leaf again")
+
+
+func test_built_flag_is_saved() -> void:
+	var hab := st.add_module(&"hab_pod", wreck, &"B", StationState.State.REPAIRED, 0.2, false, &"", true)
+	var copy := StationState.new(db)
+	copy.from_dict(JSON.parse_string(JSON.stringify(st.to_dict())))
+	assert_true(copy.get_record(hab).built)
+	assert_false(copy.get_record(capsule).built)

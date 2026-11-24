@@ -6,7 +6,8 @@ extends RefCounted
 ## Pure logic (no nodes): the Station scene mirrors it through the signals.
 ##
 ## A record is {uid, module_id, parent, slot, own_slot, state, wear, powered,
-## parts}. `parent` is 0 for the root module; `own_slot` is the module's own
+## parts, built}. `built`: placed by the player, so it can be dismantled
+## (see `remove_error`). `parent` is 0 for the root module; `own_slot` is the module's own
 ## slot that meets `slot` of the parent (its orientation, see StationGrid).
 ##
 ## It also owns the crew (`crew`: StationCrew, beds and jobs per module).
@@ -57,7 +58,7 @@ func clear() -> void:
 func add_module(
 		module_id: StringName, parent_uid: int = 0, slot: StringName = &"",
 		state: State = State.REPAIRED, wear: float = 0.2, powered: bool = false,
-		by_slot: StringName = &""
+		by_slot: StringName = &"", built: bool = false
 ) -> int:
 	if attach_error(module_id, parent_uid, slot, by_slot) != "":
 		return 0
@@ -68,7 +69,7 @@ func add_module(
 		"uid": uid, "module_id": module_id, "parent": parent_uid, "slot": slot,
 		"own_slot": by_slot if by_slot != &"" else def.attach_slot,
 		"state": state, "wear": clampf(wear, MIN_WEAR, 1.0), "powered": false,
-		"parts": [] as Array[StringName],
+		"parts": [] as Array[StringName], "built": built,
 	}
 	placement_cache.clear()
 	module_added.emit(uid)
@@ -143,6 +144,20 @@ func remove_module(uid: int) -> void:
 	placement_cache.clear()
 	module_removed.emit(uid)
 	crew.fix()
+
+
+## "" when `uid` can be dismantled: a player-built module with a single
+## connection (its parent; nothing attached to it, docked ships included).
+func remove_error(uid: int) -> String:
+	if not _records.has(uid):
+		return "No such module"
+	if _records[uid].parent == 0:
+		return "Can't remove the core"
+	if not _records[uid].get("built", false):
+		return "Part of the original station"
+	if not children_of(uid).is_empty():
+		return "Detach what's attached to it first"
+	return ""
 
 
 func has_module(uid: int) -> bool:
@@ -352,6 +367,7 @@ func to_dict() -> Dictionary:
 			"uid": id, "module_id": String(r.module_id), "parent": r.parent, "slot": String(r.slot),
 			"own_slot": String(r.own_slot), "state": r.state, "wear": r.wear, "powered": r.powered,
 			"parts": Array(r.parts).map(func(p: StringName) -> String: return String(p)),
+			"built": r.get("built", false),
 		})
 	return {
 		"next_uid": _next_uid, "modules": modules,
@@ -376,6 +392,7 @@ func from_dict(data: Dictionary) -> void:
 			"slot": StringName(m.get("slot", "")),
 			"own_slot": StringName(m.get("own_slot", def.attach_slot)), "state": int(m.get("state", State.REPAIRED)),
 			"wear": float(m.get("wear", 0.2)), "powered": bool(m.get("powered", false)), "parts": parts,
+			"built": bool(m.get("built", false)),
 		}
 	_next_uid = maxi(int(data.get("next_uid", 1)), (uids().max() if not _records.is_empty() else 0) + 1)
 	crew.from_dict(data.get("crew", {}))  # saves before v6 have no crew

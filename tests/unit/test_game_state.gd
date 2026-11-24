@@ -114,6 +114,19 @@ func test_build_module_on_free_slot() -> void:
 	assert_eq(GameState.build_module(&"capsule", _wreck(), &"C"), 0, "not buildable")
 
 
+func test_trash_built_module_refunds_build_cost() -> void:
+	var start := GameState.count(&"scrap_metal")
+	var uid := GameState.build_module(&"hab_pod", _wreck(), &"B")
+	assert_eq(GameState.trash_error(uid), "")
+	assert_true(GameState.trash_module(uid))
+	assert_false(GameState.station.has_module(uid))
+	assert_eq(GameState.count(&"scrap_metal"), start, "build cost refunded")
+	assert_false(GameState.trash_module(uid), "already gone")
+	var capsule := GameState.station.find_module(&"capsule")
+	assert_false(GameState.trash_module(capsule), "original modules stay")
+	assert_true(GameState.station.has_module(capsule))
+
+
 func test_upgrade_effects_change_need_decay() -> void:
 	var capsule := GameState.station.find_module(&"capsule")
 	var base := GameState.needs.decay_per_hour[Needs.MORALE]

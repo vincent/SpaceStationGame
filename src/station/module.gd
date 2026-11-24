@@ -219,6 +219,21 @@ func get_spawn_position() -> Vector3:
 	return interior.global_transform * interior.spawn_position
 
 
+## World positions of the free floor cells (`.`, `P`, `L`, `D`) where the
+## module rests (a new module may still be flying in).
+func floor_positions() -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	if interior == null:
+		return out
+	var grid := interior.get_grid()
+	for z in grid.size():
+		for x in grid[z].length():
+			if StationBuilder.FREE_FLOOR.contains(grid[z][x]):
+				var local := to_local(interior.to_global(interior.cell_to_world(Vector2i(x, z))))
+				out.append(rest_transform * local)
+	return out
+
+
 func get_attach_slot() -> Slot:
 	if attach_slot_name != &"":
 		return slots.get(attach_slot_name)

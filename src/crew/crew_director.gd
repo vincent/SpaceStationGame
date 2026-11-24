@@ -25,6 +25,7 @@ func _ready() -> void:
 	GameState.station.crew.changed.connect(sync)
 	EventBus.game_reset.connect(_respawn_all)
 	GameClock.time_advanced.connect(_on_time_advanced)
+	station.module_leaving.connect(_on_module_leaving)
 	_respawn_all.call_deferred()
 
 
@@ -169,19 +170,8 @@ func _modules(uids: Array) -> Array:
 	return out
 
 
-## World positions of a module's free floor cells (`.`, `P`, `L`, `D`), where
-## the module rests (a new module may still be flying in).
 func _floor_cells(module: Module) -> Array[Vector3]:
-	var out: Array[Vector3] = []
-	if module == null or module.interior == null:
-		return out
-	var grid := module.interior.get_grid()
-	for z in grid.size():
-		for x in grid[z].length():
-			if StationBuilder.FREE_FLOOR.contains(grid[z][x]):
-				var local := module.to_local(module.interior.to_global(module.interior.cell_to_world(Vector2i(x, z))))
-				out.append(module.rest_transform * local)
-	return out
+	return module.floor_positions() if module else ([] as Array[Vector3])
 
 
 # --- Visibility & time skips ---------------------------------------------------
@@ -194,6 +184,20 @@ func _process(delta: float) -> void:
 	for npc: CrewNPC in npcs.values():
 		var here := station.module_at(npc.global_position)
 		npc.visible = here == null or here.interior_visible
+
+
+## Crew standing in a dismantled module step into its neighbour, then go on
+## with what they were doing (their home / job may have changed: StationCrew.fix).
+func _on_module_leaving(module: Module, refuge: Module) -> void:
+	for npc: CrewNPC in npcs.values():
+		var inside := station.module_at(npc.global_position) == module
+		var heading := not npc.spot.is_empty() and station.module_at(npc.spot.pos) == module
+		if not inside and not heading:
+			continue
+		release(npc)
+		if inside:
+			npc.teleport(station.refuge_position(refuge, module))
+		npc.go_for_activity.call_deferred()
 
 
 func _on_time_advanced(minutes: float) -> void:

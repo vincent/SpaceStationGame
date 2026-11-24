@@ -1,6 +1,7 @@
+# gdlint: disable=max-public-methods
 extends Node
 ## Owns the simulation state (needs, inventory, station stock, station, story)
-## and the actions that change it (sleep, eat, use item, build, repair, power,
+## and the actions that change it (sleep, eat, use item, build, trash, repair, power,
 ## upgrade, encounter outcomes...). Costs and rewards go through the wallet
 ## (`count`, `has_all`, `give`, `pay`): bulk items (resources) live in
 ## `stock`, the rest in `inventory`. Scenes and UI call these methods instead
@@ -11,7 +12,7 @@ const SAVE_PATH := "user://savegame.json"
 ## 2: station modules (StationState) added. 3: story (flags, encounters).
 ## 4: station stock (bulk resources); rations became food. 5: own_slot
 ## (module orientation). 6: crew (in the station data).
-const SAVE_VERSION := 6
+const SAVE_VERSION := 7
 const INVENTORY_SLOTS := 20
 
 ## Bulk ids go to the station stock, the rest to the inventory.
@@ -244,10 +245,27 @@ func build_module(module_id: StringName, parent_uid: int, slot: StringName, by_s
 	var def := module_db.get_module(module_id)
 	pay(def.build_cost)
 	spend_time(def.build_minutes, &"working")
-	var uid := station.add_module(module_id, parent_uid, slot, StationState.State.REPAIRED, 0.3, false, by_slot)
+	var uid := station.add_module(module_id, parent_uid, slot, StationState.State.REPAIRED, 0.3, false, by_slot, true)
 	EventBus.notice.emit("%s attached." % def.display_name, &"success")
 	story_event(&"built", module_id)
 	return uid
+
+
+## "" when module `uid` can be dismantled (see StationState.remove_error).
+func trash_error(uid: int) -> String:
+	return station.remove_error(uid)
+
+
+## Dismantles a player-built module and refunds its build cost (upgrades are
+## lost). The Station moves anyone inside to the parent module first.
+func trash_module(uid: int, source: Node3D = null) -> bool:
+	if trash_error(uid) != "":
+		return false
+	var def := station.get_def(uid)
+	station.remove_module(uid)
+	give(def.build_cost, source)
+	EventBus.notice.emit("%s dismantled." % def.display_name, &"success")
+	return true
 
 
 func repair_error(uid: int) -> String:

@@ -344,6 +344,7 @@ func _cheat_build(module_id: StringName) -> void:
 ## -> corridor (clears the capsule) -> octagon hub -> dormitory + docking adapter.
 func _cheat_demo_layout() -> void:
 	var st := GameState.station
+	var original := st.uids()
 	var wreck := st.find_module(&"wreck_core")
 	st.repair(wreck)
 	var r := StationState.State.REPAIRED
@@ -360,6 +361,9 @@ func _cheat_demo_layout() -> void:
 			if st.attach_error(module_id, node, slot) == "":
 				st.add_module(module_id, node, slot, r, 0.3)
 				break
+	for uid in st.uids():  # as if the player built them (they can be trashed)
+		if not original.has(uid):
+			st.get_record(uid).built = true
 
 
 ## Recruits `count` crew (as many as there are bunks; extra bunks come from
