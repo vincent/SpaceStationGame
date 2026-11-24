@@ -1,0 +1,5 @@
+# Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
+*: The module is an octagonal hub: ivory lower walls with a thin gold stripe, octagonal docking rings with a gold band on three flats, a faceted glass dome on white struts.
+closed: The upper part is a glass dome in a white strut frame: paint every glass panel as an OPAQUE pale lilac tinted pane with one soft diagonal reflection; draw nothing behind or through the glass (no rooms, no furniture, no lights).
+cut: Inside are a round console in the middle with a gold floor ring round it, stools in the diagonal corners and amber floor lamp pads.
+interior: The props are a round central console, a gold ring inlaid in the floor, stools and small amber lamp pads.

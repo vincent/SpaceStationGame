@@ -1,0 +1,5 @@
+# Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
+*: The module is a docking adapter: a flared collar that widens from a standard hatch (north, octagonal docking rings with a gold band) to a large hatch (south, a wide ring with a violet band); ivory lower walls with a thin gold stripe.
+closed: The upper part is a glass canopy in a white strut frame: paint every glass panel as an OPAQUE pale lilac tinted pane with one soft diagonal reflection; draw nothing behind or through the glass (no rooms, no furniture, no lights).
+cut: The floor is plain except a navy runner that widens towards the large hatch, with yellow-and-black hazard stripes at the large door.
+interior: The props are a navy floor runner widening towards the large hatch and hazard stripes.

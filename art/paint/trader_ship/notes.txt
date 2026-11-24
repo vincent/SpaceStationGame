@@ -1,0 +1,6 @@
+# Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
+*: The module is a narrow merchant hauler spaceship (a visitor): navy walls with a gold stripe under a glass roof, two ivory cargo pods slung on its flanks on struts, nav lights at the bow, a docking hatch at the +X end.
+closed: The upper part is a glass roof in a white strut frame: paint every glass panel as an OPAQUE pale lilac tinted pane with one soft diagonal reflection; draw nothing behind or through the glass (no rooms, no furniture, no lights).
+cut: Inside is a cargo hold with crates and a rug.
+interior: The props are crates and a violet rug.
+parts: The parts are twin engine bells at the stern and a mast with a beacon and a pennant.

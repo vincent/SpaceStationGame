@@ -18,3 +18,4 @@ trim_color = Color(0.208, 0.173, 0.314, 1)
 cap_tint = Color(0.937, 0.89, 1, 1)
 light_color = Color(1, 0.816, 0.659, 1)
 art_palette = ExtResource("3_palette")
+art_paint_path = "res://assets/models/modules/power_deck_paint_%d.webp"

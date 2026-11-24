@@ -1,0 +1,6 @@
+# Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
+*: The module is a small solar maintenance cabin: ivory lower walls with a thin gold stripe, a octagonal docking rings with a gold ban on the south side, a gold truss with navy solar wings on both sides, gold rotary joints, a small roof mast.
+closed: The upper part is a glass roof in a white strut frame: paint every glass panel as an OPAQUE pale lilac tinted pane with one soft diagonal reflection; draw nothing behind or through the glass (no rooms, no furniture, no lights).
+cut: Inside are battery cabinets along the walls and a floor runner.
+interior: The props are battery cabinets with mint indicator lights and a floor runner.
+parts: The parts are a gold truss carrying navy solar panels (photovoltaic cells grid) and outer wing panels.

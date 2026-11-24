@@ -103,8 +103,13 @@ def call(model, prompt, images, ratio, size, key):
             'modalities': ['image', 'text'], 'usage': {'include': True},
             'image_config': {'aspect_ratio': ratio, **({'image_size': size} if size else {})}}
     for attempt in range(3):
-        r = requests.post(URL, headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json',
-                                        'X-Title': 'paint-projection-proto'}, json=body, timeout=300)
+        try:
+            r = requests.post(URL, headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json',
+                                            'X-Title': 'paint-projection-proto'}, json=body, timeout=300)
+        except requests.RequestException as e:   # dropped connection, SSL EOF, timeout: retry
+            log('request failed:', type(e).__name__, str(e)[:200])
+            time.sleep(3 * (attempt + 1))
+            continue
         if r.status_code == 200:
             js = r.json()
             msg = js['choices'][0]['message']

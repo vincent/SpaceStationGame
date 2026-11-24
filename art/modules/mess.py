@@ -1,11 +1,11 @@
 """Mess hall (canopy style, mockup 1000037499): a wedge-shaped glass-roofed canteen
 (a right triangle with its tips cut off), counters along the long glass side, tables
-and stools. Attach M-P (A, -X) . offers B (+X), C (+Y / north), all M-P. Mount: vent."""
+and stools. Attach M-P (A, -X) . offers B (+X), M-P. Mount: vent."""
 from kit.module import C, box, mask
 
 ID = "mess"
 LAYOUT = """\
-#cc###
+######
 #...K#
 a.#..#
 a....b
@@ -14,7 +14,7 @@ a....b
 SEED = 61
 
 W = 4.3                           # room x/y -4..4 + 0.3 walls (left and bottom legs)
-T = 6.3                           # the cut tips: +X flat (door B) and +Y flat (door C)
+T = 6.3                           # the cut tips: +X flat (door B) and +Y flat
 HYP = 8.5                         # long glass side: x + y = HYP
 PLAN = [(-W, -W), (T, -W), (T, HYP - T), (HYP - T, T), (-W, T)]
 Z1 = 3.6
@@ -24,7 +24,6 @@ def build(m):
     hull = m.canopy_polygon(PLAN, z1=Z1, kt=1.3)
     m.port("A", [hull], face=0.3, plate=2.0)
     m.port("B", [hull], face=T - 4.0, plate=2.0)
-    m.port("C", [hull], face=T - 4.0, plate=2.0)
     spots = [((x, -W, 0.55), (0, -1, 0)) for x in (-2.5, 0.5, 3.5)]
     spots += [((-W, y, 0.55), (-1, 0, 0)) for y in (3.0, -3.0)]
     m.porthole_at(spots)

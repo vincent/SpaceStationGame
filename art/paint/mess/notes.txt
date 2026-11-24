@@ -1,0 +1,5 @@
+# Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
+*: The module is a wedge-shaped canteen (a right triangle with its tips cut off): ivory lower walls with a thin gold stripe, octagonal docking rings with a gold band on three sides.
+closed: The upper part is a glass canopy in a white strut frame: paint every glass panel as an OPAQUE pale lilac tinted pane with one soft diagonal reflection; draw nothing behind or through the glass (no rooms, no furniture, no lights).
+cut: Inside are serving counters along the long glass side, tables and stools.
+interior: The props are serving counters, square tables and round stools.

@@ -41,7 +41,7 @@ src/world/      main.tscn/main.gd (taps → focus/build/walk/interact), StationB
 src/station/    Station (scene mirror of StationState), Module (hull+interior+lights+parts+slots), Slot, ModulePart,
                 HullMesher/MeshKit (procedural watertight hulls), ExplodedView, VisitorDirector, modules/*.tscn
 src/rendering/  CutawayController (cut box shader globals), ClockLighting
-src/camera/     DioramaCamera (fixed oblique ortho rig, zoom tiers, pan), Backdrop (starfield quad)
+src/camera/     DioramaCamera (fixed oblique ortho rig, zoom tiers, pan), Backdrop (starfield quad + nebula baked once in a SubViewport)
 src/player/     Walker (navmesh walking base), Player (extends Walker), PlayerRoutine (idle auto-routines)
 src/crew/       CrewDirector (spawns CrewNPCs from StationCrew, claims spots, hides them in closed modules), CrewNPC
 src/interactables/  Interactable base + Bed, Kitchen, BayWindow, SalvagePile, Console, Trader, Planter (+ .tscn each)
@@ -56,7 +56,7 @@ src/ui/         HUD (TopBar = clock + StatusBar + needs + debug button; ModuleSh
 src/tools/      Blender import post-processing (module_import.gd + ModuleImportRules)
 data/items/, data/modules/, data/upgrades/, data/encounters/   One .tres per item / module type / upgrade / story beat
 assets/shaders/ toon (furniture/characters), toon_cut + cutaway.gdshaderinc (structure), outline, ghost, light_card,
-                ambient_fx, starfield
+                ambient_fx, starfield + nebula_bake (shared noise.gdshaderinc)
 tests/unit, tests/integration, tests/goldens   GUT tests (integration boots main.tscn) + golden images
 ```
 
@@ -158,7 +158,8 @@ summon a visitor, camera pitch/yaw/size sliders, save/load). New cheats: `_add_r
 - `NavigationAgent3D` path points sit ~0.25 m above the floor; keep
   `path_desired_distance` > that or the player won't move.
 - Sky shaders / Canvas background misbehave with the ortho camera across renderers;
-  the starfield is a quad (`Backdrop`) parented to the camera.
+  the starfield is a quad (`Backdrop`) parented to the camera. Its nebula is baked once (tileable,
+  fixed seed so goldens stay stable); backdrop colors come from `Palette.SPACE_*` / `NEBULA_*`.
 - **Portrait + landscape:** `HUD._fit_content_scale()` swaps the canvas base (1280x720 / 720x1280) so text keeps
   its size; layout code reads `UITheme.is_portrait()` / `HUD.portrait` and re-lays out in `HUD.apply_layout()`.
   The camera frames inside `EventBus.hud_insets_changed` (portrait: between top bar and sheet). Don't anchor new HUD

@@ -1,0 +1,5 @@
+# Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
+*: The module is a hexagonal refinery room: ivory lower walls with a thin gold stripe, octagonal docking rings with a gold band on two sides, an intake grille with warm marker lights on the south-west side, a chimney on the roof.
+closed: The upper part is a glass roof in a white strut frame: paint every glass panel as an OPAQUE pale lilac tinted pane with one soft diagonal reflection; draw nothing behind or through the glass (no rooms, no furniture, no lights).
+cut: Inside is a big reclaimer vat in the middle with pipes, tanks and crates in the corners.
+interior: The props are a big round reclaimer vat, pipes, tanks and crates.

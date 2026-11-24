@@ -1,0 +1,5 @@
+# Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
+*: The module is a square briefing hall: ivory lower walls with a thin gold stripe, octagonal docking rings with a gold band on three sides, a pyramid of white struts over the glass roof.
+closed: The upper part is a glass pyramid roof in a white strut frame: paint every glass panel as an OPAQUE pale lilac tinted pane with one soft diagonal reflection; draw nothing behind or through the glass (no rooms, no furniture, no lights).
+cut: Inside are four rows of seats facing outwards round a central column, and a console in one corner.
+interior: The props are a central column, four rows of seats around it, a deck plate under them.

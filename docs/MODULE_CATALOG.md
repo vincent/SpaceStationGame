@@ -66,7 +66,7 @@ Station view of the whole set: `tools/screenshot.sh build/c.png --layout=demo --
 | `hub_dome` | Dome hub (494–496 core) | octagon + glass dome | 9.2 × 9.2 | M-P | 2 M-P | lantern | junction, console | 2.5k |
 | `briefing` | Briefing room (500) | square, pyramid roof | 8.6 × 8.6 | M-P | 2 M-P | mast | seat rows, console | 1.8k |
 | `refinery` | Refinery (501) | hexagon | 9.2 × 10.6 | M-P | 1 M-P | chimney | water +0.2, 1 job, console | 1.3k |
-| `mess` | Mess hall (499) | wedge (cut triangle) | 10.6 × 10.6 | M-P | 2 M-P | vent | galley (K), tables | 1.9k |
+| `mess` | Mess hall (499) | wedge (cut triangle) | 10.6 × 10.6 | M-P | 1 M-P | vent | galley (K), tables | 1.9k |
 | `plaza` | Plaza (504) | five-armed star | 16.5 × 17.4 | M-P | — | spire | pool, servers, bar | 2.2k |
 
 Deviations from the mockups: ports only on flats facing ±X / ±Y (the triangle and hexagon get

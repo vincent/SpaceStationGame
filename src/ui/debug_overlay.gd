@@ -101,6 +101,7 @@ func _ready() -> void:
 				crew.remove(crew.members.back().id)],
 	])
 	_add_camera_sliders.call_deferred()
+	_add_backdrop_sliders.call_deferred()
 	_add_row("Game", [
 		["Save", func() -> void: EventBus.toast.emit("Saved" if GameState.save_game() else "Save failed")],
 		["Load", func() -> void: EventBus.toast.emit("Loaded" if GameState.load_game() else "No save")],
@@ -178,6 +179,7 @@ func _give_selected() -> void:
 ##   --visitor              dock a trader ship now (needs a powered dock)
 ##   --focus=<module_id>    focus a module; --view=station|room picks the zoom
 ##   --cut=off              disable the cutaway; --backfaces paints holes magenta
+##   --nebula=off           hide the backdrop nebula (stars and gradient only)
 ##   --paint=off            painted art (art_paint_path) drawn with the plain palette instead
 ##   --spin=<module_id>:<deg>  turn a module in place by deg (checks each painted direction)
 ##   --explode              open the exploded view of the focused module
@@ -195,6 +197,9 @@ func _run_cli_commands() -> void:
 	if args.has("inventory") and hud:
 		hud.inventory_panel.toggle()
 	var main := get_tree().current_scene
+	if args.get("nebula", "") == "off":
+		for b: Backdrop in main.find_children("*", "Backdrop", true, false):
+			b.nebula_strength = 0.0
 	if args.get("paint", "") == "off":
 		Module.paint_disabled = true  # before --build / --layout create modules
 	if args.has("freeze") or args.get("story", "") == "off":
@@ -527,6 +532,30 @@ func _add_camera_sliders() -> void:
 			cam.set(spec[3], v)
 			label.text = "%s %.0f" % [spec[0], v]
 			cam.set_station_aabb(cam.get_station_aabb()))
+		row.add_child(slider)
+		_content.add_child(row)
+
+
+func _add_backdrop_sliders() -> void:
+	var scene := get_tree().current_scene
+	var found: Array = scene.find_children("*", "Backdrop", true, false) if scene else []
+	if found.is_empty():
+		return
+	var backdrop := found[0] as Backdrop
+	_content.add_child(UITheme.label("Backdrop", true, UITheme.TEXT_DIM))
+	for spec: Array in [["nebula", 1.0, "nebula_strength"], ["halos", 2.0, "halo_strength"]]:
+		var row := HBoxContainer.new()
+		var label := UITheme.label("%s %.2f" % [spec[0], backdrop.get(spec[2])], true)
+		label.custom_minimum_size.x = 150
+		row.add_child(label)
+		var slider := HSlider.new()
+		slider.max_value = spec[1]
+		slider.step = 0.05
+		slider.value = backdrop.get(spec[2])
+		slider.custom_minimum_size = Vector2(240, UITheme.TOUCH_SIZE * 0.6)
+		slider.value_changed.connect(func(v: float) -> void:
+			backdrop.set(spec[2], v)
+			label.text = "%s %.2f" % [spec[0], v])
 		row.add_child(slider)
 		_content.add_child(row)
 

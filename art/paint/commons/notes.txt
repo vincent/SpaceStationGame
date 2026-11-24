@@ -1,0 +1,5 @@
+# Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
+*: The module is a commons tube: ivory lower walls with a thin gold stripe, octagonal docking rings with a gold band at both ends, a faceted OPAQUE ivory dome over the middle bay (two-tone panels, gold base ring) with a small lantern on top.
+closed: The upper part is a glass canopy in a white strut frame: paint every glass panel as an OPAQUE pale lilac tinted pane with one soft diagonal reflection; draw nothing behind or through the glass (no rooms, no furniture, no lights). The middle dome is opaque ivory panels, not glass.
+cut: Inside are lounge benches with navy cushions along both walls and a low table; keep the floor plain.
+interior: The props are lounge benches with navy cushions and a low table.

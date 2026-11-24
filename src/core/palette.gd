@@ -6,6 +6,14 @@ class_name Palette
 const NIGHT := Color("0b0a24")        # deep space background
 # scene lighting (mockup look: neutral, soft, every face readable)
 const SPACE := Color("181a30")        # background behind the starfield
+# space backdrop (Backdrop + starfield/nebula shaders)
+const SPACE_TOP := Color("101029")    # gradient, top-left
+const SPACE_MID := Color("141935")    # gradient, middle
+const SPACE_BOTTOM := Color("1c1533") # gradient, bottom-right (violet hint)
+const NEBULA_DEEP := Color("1b2a6b")  # nebula body
+const NEBULA_VIOLET := Color("5a3a8a")
+const NEBULA_TEAL := Color("2f7f8f")
+const NEBULA_CORE := Color("9ea8e6")  # densest cores
 const AMBIENT := Color("b1b3c4")      # shadow sides stay light grey-blue
 const RIM := Color("dfe4ff")          # faint pale rim on silhouettes
 const DEEP_BLUE := Color("1b1650")    # hull shadows, panels

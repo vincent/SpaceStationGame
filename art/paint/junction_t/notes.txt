@@ -1,0 +1,5 @@
+# Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
+*: The module is a small square T-junction node: ivory lower walls with a thin gold stripe, three octagonal docking rings with a gold band (west, east, south), round amber portholes on the closed north wall.
+closed: The upper part is a glass canopy in a white strut frame: paint every glass panel as an OPAQUE pale lilac tinted pane with one soft diagonal reflection; draw nothing behind or through the glass (no rooms, no furniture, no lights).
+cut: The floor is plain except a gold cross inlaid in it; a wall locker stands against the closed north wall.
+interior: The props are a thin gold cross inlaid in the floor and a tall wall locker.

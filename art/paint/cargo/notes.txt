@@ -1,0 +1,5 @@
+# Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
+*: The module is a dead-end cargo hold tube: ivory lower walls with a thin gold stripe, one octagonal docking rings with a gold ban at the west end, a vent grille on the closed east end.
+closed: The upper part is a glass canopy in a white strut frame: paint every glass panel as an OPAQUE pale lilac tinted pane with one soft diagonal reflection; draw nothing behind or through the glass (no rooms, no furniture, no lights).
+cut: Inside are two-shelf steel racks against both long walls with crates on them; keep the floor between them plain.
+interior: The props are navy steel racks with two shelves each and crates stacked on the shelves.

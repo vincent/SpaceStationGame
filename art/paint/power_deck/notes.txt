@@ -1,0 +1,6 @@
+# Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
+*: The module is a low power-plant tube: ivory lower walls with a thin gold stripe, a octagonal docking rings with a gold ban at the west end, a closed intake grille at the east end, two navy solar wings on a mast off the back.
+closed: The roof is an OPAQUE flat deck carrying battery pods and a caged glowing reactor core: paint it as solid metal, nothing visible through it.
+cut: Inside are generator housings on the floor; keep the walkway plain.
+interior: The props are bulky generator housings with gauges and cyan indicator lights.
+parts: The parts are two navy solar wings on a mast.

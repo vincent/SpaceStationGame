@@ -16,14 +16,14 @@ build_minutes = 180.0
 repair_cost = Dictionary[StringName, int]({&"scrap_metal": 2})
 power_output = 0.0
 power_draw = 1.0
-slots = Dictionary[StringName, PackedStringArray]({&"A": PackedStringArray("module"), &"B": PackedStringArray("module"), &"C": PackedStringArray("module")})
+slots = Dictionary[StringName, PackedStringArray]({&"A": PackedStringArray("module"), &"B": PackedStringArray("module")})
 attach_slot = &"A"
-layout = "#cc###
+layout = "######
 #...K#
 a.#..#
 a....b
 #..#.b
 ######"
-slot_frames = Dictionary[StringName, Vector3]({&"A": Vector3(-4.85, -0.0, -90.0), &"B": Vector3(6.85, 2.0, 90.0), &"C": Vector3(-2.0, -6.85, 180.0)})
+slot_frames = Dictionary[StringName, Vector3]({&"A": Vector3(-4.85, -0.0, -90.0), &"B": Vector3(6.85, 2.0, 90.0)})
 massing = Array[Rect2]([Rect2(-4.3, -6.3, 10.6, 10.6)])
 slot_sizes = Dictionary[StringName, int]({})

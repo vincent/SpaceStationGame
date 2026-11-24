@@ -1,0 +1,5 @@
+# Module-specific prompt lines for tools/paint/paint_ai.py ("*:" = every view, "<view>:" = one view)
+*: The module is a square cross hub: ivory lower walls with a thin gold stripe, an octagonal docking ring with a gold band on each of its four sides, under a stepped glass dome.
+closed: The upper part is a stepped glass dome in a white strut frame: paint every glass panel as an OPAQUE pale lilac tinted pane with one soft diagonal reflection; draw nothing behind or through the glass (no rooms, no furniture, no lights).
+cut: The floor is plain except a gold ring inlaid in it and a round amber lamp pad in the middle.
+interior: The props are a thin gold ring inlaid in the floor and a round amber floor lamp pad in the centre.
