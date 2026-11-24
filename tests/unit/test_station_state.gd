@@ -53,6 +53,15 @@ func test_power_budget() -> void:
 	assert_gt(solar, 0)
 
 
+func test_solar_arrays_chain() -> void:
+	var first := st.add_module(&"solar_array", wreck, &"C")
+	assert_true(st.free_slots(first).has(&"B"), "the array offers its north hatch")
+	assert_eq(st.attach_error(&"solar_array", first, &"B"), "", "an array fits on an array")
+	var second := st.add_module(&"solar_array", first, &"B")
+	assert_eq(st.attach_error(&"solar_array", second, &"B"), "", "and the chain goes on")
+	assert_gt(st.add_module(&"solar_array", second, &"B"), second)
+
+
 func test_repair_lowers_wear_but_never_to_zero() -> void:
 	assert_true(st.repair(wreck))
 	assert_false(st.repair(wreck), "only once")

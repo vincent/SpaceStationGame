@@ -15,12 +15,12 @@ build_cost = Dictionary[StringName, int]({&"scrap_metal": 6, &"power_cell": 1})
 repair_cost = Dictionary[StringName, int]({&"scrap_metal": 2})
 power_output = 3.0
 power_draw = 0.0
-slots = Dictionary[StringName, PackedStringArray]({&"A": PackedStringArray()})
+slots = Dictionary[StringName, PackedStringArray]({&"A": PackedStringArray(), &"B": PackedStringArray("module")})
 attach_slot = &"A"
-layout = "#####
-#.C.#
+layout = "##b##
+#C..#
 #.L.#
 ##a##"
-slot_frames = Dictionary[StringName, Vector3]({&"A": Vector3(0.0, 3.45, 0.0)})
-massing = Array[Rect2]([Rect2(-3.4, -2.6, 6.8, 5.5)])
+slot_frames = Dictionary[StringName, Vector3]({&"A": Vector3(0.0, 3.45, 0.0), &"B": Vector3(0.0, -3.45, 180.0)})
+massing = Array[Rect2]([Rect2(-3.4, -2.9, 6.8, 5.8)])
 slot_sizes = Dictionary[StringName, int]({})

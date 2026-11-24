@@ -1,13 +1,14 @@
 """Solar array (canopy style): a small glass-roofed maintenance cabin carrying a
-gold truss with navy solar wings on both sides. Attach M-P (A, south). Parts:
+gold truss with navy solar wings on both sides. Attach M-P (A, south); offers B
+(north, M-P) to chain arrays end to end (wings of neighbours just clear). Parts:
 array (always there), extension (the solar_extend upgrade: outer wing panels)."""
 from kit import core
 from kit.module import C, box, mask
 
 ID = "solar_array"
 LAYOUT = """\
-#####
-#.C.#
+##b##
+#C..#
 #.L.#
 ##a##"""
 SEED = 41
@@ -16,11 +17,10 @@ BUDGET = 4000
 HX = 3.4                          # fits wreck slot B (clears its wing)
 FACE = 0.9
 SOUTH = -(2.0 + FACE)
-NORTH = 2.6
+NORTH = 2.0 + FACE                # symmetric: port B mirrors A
 K = 1.0
 Z1 = 3.2
-# square north corners: the room reaches the north wall (and a small chamfer would
-# turn inside out under the roof inset)
+# square north corners (a small chamfer would turn inside out under the roof inset)
 PLAN = [(-HX + K, SOUTH), (HX - K, SOUTH), (HX, SOUTH + K), (HX, NORTH), (-HX, NORTH),
         (-HX, SOUTH + K)]
 TRUSS_Z = 2.3                     # wing spar height (on the roof chamfer)
@@ -51,7 +51,8 @@ def wing(mb, x0, x1):
 def build(m):
     hull = m.canopy_polygon(PLAN, z1=Z1, kt=1.1)
     m.port("A", [hull], face=FACE, plate=2.0)
-    m.porthole_at([((0.0, NORTH, 0.55), (0, 1, 0))])
+    m.port("B", [hull], face=FACE, plate=2.0)
+    m.porthole_at([((sx * HX, 2.2, 0.55), (sx, 0, 0)) for sx in (1, -1)])   # side walls, past the cabinets
 
     def joints(mb):  # gold rotary joints where the spar leaves the cabin, roof mast
         for sx in (1, -1):
