@@ -29,6 +29,9 @@ const LIGHT_ENERGY := 1.6
 ## Night light colour the interior lights drift towards (DayCycle.warmth()).
 const NIGHT_LIGHT := Color(1.0, 0.62, 0.35)
 const POWER_ON_SECONDS := 2.0
+## Canopy struts hidden while cut open. Off until the painted modules get a
+## paint pass without struts (their paint shows the struts' gaps).
+const HIDE_FRAMES_WHEN_CUT := false
 const REPAIR_SECONDS := 1.5
 ## Wall thickness of imported art: wall furniture (bay windows) sits inside it.
 const ART_WALL := 0.3
@@ -96,6 +99,8 @@ var _cut_materials: Array[ShaderMaterial] = []
 var _paint_materials: Array[ShaderMaterial] = []
 var _paint_texture: Texture2D
 var _art_greebles: Array[Node3D] = []
+## Canopy struts (art `frame*`), hidden while cut open if HIDE_FRAMES_WHEN_CUT.
+var _art_frames: Array[Node3D] = []
 var _cut_box: MeshInstance3D
 var _sequence: Tween
 var _wear_tween: Tween
@@ -276,8 +281,12 @@ func apply_record(rec: Dictionary, animate: bool) -> void:
 
 ## Interiors are only drawn while cut open (a closed hull hides them anyway):
 ## floor tiles, furniture (not structural pieces like windows), interior
-## lights and props. Collisions stay, so navigation and taps are unaffected.
+## lights and props. With HIDE_FRAMES_WHEN_CUT the canopy frames do the
+## opposite. Collisions stay, so navigation and taps are unaffected.
 func set_interior_visible(on: bool) -> void:
+	if HIDE_FRAMES_WHEN_CUT:
+		for frame in _art_frames:
+			frame.visible = not on
 	if interior == null or interior_visible == on:
 		return
 	interior_visible = on
@@ -707,9 +716,10 @@ func _art_material(cut: bool) -> ShaderMaterial:
 ## Imported art besides hull and parts: greebles (structure, cut by the
 ## cutaway, hidden in station view), prop_* (interior: never cut, hidden
 ## while the hull is closed) and frame* (canopy struts: never cut, always
-## visible). `cut_box` only defines the cut region.
+## visible unless HIDE_FRAMES_WHEN_CUT). `cut_box` only defines the cut region.
 func _style_art() -> void:
 	_art_greebles.clear()
+	_art_frames.clear()
 	_cut_box = get_node_or_null(^"cut_box") as MeshInstance3D
 	if _cut_box:
 		_cut_box.visible = false
@@ -730,6 +740,8 @@ func _style_art() -> void:
 			child.add_to_group(&"interior_prop")
 		elif child_name.begins_with("greebles"):
 			_art_greebles.append(child as Node3D)
+		elif is_frame:
+			_art_frames.append(child as Node3D)
 		var meshes: Array[Node] = child.find_children("*", "MeshInstance3D", true, false)
 		if child is MeshInstance3D:
 			meshes.append(child)

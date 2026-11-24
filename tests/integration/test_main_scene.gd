@@ -132,6 +132,24 @@ func test_cut_opens_in_room_view_and_closes_in_station_view() -> void:
 	assert_false(cutaway.cut_on)
 
 
+func test_canopy_frames_hide_while_cut_open() -> void:
+	if not Module.HIDE_FRAMES_WHEN_CUT:
+		pass_test("switched off (Module.HIDE_FRAMES_WHEN_CUT)")
+		return
+	var cutaway: CutawayController = main.get_node("CutawayController")
+	var module: Module = main.focused
+	var frames := module.get_children().filter(func(c: Node) -> bool: return String(c.name).begins_with("frame"))
+	assert_false(frames.is_empty(), "focused module has canopy frames")
+	await wait_until(func() -> bool: return cutaway.open > 0.99, 2.0)
+	for frame: Node3D in frames:
+		assert_false(frame.visible, "%s hidden while cut open" % frame.name)
+	camera.focus_on(module, DioramaCamera.Tier.STATION, true)
+	await wait_until(func() -> bool: return not cutaway.cut_on, 2.0)
+	await wait_physics_frames(2)
+	for frame: Node3D in frames:
+		assert_true(frame.visible, "%s visible in station view" % frame.name)
+
+
 func test_repair_and_power_wreck() -> void:
 	var wreck := station.find_module(&"wreck_core")
 	var uid := wreck.uid
@@ -501,6 +519,22 @@ func test_ghosts_only_in_station_view() -> void:
 	main.show_station_view()
 	await wait_until(func() -> bool: return camera.t < 0.01, 3.0)
 	assert_true(ghosts.visible, "station view shows them")
+
+
+func test_build_preview_hides_ghosts() -> void:
+	var wreck := station.find_module(&"wreck_core")
+	GameState.give({&"scrap_metal": 80, &"power_cell": 2})
+	GameState.repair_module(wreck.uid)
+	main.show_station_view()
+	await wait_until(func() -> bool: return camera.t < 0.01, 3.0)
+	var ghosts := station.get_node("Ghosts") as Node3D
+	assert_true(ghosts.visible)
+	var slot: StringName = GameState.station.free_slots(wreck.uid)[0]
+	var by: StringName = GameState.station.attach_options(&"corridor", wreck.uid, slot)[0]
+	EventBus.build_preview.emit(&"corridor", wreck.uid, slot, by)
+	assert_false(ghosts.visible, "only the previewed module is outlined")
+	EventBus.build_preview.emit(&"", 0, &"", &"")
+	assert_true(ghosts.visible, "clearing the preview brings the ghosts back")
 
 
 ## Regression: the lab's furniture blocks once split it in two (B unreachable from A).

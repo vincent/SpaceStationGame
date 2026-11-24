@@ -17,6 +17,8 @@ var _links: Dictionary[int, NavigationLink3D] = {}
 var _ghosts: Node3D
 var _preview: MeshInstance3D
 var _ghost_material: ShaderMaterial
+var _room_view := false
+var _previewing := false
 
 
 func _ready() -> void:
@@ -149,10 +151,17 @@ func detach(module: Module) -> void:
 
 # --- Ghost slots -------------------------------------------------------------
 
-## Ghosts are a station-view tool: hidden (and unpickable) in room view.
 func _on_room_view_changed(room: bool) -> void:
-	_ghosts.visible = not room
-	_ghosts.process_mode = Node.PROCESS_MODE_DISABLED if room else Node.PROCESS_MODE_INHERIT
+	_room_view = room
+	_update_ghosts_visibility()
+
+
+## Ghosts are a station-view tool: hidden (and unpickable) in room view, and
+## while a build preview is shown (only the previewed module is outlined).
+func _update_ghosts_visibility() -> void:
+	var show := not _room_view and not _previewing
+	_ghosts.visible = show
+	_ghosts.process_mode = Node.PROCESS_MODE_INHERIT if show else Node.PROCESS_MODE_DISABLED
 
 
 ## Dashed outlines on free slots that can take a module, when the player can
@@ -227,10 +236,14 @@ func show_build_preview(module_id: StringName, parent_uid: int, slot: StringName
 	var def := GameState.module_db.get_module(module_id)
 	if def == null or not state.has_module(parent_uid):
 		_preview.mesh = null
+		_previewing = false
+		_update_ghosts_visibility()
 		return
 	var kit := MeshKit.new()
 	kit.box_edges(_footprint_box(def, parent_uid, slot, by_slot), 0.09, Color.WHITE)
 	_preview.mesh = kit.commit()
+	_previewing = true
+	_update_ghosts_visibility()
 
 
 func _make_ghost(uid: int, slot_name: StringName, box: AABB) -> Node3D:
